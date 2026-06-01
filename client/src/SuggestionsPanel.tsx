@@ -4,14 +4,39 @@ interface Props {
   playerRace: PlayerRace;
   result: AnalyzeResponse | null;
   compact?: boolean;
+  live?: boolean;
+  scanning?: boolean;
+  lastScanAt?: number | null;
 }
 
-export function SuggestionsPanel({ playerRace, result, compact }: Props) {
+function formatScanTime(ts: number | null | undefined): string {
+  if (!ts) return "";
+  const sec = Math.round((Date.now() - ts) / 1000);
+  if (sec < 5) return "just now";
+  return `${sec}s ago`;
+}
+
+export function SuggestionsPanel({
+  playerRace,
+  result,
+  compact,
+  live,
+  scanning,
+  lastScanAt,
+}: Props) {
   return (
     <div className={`suggestions ${compact ? "suggestions-compact" : ""}`}>
       {!compact && (
         <h2>
           Counter suggestions
+          {live && scanning && (
+            <span className="badge badge-live">Scanning…</span>
+          )}
+          {live && !scanning && lastScanAt && (
+            <span className="badge badge-live-dim">
+              Updated {formatScanTime(lastScanAt)}
+            </span>
+          )}
           {result?.mode === "ai" && result.provider === "ollama" && (
             <span className="badge badge-ollama">Ollama</span>
           )}
@@ -21,10 +46,16 @@ export function SuggestionsPanel({ playerRace, result, compact }: Props) {
           {result?.mode === "ai" && !result.provider && (
             <span className="badge badge-ai">AI</span>
           )}
-          {result?.mode === "heuristic" && result.detectedUnits.length > 0 && (
-            <span className="badge badge-manual">Manual</span>
-          )}
+          {result?.mode === "heuristic" &&
+            result.detectedUnits.length > 0 &&
+            !live && <span className="badge badge-manual">Manual</span>}
         </h2>
+      )}
+
+      {compact && live && (
+        <div className="pip-bar" style={{ marginBottom: 6 }}>
+          {scanning ? "● Scanning…" : `Updated ${formatScanTime(lastScanAt)}`}
+        </div>
       )}
 
       {result?.detectedUnits && result.detectedUnits.length > 0 && (
@@ -52,9 +83,13 @@ export function SuggestionsPanel({ playerRace, result, compact }: Props) {
         ))
       ) : (
         <p className="empty-hint">
-          {compact
-            ? "Waiting for coach…"
-            : "Analyze, import a replay, or tag enemy units."}
+          {live && scanning
+            ? "Analyzing your capture…"
+            : live
+              ? "No units detected yet — keep Live coach on while scouting fights."
+              : compact
+                ? "Waiting for coach…"
+                : "Analyze, import a replay, or tag enemy units."}
         </p>
       )}
     </div>

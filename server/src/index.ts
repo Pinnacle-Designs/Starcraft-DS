@@ -9,11 +9,14 @@ import {
   type PlayerRace,
 } from "./counterService.js";
 import { listReplayPlayers, parseReplayBuffer } from "./replayService.js";
+import { startOllamaForUser } from "./ollamaManager.js";
 import {
   analyzeScreenshot,
   detectFromText,
   getVisionStatus,
 } from "./vision/index.js";
+
+startOllamaForUser();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3847;
@@ -169,7 +172,7 @@ app.post("/api/replay", upload.single("replay"), async (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
+const httpServer = app.listen(PORT, async () => {
   const vision = await getVisionStatus();
   console.log(`Starcraft-DS API http://localhost:${PORT}`);
   if (vision.active) {
@@ -179,4 +182,16 @@ app.listen(PORT, async () => {
       "Vision off — start Ollama (ollama pull llava) or set OPENAI_API_KEY"
     );
   }
+});
+
+httpServer.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `\nPort ${PORT} is already in use (another API instance is running).`,
+      "\nRun: npm run kill-ports",
+      "\nThen: npm run dev\n"
+    );
+    process.exit(1);
+  }
+  throw err;
 });

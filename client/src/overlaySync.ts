@@ -7,6 +7,8 @@ export interface CoachState {
   playerRace: PlayerRace;
   result: AnalyzeResponse | null;
   live: boolean;
+  scanning?: boolean;
+  lastScanAt?: number | null;
   updatedAt: number;
 }
 

@@ -9,11 +9,11 @@ import {
 import { ReplayImport } from "./ReplayImport";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { openOverlay, publishCoachState } from "./overlaySync";
+import { useLiveCoach, parseManualUnits } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 
 const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
-const ANALYZE_INTERVAL_MS = 4500;
 
 export default function App() {
   const [playerRace, setPlayerRace] = useState<PlayerRace>("Terran");
@@ -28,6 +28,7 @@ export default function App() {
     videoRef,
     canvasRef,
     capturing,
+    frameReady,
     error: captureError,
     start,
     stop,
@@ -43,67 +44,94 @@ export default function App() {
 
   useEffect(() => {
     fetchHealth().then((h) => setVision(h.visionProviders));
+    const id = window.setInterval(() => {
+      fetchHealth().then((h) => setVision(h.visionProviders));
+    }, 15000);
+    return () => clearInterval(id);
   }, []);
+
+  const visionEnabled = Boolean(vision?.active);
+  const manualUnits = parseManualUnits(manualInput);
+  const canAnalyzeLive = visionEnabled || manualUnits.length > 0;
+
+  const applyResult = useCallback((data: AnalyzeResponse) => {
+    setResult(data);
+  }, []);
+
+  const { scanning, lastScanAt, canLive } = useLiveCoach({
+    live,
+    capturing,
+    frameReady,
+    playerRace,
+    visionEnabled,
+    manualInput,
+    captureFrameBase64,
+    onResult: applyResult,
+    onError: setLastError,
+  });
 
   useEffect(() => {
     publishCoachState({
       playerRace,
       result,
       live,
+      scanning,
+      lastScanAt,
       updatedAt: Date.now(),
     });
-  }, [playerRace, result, live]);
-
-  const visionEnabled = Boolean(vision?.active);
-
-  const applyResult = useCallback((data: AnalyzeResponse) => {
-    setResult(data);
-  }, []);
+  }, [playerRace, result, live, scanning, lastScanAt]);
 
   const runAnalysis = useCallback(
-    async (manualUnits?: string[]) => {
+    async (units?: string[]) => {
       setLoading(true);
       setLastError(null);
       try {
-        if (manualUnits?.length) {
-          applyResult(await analyzeFrame("", playerRace, manualUnits));
+        const manual = units ?? manualUnits;
+        if (manual.length > 0) {
+          applyResult(await analyzeFrame("", playerRace, manual));
           return;
         }
         const b64 = captureFrameBase64();
         if (!b64) {
-          setLastError("No frame available — start screen capture first.");
+          setLastError(
+            frameReady
+              ? "Could not grab frame — try stopping and restarting capture."
+              : "Waiting for video — give it a second after capture starts."
+          );
           return;
         }
-        applyResult(await analyzeFrame(b64, playerRace));
+        const data = await analyzeFrame(b64, playerRace);
+        applyResult(data);
+        if (data.detectedUnits.length === 0) {
+          setLastError(
+            data.scene?.slice(0, 140) ||
+              "No units detected. Use manual tags or check Ollama/OpenAI vision."
+          );
+        }
       } catch (e) {
         setLastError(e instanceof Error ? e.message : "Analysis failed");
       } finally {
         setLoading(false);
       }
     },
-    [captureFrameBase64, playerRace, applyResult]
+    [
+      captureFrameBase64,
+      frameReady,
+      manualUnits,
+      playerRace,
+      applyResult,
+    ]
   );
 
-  useEffect(() => {
-    if (!live || !capturing) return;
-    const tick = () => void runAnalysis();
-    tick();
-    const id = window.setInterval(tick, ANALYZE_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [live, capturing, runAnalysis]);
-
   const handleManualSuggest = () => {
-    const units = manualInput
-      .split(/[,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (units.length === 0) return;
-    void runAnalysis(units);
+    if (manualUnits.length === 0) return;
+    void runAnalysis(manualUnits);
   };
 
   const handleStartCapture = async () => {
     await start();
     setResult(null);
+    setLastError(null);
   };
 
   const handleStopAll = () => {
@@ -111,11 +139,31 @@ export default function App() {
     stop();
   };
 
+  const handleToggleLive = () => {
+    if (!canLive) {
+      setLastError(
+        "Live coach needs Ollama (`ollama pull llava`) or OpenAI API key, OR enemy units in the manual field."
+      );
+      return;
+    }
+    if (!capturing) {
+      setLastError("Start screen capture before Live coach.");
+      return;
+    }
+    setLive((v) => !v);
+    setLastError(null);
+  };
+
   const visionHint = () => {
+    if (live) {
+      if (scanning) return "● Scanning capture for enemy units…";
+      if (visionEnabled) return `● Live vision (${vision?.active}) — updates every few seconds.`;
+      return "● Live manual mode — refreshing counters from your unit list.";
+    }
     if (!vision) return "";
-    if (vision.active === "ollama") return " Local vision: Ollama.";
-    if (vision.active === "openai") return " Cloud vision: OpenAI.";
-    return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY.";
+    if (vision.active === "ollama") return " Local vision: Ollama ready.";
+    if (vision.active === "openai") return " Cloud vision: OpenAI ready.";
+    return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY, or use manual units + Live coach.";
   };
 
   return (
@@ -168,6 +216,11 @@ export default function App() {
                 Share your StarCraft II window or full screen to begin
               </div>
             )}
+            {capturing && !frameReady && (
+              <div className="preview-placeholder preview-loading">
+                Preparing capture…
+              </div>
+            )}
           </div>
 
           {captureError && (
@@ -190,16 +243,16 @@ export default function App() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={loading || !visionEnabled}
+                  disabled={loading || !canAnalyzeLive}
                   onClick={() => void runAnalysis()}
                 >
                   {loading ? "Analyzing…" : "Analyze now"}
                 </button>
                 <button
                   type="button"
-                  className={`btn ${live ? "btn-danger" : ""}`}
-                  disabled={!visionEnabled}
-                  onClick={() => setLive((v) => !v)}
+                  className={`btn ${live ? "btn-danger" : "btn-primary"}`}
+                  disabled={!canLive}
+                  onClick={handleToggleLive}
                 >
                   {live ? "Stop live coach" : "Live coach"}
                 </button>
@@ -228,10 +281,7 @@ export default function App() {
             )}
           </div>
 
-          <p className={`status ${live ? "live" : ""}`}>
-            {live && "● Live — updating suggestions every few seconds"}
-            {!live && visionHint()}
-          </p>
+          <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
 
           <ReplayImport
             playerRace={playerRace}
@@ -240,7 +290,7 @@ export default function App() {
           />
 
           <label className="status" htmlFor="manual-units">
-            Manual enemy units (comma-separated)
+            Manual enemy units (comma-separated) — also used by Live coach
           </label>
           <input
             id="manual-units"
@@ -266,8 +316,14 @@ export default function App() {
         </section>
 
         <aside className="panel">
-          <SuggestionsPanel playerRace={playerRace} result={result} />
-          {result?.scene && result.mode === "ai" && (
+          <SuggestionsPanel
+            playerRace={playerRace}
+            result={result}
+            live={live}
+            scanning={scanning}
+            lastScanAt={lastScanAt}
+          />
+          {result?.scene && result.mode === "ai" && !live && (
             <p className="status" style={{ marginTop: "0.75rem" }}>
               {result.scene.slice(0, 120)}
               {result.scene.length > 120 ? "…" : ""}
@@ -281,11 +337,4 @@ export default function App() {
         <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
           Osiris SC2 Guide
         </a>
-        ,{" "}
-        <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
-        , and{" "}
-        <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
-      </footer>
-    </div>
-  );
-}
+        ,

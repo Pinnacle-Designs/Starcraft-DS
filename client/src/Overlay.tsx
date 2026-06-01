@@ -53,7 +53,12 @@ export default function Overlay() {
       </header>
 
       <div className={clickThrough ? "overlay-content passthrough" : "overlay-content"}>
-        <SuggestionsPanel playerRace={playerRace} result={result} compact />
+        <SuggestionsPanel
+          playerRace={playerRace}
+          result={result}
+          compact
+          live={live}
+        />
       </div>
 
       {electron && (

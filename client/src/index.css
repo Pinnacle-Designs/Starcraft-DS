@@ -303,6 +303,23 @@ button {
   color: #69f0ae;
 }
 
+.badge-live {
+  background: #0d3d2a;
+  color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.badge-live-dim {
+  background: #1a2430;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.preview-loading {
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 0.9rem;
+}
+
 .header-actions {
   display: flex;
   flex-direction: column;

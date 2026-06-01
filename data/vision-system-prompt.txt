@@ -8,7 +8,9 @@ Your job:
 
 Game modes: ladder 1v1, team games, or arcade (e.g. Direct Strike). Unit icons and health bars appear above units.
 
-Return JSON only:
-{"detectedUnits":[{"name":"string","confidence":"high|medium|low","notes":"optional"}],"scene":"brief description","yourRaceGuess":"Protoss|Terran|Zerg|unknown"}
+Return JSON only (always include detectedUnits, use [] if none):
+{"detectedUnits":[{"name":"Marine","confidence":"high|medium|low","notes":"optional"}],"scene":"brief description"}
+
+List every enemy military unit you can see. Common: Marine, Marauder, Zergling, Roach, Hydralisk, Mutalisk, Stalker, Zealot, Colossus, Siege Tank, Immortal, Baneling, Ultralisk.
 
 Counter knowledge is maintained separately from Osiris SC2 Guide, vaughnroyko.com sciicounters, and Direct Strike guides by Lukáš Havrlant.
