@@ -1,0 +1,393 @@
+:root {
+  --bg: #0a0e14;
+  --panel: #121a24;
+  --border: #2a3f5c;
+  --protoss: #4fc3f7;
+  --terran: #ffd54f;
+  --zerg: #ce93d8;
+  --accent: #00e676;
+  --danger: #ff5252;
+  --text: #e8eef5;
+  --muted: #8ba3bf;
+  font-family: "Rajdhani", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, #1a2a40 0%, transparent 60%),
+    var(--bg);
+}
+
+h1,
+h2,
+.logo {
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.06em;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.logo {
+  font-size: 1.35rem;
+  color: var(--accent);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.preview-wrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-wrap video,
+.preview-wrap canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+  padding: 1rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #1e2d3d;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #263d52;
+  border-color: #3d5a80;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0d3d2a;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #145c40;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.race-picker {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.race-btn {
+  flex: 1;
+  padding: 0.45rem;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background: #1a2430;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.race-btn.active-protoss {
+  border-color: var(--protoss);
+  color: var(--protoss);
+  background: rgba(79, 195, 247, 0.12);
+}
+
+.race-btn.active-terran {
+  border-color: var(--terran);
+  color: var(--terran);
+  background: rgba(255, 213, 79, 0.1);
+}
+
+.race-btn.active-zerg {
+  border-color: var(--zerg);
+  color: var(--zerg);
+  background: rgba(206, 147, 216, 0.12);
+}
+
+.status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+.status.live {
+  color: var(--accent);
+}
+
+.suggestions h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.suggestion-card {
+  border-left: 3px solid var(--accent);
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.6rem;
+  background: rgba(0, 230, 118, 0.06);
+  border-radius: 0 6px 6px 0;
+}
+
+.suggestion-card.soft {
+  border-left-color: var(--terran);
+  background: rgba(255, 213, 79, 0.06);
+}
+
+.suggestion-card .enemy {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.suggestion-card .build {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.suggestion-card .tip {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.35rem;
+}
+
+.detected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.tag {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: #1e2d3d;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+}
+
+.manual-input {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0d141c;
+  color: var(--text);
+  margin-top: 0.5rem;
+}
+
+.manual-input::placeholder {
+  color: var(--muted);
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.sources {
+  margin-top: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.sources a {
+  color: #64b5f6;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 0.35rem;
+}
+
+.badge-ai {
+  background: #1b3a5c;
+  color: #64b5f6;
+}
+
+.badge-manual {
+  background: #3d2a1b;
+  color: #ffb74d;
+}
+
+.badge-ollama {
+  background: #1b3d2a;
+  color: #69f0ae;
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.section-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.85rem;
+  margin: 1rem 0 0.35rem;
+  color: var(--accent);
+}
+
+.replay-import {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.replay-import input[type="file"] {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.suggestions-compact h2 {
+  display: none;
+}
+
+.suggestions-compact .suggestion-card {
+  padding: 0.45rem 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.suggestions-compact .suggestion-card .enemy {
+  font-size: 0.9rem;
+}
+
+.suggestions-compact .suggestion-card .build {
+  font-size: 0.85rem;
+}
+
+/* Overlay window */
+body.overlay-mode {
+  background: rgba(8, 12, 18, 0.92);
+  margin: 0;
+}
+
+.overlay-app {
+  min-height: 100vh;
+  padding: 0.65rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.overlay-header .logo {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.live-dot {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.overlay-footer {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  line-height: 1.3;
+}

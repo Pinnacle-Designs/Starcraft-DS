@@ -1,0 +1,295 @@
+{
+  "meta": {
+    "sources": [
+      "https://www.osirissc2guide.com/starcraft-2-counters-list.html",
+      "https://www.osirissc2guide.com/starcraft-2-protoss-counters.html",
+      "https://www.osirissc2guide.com/starcraft-2-terran-counters.html",
+      "https://www.osirissc2guide.com/starcraft-2-zerg-counters.html",
+      "https://vaughnroyko.com/sciicounters/",
+      "https://log.havrlant.cz/ (Direct Strike counter guides)"
+    ],
+    "notes": "Hard counters beat decisively; soft counters are situational. Upgrades and army composition matter."
+  },
+  "units": {
+    "Zealot": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": [], "Terran": ["Hellion", "Hellbat"], "Zerg": ["Roach", "Swarm Host", "Mutalisk", "Brood Lord"] },
+      "counters": { "Terran": ["Marauder"], "Zerg": [] },
+      "tips": "Mass light/armored anti-light; Hellbats with Infernal Pre-Igniter excel (Direct Strike)."
+    },
+    "Sentry": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Colossus", "Archon", "Mothership Core", "Oracle"], "Terran": ["Hellion", "Banshee", "Siege Tank"], "Zerg": ["Brood Lord", "Ultralisk", "Swarm Host"] },
+      "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "tips": "Support unit—counter the army it shields, not Sentries alone."
+    },
+    "Stalker": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray"], "Terran": ["Marauder", "Siege Tank", "Thor"], "Zerg": ["Hydralisk", "Zergling"] },
+      "counters": { "Protoss": ["Phoenix", "Oracle"], "Terran": ["Hellion", "Reaper", "Marine"], "Zerg": ["Mutalisk", "Brood Lord"] },
+      "tips": "Early Marines lose to Stalkers; post-Stim/Stimpack Marines win."
+    },
+    "Immortal": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Zealot", "Void Ray"], "Terran": ["Marine", "Ghost", "Hellbat", "Widow Mine"], "Zerg": ["Hydralisk", "Zergling"] },
+      "counters": { "Protoss": ["Stalker", "Colossus"], "Terran": ["Marauder", "Thor", "Siege Tank"], "Zerg": ["Roach", "Ultralisk"] },
+      "tips": "Hard counter to Roach."
+    },
+    "Colossus": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Tempest"], "Terran": ["Viking", "Corruptor", "Viper"], "Zerg": ["Corruptor", "Viper", "Hydralisk"] },
+      "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["Marine", "Marauder"], "Zerg": ["Hydralisk", "Zergling", "Roach"] },
+      "tips": "Needs Force Field/Zealot support vs Zerglings; Vikings for Terran."
+    },
+    "Phoenix": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Stalker", "Tempest"], "Terran": ["Marine", "Thor"], "Zerg": [] },
+      "counters": { "Protoss": ["Immortal"], "Terran": ["Banshee"], "Zerg": ["Mutalisk", "Overlord"] },
+      "tips": "Mass Mutalisk → Phoenix."
+    },
+    "Carrier": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Tempest", "Stalker"], "Terran": ["Viking"], "Zerg": ["Corruptor", "Viper"] },
+      "counters": { "Protoss": ["Immortal", "Colossus"], "Terran": ["Siege Tank", "Marauder"], "Zerg": ["Ultralisk", "Roach"] },
+      "tips": ""
+    },
+    "High Templar": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Colossus"], "Terran": ["Siege Tank", "Ghost"], "Zerg": ["Ultralisk"] },
+      "counters": { "Protoss": ["Sentry"], "Terran": ["Ghost", "Marine"], "Zerg": ["Hydralisk", "Infestor"] },
+      "tips": "EMP/Snipe before Storm; Ghosts essential for Terran."
+    },
+    "Dark Templar": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Void Ray", "Immortal"], "Terran": ["Banshee"], "Zerg": ["Mutalisk", "Brood Lord"] },
+      "counters": { "Protoss": [], "Terran": ["Marine"], "Zerg": ["Zergling", "Hydralisk"] },
+      "tips": "Useless if detection is up."
+    },
+    "Archon": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Carrier"], "Terran": ["Ghost", "Battlecruiser"], "Zerg": ["Brood Lord", "Swarm Host"] },
+      "counters": { "Protoss": ["Zealot", "Immortal"], "Terran": ["Marine", "Marauder", "Hellbat"], "Zerg": ["Zergling", "Roach", "Ultralisk"] },
+      "tips": ""
+    },
+    "Oracle": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Viking", "Missile Turret"], "Zerg": ["Queen", "Mutalisk"] },
+      "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["SCV", "Marine"], "Zerg": ["Drone"] },
+      "tips": "Rush unit—Viking comes too late; use turrets/early AA."
+    },
+    "Tempest": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Archon"], "Terran": ["Viking"], "Zerg": ["Corruptor", "Hydralisk", "Viper"] },
+      "counters": { "Protoss": ["Carrier", "Colossus"], "Terran": ["Battlecruiser"], "Zerg": ["Brood Lord"] },
+      "tips": ""
+    },
+    "Void Ray": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "counters": { "Protoss": ["Stalker"], "Terran": ["Hellion"], "Zerg": [] },
+      "tips": "Soft counter to Stalker."
+    },
+    "Marine": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Sentry", "Colossus", "Stalker"], "Terran": ["Siege Tank", "Hellion", "Hellbat"], "Zerg": ["Baneling", "Ultralisk", "Brood Lord", "Roach"] },
+      "counters": { "Protoss": ["Stalker"], "Terran": [], "Zerg": ["Zergling"] },
+      "tips": "Kill fast; fragile bio—Banelings/Fungal hurt (Direct Strike)."
+    },
+    "Marauder": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray", "Zealot"], "Terran": ["Siege Tank", "Banshee"], "Zerg": ["Hydralisk", "Mutalisk", "Brood Lord", "Zergling"] },
+      "counters": { "Protoss": [], "Terran": ["Reaper"], "Zerg": ["Roach", "Ultralisk"] },
+      "tips": "Soft counter Stalker; Zerglings counter mass Marauders."
+    },
+    "Reaper": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Stalker", "Photon Cannon"], "Terran": ["Marauder", "Hellion"], "Zerg": ["Roach", "Spine Crawler", "Queen"] },
+      "counters": { "Protoss": ["Probe"], "Terran": ["Marine", "SCV"], "Zerg": ["Zergling", "Drone"] },
+      "tips": "Early rush unit."
+    },
+    "Ghost": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Colossus", "Tempest"], "Terran": ["Siege Tank", "Ghost"], "Zerg": ["Roach", "Ultralisk", "Swarm Host"] },
+      "counters": { "Protoss": ["High Templar", "Archon"], "Terran": [], "Zerg": [] },
+      "tips": "EMP/Snipe HT and Archons."
+    },
+    "Hellion": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Stalker", "Colossus", "Archon"], "Terran": ["Roach"], "Zerg": ["Roach", "Mutalisk", "Queen"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Zergling"], "Zerg": ["Hydralisk"] },
+      "tips": "Blue-flame Hellbat vs light (Zealot, Zergling)."
+    },
+    "Hellbat": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Colossus", "Archon"], "Terran": ["Thor", "Siege Tank"], "Zerg": ["Ultralisk", "Swarm Host"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": [], "Zerg": ["Zergling", "Hydralisk"] },
+      "tips": "Infernal Pre-Igniter vs light units."
+    },
+    "Siege Tank": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray", "Phoenix", "Tempest", "Dark Templar"], "Terran": ["Banshee"], "Zerg": ["Brood Lord", "Mutalisk", "Viper"] },
+      "counters": { "Protoss": ["Stalker"], "Terran": ["Marine", "Hellion"], "Zerg": ["Hydralisk", "Roach", "Baneling"] },
+      "tips": "Not hard-countered by air alone if Thors support."
+    },
+    "Thor": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray", "Tempest"], "Terran": ["Siege Tank", "Marauder"], "Zerg": ["Zergling", "Hydralisk", "Brood Lord", "Swarm Host", "Viper"] },
+      "counters": { "Protoss": ["Viking"], "Terran": [], "Zerg": ["Mutalisk", "Corruptor"] },
+      "tips": "Anti-Mutalisk; marines with support beat Thor early."
+    },
+    "Banshee": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Phoenix", "Void Ray"], "Terran": ["Viking", "Thor"], "Zerg": ["Mutalisk", "Corruptor"] },
+      "counters": { "Protoss": ["Immortal", "Colossus"], "Terran": ["Siege Tank"], "Zerg": ["Roach", "Zergling"] },
+      "tips": ""
+    },
+    "Viking": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": [], "Terran": ["Marine", "Viking"], "Zerg": ["Hydralisk", "Infestor"] },
+      "counters": { "Protoss": ["Colossus", "Carrier"], "Terran": ["Banshee"], "Zerg": ["Brood Lord", "Corruptor"] },
+      "tips": "Focus Colossi; protect from Blink Stalkers."
+    },
+    "Battlecruiser": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Tempest"], "Terran": ["Viking"], "Zerg": ["Corruptor", "Viper"] },
+      "counters": { "Protoss": [], "Terran": [], "Zerg": ["Zergling", "Roach", "Mutalisk", "Brood Lord"] },
+      "tips": ""
+    },
+    "Widow Mine": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Colossus", "Tempest", "Observer"], "Terran": ["Siege Tank", "Thor"], "Zerg": ["Hydralisk", "Brood Lord", "Swarm Host", "Infestor"] },
+      "counters": { "Protoss": ["Oracle", "Stalker"], "Terran": ["Medivac"], "Zerg": ["Baneling", "Mutalisk"] },
+      "tips": "Detection lets Stalker/Immortal outrange mines."
+    },
+    "Medivac": {
+      "race": "Terran",
+      "weakAgainst": { "Protoss": ["Any anti-air"], "Terran": ["Any anti-air"], "Zerg": ["Any anti-air"] },
+      "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "tips": "Kill with any AA."
+    },
+    "Zergling": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Archon", "Colossus", "Sentry", "Zealot"], "Terran": ["Hellion", "Hellbat", "Planetary Fortress"], "Zerg": [] },
+      "counters": { "Protoss": [], "Terran": ["Marauder"], "Zerg": ["Drone", "Queen"] },
+      "tips": "No hard early counter—Hellbats, Banelings, Roaches, Lurkers (Direct Strike)."
+    },
+    "Roach": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray", "Colossus", "Stalker"], "Terran": ["Siege Tank", "Marauder", "Thor"], "Zerg": ["Mutalisk", "Brood Lord", "Swarm Host"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Marine", "Hellion"], "Zerg": [] },
+      "tips": "Immortal hard-counters Roach."
+    },
+    "Hydralisk": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Colossus", "High Templar", "Tempest", "Phoenix"], "Terran": ["Hellion", "Hellbat", "Siege Tank", "Battlecruiser"], "Zerg": ["Brood Lord", "Swarm Host", "Infestor"] },
+      "counters": { "Protoss": [], "Terran": ["Marauder"], "Zerg": [] },
+      "tips": ""
+    },
+    "Mutalisk": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Phoenix", "Stalker"], "Terran": ["Thor", "Marine", "Viking"], "Zerg": ["Hydralisk", "Queen"] },
+      "counters": { "Protoss": ["Zealot", "Immortal"], "Terran": ["Roach", "Zergling"], "Zerg": [] },
+      "tips": "Mass Mutalisk → Phoenix/Thor/Viking."
+    },
+    "Corruptor": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Stalker", "Void Ray"], "Terran": ["Hydralisk"], "Zerg": [] },
+      "counters": { "Protoss": ["Colossus", "Carrier"], "Terran": ["Battlecruiser"], "Zerg": ["Brood Lord"] },
+      "tips": ""
+    },
+    "Baneling": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Colossus", "Archon", "Immortal"], "Terran": ["Siege Tank", "Widow Mine", "Thor"], "Zerg": [] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Marine"], "Zerg": ["Zergling"] },
+      "tips": "Splits vs Banelings; Marines clumped die fast."
+    },
+    "Ultralisk": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Immortal", "Void Ray"], "Terran": ["Marauder", "Ghost"], "Zerg": ["Roach", "Brood Lord"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Marine"], "Zerg": ["Zergling"] },
+      "tips": ""
+    },
+    "Brood Lord": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Void Ray", "Tempest", "Stalker"], "Terran": ["Viking", "Battlecruiser"], "Zerg": ["Corruptor", "Mutalisk"] },
+      "counters": { "Protoss": ["Marine", "Marauder"], "Terran": ["Ghost", "Siege Tank"], "Zerg": [] },
+      "tips": "Need Vikings before 6+ Brood Lords with support."
+    },
+    "Infestor": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Colossus", "High Templar"], "Terran": ["Siege Tank", "Ghost"], "Zerg": ["Brood Lord", "Swarm Host"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Marine", "Marauder"], "Zerg": ["Hydralisk", "Mutalisk"] },
+      "tips": "Fungal vs bio; Ghosts counter."
+    },
+    "Swarm Host": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Void Ray", "Colossus", "Tempest", "Blink Stalker"], "Terran": ["Banshee", "Battlecruiser", "Siege Tank"], "Zerg": ["Hydralisk", "Roach"] },
+      "counters": { "Protoss": ["Zealot"], "Terran": ["Marine", "Hellion"], "Zerg": ["Spine Crawler"] },
+      "tips": ""
+    },
+    "Viper": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["High Templar", "Tempest"], "Terran": ["Ghost"], "Zerg": [] },
+      "counters": { "Protoss": ["Colossus", "Carrier"], "Terran": ["Battlecruiser", "Siege Tank"], "Zerg": ["Ultralisk"] },
+      "tips": "Abduct pulls BC/Carrier into Hydra ball."
+    },
+    "Queen": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Zealot", "Stalker"], "Terran": ["Marine", "Marauder", "Hellbat"], "Zerg": ["Zergling", "Roach"] },
+      "counters": { "Protoss": ["Oracle"], "Terran": ["Reaper", "Hellion"], "Zerg": ["Baneling"] },
+      "tips": ""
+    }
+  },
+  "aliases": {
+    "lings": "Zergling",
+    "ling": "Zergling",
+    "roach": "Roach",
+    "roachs": "Roach",
+    "roachies": "Roach",
+    "marauders": "Marauder",
+    "marines": "Marine",
+    "stalkers": "Stalker",
+    "immortals": "Immortal",
+    "colossi": "Colossus",
+    "colossus": "Colossus",
+    "mutas": "Mutalisk",
+    "muta": "Mutalisk",
+    "mutalisks": "Mutalisk",
+    "broodlords": "Brood Lord",
+    "brood lord": "Brood Lord",
+    "ht": "High Templar",
+    "high templar": "High Templar",
+    "dt": "Dark Templar",
+    "dark templar": "Dark Templar",
+    "tank": "Siege Tank",
+    "siege tanks": "Siege Tank",
+    "hellbats": "Hellbat",
+    "hellions": "Hellion",
+    "vikings": "Viking",
+    "thors": "Thor",
+    "banelings": "Baneling",
+    "baneling": "Baneling",
+    "ultras": "Ultralisk",
+    "ultralisks": "Ultralisk",
+    "hydras": "Hydralisk",
+    "hydralisks": "Hydralisk",
+    "zealots": "Zealot",
+    "archons": "Archon",
+    "oracles": "Oracle",
+    "phoenixes": "Phoenix",
+    "carriers": "Carrier",
+    "bc": "Battlecruiser",
+    "battlecruisers": "Battlecruiser",
+    "widow mines": "Widow Mine",
+    "mines": "Widow Mine",
+    "ravens": "Raven",
+    "medivacs": "Medivac",
+    "ghosts": "Ghost",
+    "reapers": "Reaper",
+    "vipers": "Viper",
+    "corruptors": "Corruptor",
+    "infestors": "Infestor",
+    "swarm hosts": "Swarm Host",
+    "queens": "Queen"
+  }
+}
