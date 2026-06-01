@@ -36,6 +36,8 @@ export interface CounterSuggestion {
   playerRace?: PlayerRace;
   /** Which of your team waves supplied the counter race. */
   teamWave?: 1 | 2 | 3;
+  /** Enemy wave tag (1–3) this suggestion was generated from. */
+  enemyWave?: 1 | 2 | 3;
 }
 
 export interface AnalyzeResponse {

@@ -11,6 +11,8 @@ export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
 export interface CounterSuggestion {
   enemyUnit: string;
+  /** Enemy wave tag (1–3) this suggestion was generated from. */
+  enemyWave?: 1 | 2 | 3;
   build: string[];
   /** Suggested count per counter unit to handle the detected enemy stack. */
   buildCounts?: BuildCount[];
@@ -80,15 +82,37 @@ export function normalizeUnitName(raw: string): string | null {
   for (const [name] of Object.entries(data.units)) {
     if (name.toLowerCase() === key) return name;
   }
-  if (data.aliases[key]) return data.aliases[key];
+  if (data.aliases[key]) {
+    const canonical = data.aliases[key];
+    if (data.units[canonical]) return canonical;
+  }
   for (const [alias, canonical] of Object.entries(data.aliases)) {
-    if (alias.toLowerCase() === key) return canonical;
+    if (alias.toLowerCase() === key && data.units[canonical]) return canonical;
   }
   return null;
 }
 
+/** Keep only buildable army units for the countering player's race. */
+function filterBuildForRace(
+  build: string[],
+  playerRace: PlayerRace,
+  units: Record<string, UnitEntry>
+): string[] {
+  return build.filter((counter) => {
+    const entry = units[counter];
+    return entry?.race === playerRace;
+  });
+}
+
 export function getAllUnitNames(): string[] {
   return Object.keys(loadDb().units);
+}
+
+export function getAliasEntries(): { alias: string; unit: string }[] {
+  const data = loadDb();
+  return Object.entries(data.aliases)
+    .filter(([, unit]) => data.units[unit])
+    .map(([alias, unit]) => ({ alias, unit }));
 }
 
 export function getUnitsByRace(): Record<PlayerRace, string[]> {
@@ -199,15 +223,21 @@ export function getSuggestionsForUnits(
     const entry = data.units[name];
     if (!entry) continue;
 
-    const build = entry.weakAgainst[playerRace] ?? [];
+    const build = filterBuildForRace(
+      entry.weakAgainst[playerRace] ?? [],
+      playerRace,
+      data.units
+    );
     if (build.length === 0) continue;
 
     const counterType =
       build.length <= 2 ? ("hard" as const) : ("soft" as const);
     const enemyCount = parseEnemyCount(raw.notes, raw.count);
+    const enemyWave = raw.wave ?? 1;
 
     suggestions.push({
       enemyUnit: name,
+      enemyWave,
       build: [...build],
       buildCounts: suggestBuildCounts(name, enemyCount, build, counterType),
       enemyCount,

@@ -136,20 +136,23 @@ export function SuggestionsPanel({
       {result?.suggestions && result.suggestions.length > 0 ? (
         result.suggestions.map((s) => {
           const counterRace = s.playerRace ?? playerRace;
-          const detected = result.detectedUnits.find((u) => u.name === s.enemyUnit);
-          const waveClass = waveColorClass(detected?.wave);
+          const enemyWave = s.enemyWave ?? 1;
+          const detected = result.detectedUnits.find(
+            (u) => u.name === s.enemyUnit && (u.wave ?? 1) === enemyWave
+          );
+          const waveClass = waveColorClass(detected?.wave ?? enemyWave);
           const primary = primaryBuildCount(s);
           const alternatives = alternativeBuildCounts(s);
           return (
           <div
-            key={`${s.enemyUnit}-${counterRace}-${detected?.wave ?? 0}`}
+            key={`${s.enemyUnit}-${counterRace}-${enemyWave}-${s.teamWave ?? 0}`}
             className={`suggestion-card ${s.counterType === "soft" ? "soft" : ""}${waveClass ? ` ${waveClass}` : ""}`}
           >
             <div className="enemy">
               vs {formatEnemyStack(s.enemyUnit, s.enemyCount, detected?.notes)}
-              {detected?.wave ? (
+              {(detected?.wave ?? enemyWave) ? (
                 <span className="suggestion-wave">
-                  {WAVE_DEFS[detected.wave - 1]?.label}
+                  {WAVE_DEFS[(detected?.wave ?? enemyWave)! - 1]?.label}
                 </span>
               ) : null}
             </div>
@@ -178,7 +181,7 @@ export function SuggestionsPanel({
                 </span>
               </div>
             ) : null}
-            {s.teamWave && s.teamWave !== detected?.wave ? (
+            {s.teamWave && s.teamWave !== (detected?.wave ?? enemyWave) ? (
               <div className="suggestion-team-wave-row">
                 {WAVE_DEFS[s.teamWave - 1]?.label} team supplies this counter
               </div>

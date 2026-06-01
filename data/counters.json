@@ -19,7 +19,7 @@
     },
     "Sentry": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Colossus", "Archon", "Mothership Core", "Oracle"], "Terran": ["Hellion", "Banshee", "Siege Tank"], "Zerg": ["Brood Lord", "Ultralisk", "Swarm Host"] },
+      "weakAgainst": { "Protoss": ["Colossus", "Archon", "Oracle"], "Terran": ["Hellion", "Banshee", "Siege Tank"], "Zerg": ["Brood Lord", "Ultralisk", "Swarm Host"] },
       "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
       "tips": "Support unit—counter the army it shields, not Sentries alone."
     },
@@ -37,7 +37,7 @@
     },
     "Colossus": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Tempest"], "Terran": ["Viking", "Corruptor", "Viper"], "Zerg": ["Corruptor", "Viper", "Hydralisk"] },
+      "weakAgainst": { "Protoss": ["Tempest"], "Terran": ["Viking", "Thor"], "Zerg": ["Corruptor", "Viper", "Hydralisk"] },
       "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["Marine", "Marauder"], "Zerg": ["Hydralisk", "Zergling", "Roach"] },
       "tips": "Needs Force Field/Zealot support vs Zerglings; Vikings for Terran."
     },
@@ -73,7 +73,7 @@
     },
     "Oracle": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Viking", "Missile Turret"], "Zerg": ["Queen", "Mutalisk"] },
+      "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Viking", "Marine"], "Zerg": ["Queen", "Mutalisk"] },
       "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["SCV", "Marine"], "Zerg": ["Drone"] },
       "tips": "Rush unit—Viking comes too late; use turrets/early AA."
     },
@@ -85,7 +85,7 @@
     },
     "Void Ray": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "weakAgainst": { "Protoss": ["Phoenix", "Stalker"], "Terran": ["Marine", "Viking", "Thor"], "Zerg": ["Hydralisk", "Corruptor"] },
       "counters": { "Protoss": ["Stalker"], "Terran": ["Hellion"], "Zerg": [] },
       "tips": "Soft counter to Stalker."
     },
@@ -103,7 +103,7 @@
     },
     "Reaper": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Stalker", "Photon Cannon"], "Terran": ["Marauder", "Hellion"], "Zerg": ["Roach", "Spine Crawler", "Queen"] },
+      "weakAgainst": { "Protoss": ["Stalker"], "Terran": ["Marauder", "Hellion"], "Zerg": ["Roach", "Queen"] },
       "counters": { "Protoss": ["Probe"], "Terran": ["Marine", "SCV"], "Zerg": ["Zergling", "Drone"] },
       "tips": "Early rush unit."
     },
@@ -115,7 +115,7 @@
     },
     "Hellion": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Stalker", "Colossus", "Archon"], "Terran": ["Roach"], "Zerg": ["Roach", "Mutalisk", "Queen"] },
+      "weakAgainst": { "Protoss": ["Stalker", "Colossus", "Archon"], "Terran": ["Marauder", "Siege Tank", "Thor"], "Zerg": ["Roach", "Mutalisk", "Queen"] },
       "counters": { "Protoss": ["Zealot"], "Terran": ["Zergling"], "Zerg": ["Hydralisk"] },
       "tips": "Blue-flame Hellbat vs light (Zealot, Zergling)."
     },
@@ -157,19 +157,19 @@
     },
     "Widow Mine": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Colossus", "Tempest", "Observer"], "Terran": ["Siege Tank", "Thor"], "Zerg": ["Hydralisk", "Brood Lord", "Swarm Host", "Infestor"] },
+      "weakAgainst": { "Protoss": ["Colossus", "Tempest", "Stalker"], "Terran": ["Siege Tank", "Thor"], "Zerg": ["Hydralisk", "Brood Lord", "Swarm Host", "Infestor"] },
       "counters": { "Protoss": ["Oracle", "Stalker"], "Terran": ["Medivac"], "Zerg": ["Baneling", "Mutalisk"] },
       "tips": "Detection lets Stalker/Immortal outrange mines."
     },
     "Medivac": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Any anti-air"], "Terran": ["Any anti-air"], "Zerg": ["Any anti-air"] },
+      "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Marine", "Viking", "Thor"], "Zerg": ["Hydralisk", "Queen", "Corruptor"] },
       "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
       "tips": "Kill with any AA."
     },
     "Zergling": {
       "race": "Zerg",
-      "weakAgainst": { "Protoss": ["Archon", "Colossus", "Sentry", "Zealot"], "Terran": ["Hellion", "Hellbat", "Planetary Fortress"], "Zerg": [] },
+      "weakAgainst": { "Protoss": ["Archon", "Colossus", "Sentry", "Zealot"], "Terran": ["Hellion", "Hellbat", "Marauder"], "Zerg": [] },
       "counters": { "Protoss": [], "Terran": ["Marauder"], "Zerg": ["Drone", "Queen"] },
       "tips": "No hard early counter—Hellbats, Banelings, Roaches, Lurkers (Direct Strike)."
     },
@@ -193,7 +193,7 @@
     },
     "Corruptor": {
       "race": "Zerg",
-      "weakAgainst": { "Protoss": ["Stalker", "Void Ray"], "Terran": ["Hydralisk"], "Zerg": [] },
+      "weakAgainst": { "Protoss": ["Stalker", "Void Ray"], "Terran": ["Marine", "Thor", "Viking"], "Zerg": [] },
       "counters": { "Protoss": ["Colossus", "Carrier"], "Terran": ["Battlecruiser"], "Zerg": ["Brood Lord"] },
       "tips": ""
     },
@@ -223,7 +223,7 @@
     },
     "Swarm Host": {
       "race": "Zerg",
-      "weakAgainst": { "Protoss": ["Void Ray", "Colossus", "Tempest", "Blink Stalker"], "Terran": ["Banshee", "Battlecruiser", "Siege Tank"], "Zerg": ["Hydralisk", "Roach"] },
+      "weakAgainst": { "Protoss": ["Void Ray", "Colossus", "Tempest", "Stalker"], "Terran": ["Banshee", "Battlecruiser", "Siege Tank"], "Zerg": ["Hydralisk", "Roach"] },
       "counters": { "Protoss": ["Zealot"], "Terran": ["Marine", "Hellion"], "Zerg": ["Spine Crawler"] },
       "tips": ""
     },
@@ -267,6 +267,7 @@
     "hellions": "Hellion",
     "vikings": "Viking",
     "thors": "Thor",
+    "thor": "Thor",
     "banelings": "Baneling",
     "baneling": "Baneling",
     "ultras": "Ultralisk",
@@ -282,7 +283,6 @@
     "battlecruisers": "Battlecruiser",
     "widow mines": "Widow Mine",
     "mines": "Widow Mine",
-    "ravens": "Raven",
     "medivacs": "Medivac",
     "ghosts": "Ghost",
     "reapers": "Reaper",
