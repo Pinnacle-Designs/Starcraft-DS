@@ -101,49 +101,50 @@ export function usePictureInPicture(
       * { box-sizing: border-box; margin: 0; }
       body {
         font-family: "Segoe UI", system-ui, sans-serif;
-        background: #0a0e14;
-        color: #e8eef5;
+        background: #0a0c0f;
+        color: #e8eaef;
         overflow: hidden;
       }
       .pip-root { display: flex; flex-direction: column; height: 100vh; }
-      .pip-video-wrap { flex: 1; min-height: 0; background: #000; }
+      .pip-video-wrap { flex: 1; min-height: 0; background: #050608; }
       video { width: 100%; height: 100%; object-fit: contain; display: block; }
       .pip-suggestions {
         max-height: 42%;
         overflow-y: auto;
         overflow-x: hidden;
         padding: 6px 8px;
-        border-top: 2px solid #00e676;
-        background: rgba(10, 14, 20, 0.95);
+        border-top: 2px solid #00f2ff;
+        background: rgba(10, 12, 16, 0.96);
         scrollbar-width: thin;
-        scrollbar-color: #2a4058 #0c1219;
+        scrollbar-color: #2a3038 #0c0e12;
       }
       .pip-suggestions::-webkit-scrollbar { width: 8px; }
       .pip-suggestions::-webkit-scrollbar-track {
-        background: #0c1219;
+        background: #0c0e12;
         border-radius: 999px;
       }
       .pip-suggestions::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, #3a5578, #2a4058);
+        background: linear-gradient(180deg, #3a4552, #2a3038);
         border-radius: 999px;
-        border: 2px solid #0c1219;
+        border: 2px solid #0c0e12;
       }
-      .pip-suggestions::-webkit-scrollbar-thumb:hover { background: #4a6d96; }
+      .pip-suggestions::-webkit-scrollbar-thumb:hover { background: #4a5568; }
       .pip-bar {
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.08em;
-        color: #00e676;
+        color: #00f2ff;
         margin-bottom: 4px;
+        text-shadow: 0 0 8px rgba(0, 242, 255, 0.35);
       }
-      .pip-hint { font-size: 11px; color: #8ba3bf; }
+      .pip-hint { font-size: 11px; color: #8a929e; }
       .pip-card {
         font-size: 11px;
         padding: 4px 0;
-        border-bottom: 1px solid #2a3f5c;
+        border-bottom: 1px solid rgba(70, 78, 90, 0.55);
       }
-      .pip-card strong { display: block; color: #ffd54f; }
-      .pip-card span { color: #00e676; }
+      .pip-card strong { display: block; color: #ff9900; }
+      .pip-card span { color: #00f2ff; }
     `;
     pipWindow.document.head.appendChild(style);
 

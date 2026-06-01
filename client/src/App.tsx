@@ -239,10 +239,15 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div>
-          <h1 className="logo">STARCRAFT-DS</h1>
-          <p className="subtitle">
-            Screen capture, replay import, and overlay coach for SC2 counters
-          </p>
+          <h1 className="logo">
+            <img
+              src="/starcraft-coach-logo.png"
+              alt="Starcraft Coach — The Ultimate Counter Tool"
+              className="logo-img"
+              width={512}
+              height={512}
+            />
+          </h1>
         </div>
         <div className="header-actions">
           <button
@@ -269,6 +274,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      <p className="header-slogan">Make better decisions. Win more games.</p>
 
       <div className="grid">
         <section className="panel">
