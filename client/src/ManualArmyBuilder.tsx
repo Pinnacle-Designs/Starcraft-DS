@@ -6,7 +6,6 @@ import {
 } from "./api";
 import {
   activeWaveArmy,
-  clearAllWaves,
   clearWaveArmy,
   manualArmyEntries,
   manualArmyTotal,
@@ -25,9 +24,17 @@ interface Props {
   waves: ManualWavesState;
   onChange: (waves: ManualWavesState) => void;
   onSubmit: () => void;
+  onClearSelections?: () => void;
+  refreshing?: boolean;
 }
 
-export function ManualArmyBuilder({ waves, onChange, onSubmit }: Props) {
+export function ManualArmyBuilder({
+  waves,
+  onChange,
+  onSubmit,
+  onClearSelections,
+  refreshing = false,
+}: Props) {
   const [byRace, setByRace] = useState<UnitsByRace | null>(null);
   const [tierByUnit, setTierByUnit] = useState<Record<string, number>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -125,26 +132,53 @@ export function ManualArmyBuilder({ waves, onChange, onSubmit }: Props) {
                 index > 0 ? (tierByUnit[units[index - 1]] ?? 2) : null;
               const count = army.counts[name] ?? 0;
               const row = (
-                <label key={name} className="manual-army-row">
+                <div key={name} className="manual-army-row">
                   <span className="manual-army-name" title={name}>
                     {name}
                   </span>
-                  <input
-                    type="number"
-                    className="unit-count-input"
-                    min={0}
-                    max={9999}
-                    step={1}
-                    value={count === 0 ? "" : count}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const n =
-                        raw === "" ? 0 : Math.max(0, parseInt(raw, 10) || 0);
-                      patchArmy(setUnitCount(army, name, n));
-                    }}
-                  />
-                </label>
+                  <div className="unit-count-stepper">
+                    <input
+                      type="number"
+                      className="unit-count-input"
+                      min={0}
+                      max={9999}
+                      step={1}
+                      value={count === 0 ? "" : count}
+                      placeholder="0"
+                      aria-label={`${name} count`}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const n =
+                          raw === "" ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+                        patchArmy(setUnitCount(army, name, n));
+                      }}
+                    />
+                    <div className="unit-count-arrows">
+                      <button
+                        type="button"
+                        className="unit-count-arrow"
+                        aria-label={`Increase ${name}`}
+                        disabled={count >= 9999}
+                        onClick={() =>
+                          patchArmy(setUnitCount(army, name, Math.min(9999, count + 1)))
+                        }
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        className="unit-count-arrow"
+                        aria-label={`Decrease ${name}`}
+                        disabled={count <= 0}
+                        onClick={() =>
+                          patchArmy(setUnitCount(army, name, Math.max(0, count - 1)))
+                        }
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                </div>
               );
               if (tier === prevTier) return [row];
               return [
@@ -177,17 +211,17 @@ export function ManualArmyBuilder({ waves, onChange, onSubmit }: Props) {
               type="button"
               className="btn"
               disabled={allEntries.length === 0}
-              onClick={() => onChange(clearAllWaves(waves))}
+              onClick={() => onClearSelections?.()}
             >
-              Clear all waves
+              Clear selections
             </button>
             <button
               type="button"
               className="btn btn-primary"
-              disabled={allEntries.length === 0}
-              onClick={onSubmit}
+              disabled={allEntries.length === 0 || refreshing}
+              onClick={() => onSubmit()}
             >
-              Refresh counters
+              {refreshing ? "Refreshing…" : "Refresh counters"}
             </button>
           </div>
         </>

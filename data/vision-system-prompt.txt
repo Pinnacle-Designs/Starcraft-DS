@@ -9,7 +9,9 @@ Your job:
 Game modes: ladder 1v1, team games, or arcade (e.g. Direct Strike). Unit icons and health bars appear above units.
 
 Return JSON only (always include detectedUnits, use [] if none):
-{"detectedUnits":[{"name":"Marine","confidence":"high|medium|low","notes":"optional"}],"scene":"brief description"}
+{"detectedUnits":[{"name":"Marine","confidence":"high|medium|low","notes":"×8 or approximate count when visible"}],"scene":"brief description"}
+
+When you can estimate how many of a unit are visible, put the count in notes as ×N (e.g. ×12 for a dozen Marines).
 
 List every enemy military unit you can see. Common: Marine, Marauder, Zergling, Roach, Hydralisk, Mutalisk, Stalker, Zealot, Colossus, Siege Tank, Immortal, Baneling, Ultralisk.
 

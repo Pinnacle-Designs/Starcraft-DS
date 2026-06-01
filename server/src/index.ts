@@ -124,7 +124,17 @@ app.post("/api/analyze", async (req, res) => {
     const race = playerRace ?? "Terran";
     const teams = parseTeamRaces(teamRaces, race);
     const shift = parseWaveShift(waveShift);
-    const suggestions = getSuggestionsForUnits(detected, teams, shift);
+    const suggestions = getSuggestionsForUnits(
+      parsedManual.length
+        ? parsedManual.map(({ name, count, wave }) => ({ name, count, wave }))
+        : detected.map((u) => ({
+            name: u.name,
+            wave: u.wave,
+            notes: u.notes,
+          })),
+      teams,
+      shift
+    );
 
     res.json({
       detectedUnits: detected,

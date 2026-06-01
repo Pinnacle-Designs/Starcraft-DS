@@ -1,12 +1,21 @@
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import {
+  parseEnemyCount,
+  suggestBuildCounts,
+  type BuildCount,
+} from "./counterQuantities.js";
 
 export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
 export interface CounterSuggestion {
   enemyUnit: string;
   build: string[];
+  /** Suggested count per counter unit to handle the detected enemy stack. */
+  buildCounts?: BuildCount[];
+  /** Enemy stack size used for the estimate. */
+  enemyCount?: number;
   counterType: "hard" | "soft" | "general";
   tip?: string;
   playerRace?: PlayerRace;
@@ -165,7 +174,12 @@ export function getSuggestions(
 }
 
 export function getSuggestionsForUnits(
-  units: Array<{ name: string; wave?: 1 | 2 | 3 }>,
+  units: Array<{
+    name: string;
+    count?: number;
+    notes?: string;
+    wave?: 1 | 2 | 3;
+  }>,
   teamRaces: TeamWaves,
   waveShift: WaveShift = 0
 ): CounterSuggestion[] {
@@ -188,10 +202,16 @@ export function getSuggestionsForUnits(
     const build = entry.weakAgainst[playerRace] ?? [];
     if (build.length === 0) continue;
 
+    const counterType =
+      build.length <= 2 ? ("hard" as const) : ("soft" as const);
+    const enemyCount = parseEnemyCount(raw.notes, raw.count);
+
     suggestions.push({
       enemyUnit: name,
       build: [...build],
-      counterType: build.length <= 2 ? "hard" : "soft",
+      buildCounts: suggestBuildCounts(name, enemyCount, build, counterType),
+      enemyCount,
+      counterType,
       tip: entry.tips || undefined,
       playerRace,
       teamWave,

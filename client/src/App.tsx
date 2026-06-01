@@ -18,6 +18,7 @@ import {
   primaryTeamRace,
 } from "./teamWaves";
 import {
+  clearAllWaves,
   EMPTY_MANUAL_WAVES,
   manualArmyEntries,
   type ManualWavesState,
@@ -40,6 +41,10 @@ export default function App() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [captureHistoryKey, setCaptureHistoryKey] = useState(0);
   const [capturePanelOpen, setCapturePanelOpen] = useState(false);
+  const [counterRefreshing, setCounterRefreshing] = useState(false);
+  const [lastCounterRefreshAt, setLastCounterRefreshAt] = useState<number | null>(
+    null
+  );
 
   const bumpCaptureHistory = useCallback(() => {
     setCaptureHistoryKey((k) => k + 1);
@@ -99,7 +104,63 @@ export default function App() {
 
   const applyResult = useCallback((data: AnalyzeResponse) => {
     setResult(data);
+    setLastCounterRefreshAt(Date.now());
   }, []);
+
+  const manualWavesRef = useRef(manualWaves);
+  manualWavesRef.current = manualWaves;
+  const teamWavesRef = useRef(teamWaves);
+  teamWavesRef.current = teamWaves;
+  const waveShiftRef = useRef(waveShift);
+  waveShiftRef.current = waveShift;
+  const resultRef = useRef(result);
+  resultRef.current = result;
+
+  const detectedToManual = useCallback(
+    (units: AnalyzeResponse["detectedUnits"]): ManualUnitInput[] =>
+      units.map((u) => ({
+        name: u.name,
+        count: u.notes?.startsWith("×")
+          ? Math.max(1, parseInt(u.notes.slice(1), 10) || 1)
+          : 1,
+        wave: u.wave,
+      })),
+    []
+  );
+
+  const refreshCounters = useCallback(async () => {
+    const units = manualArmyEntries(manualWavesRef.current);
+    const teams = teamWavesRef.current;
+    const shift = waveShiftRef.current;
+    const current = resultRef.current;
+
+    setCounterRefreshing(true);
+    setLastError(null);
+    try {
+      if (units.length > 0) {
+        applyResult(await analyzeFrame("", teams, units, shift));
+        return;
+      }
+
+      if (current?.detectedUnits?.length) {
+        applyResult(
+          await analyzeFrame(
+            "",
+            teams,
+            detectedToManual(current.detectedUnits),
+            shift
+          )
+        );
+        return;
+      }
+
+      setLastError("Tag enemy units or analyze a frame to refresh counters.");
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : "Counter refresh failed");
+    } finally {
+      setCounterRefreshing(false);
+    }
+  }, [applyResult, detectedToManual]);
 
   const { scanning, lastScanAt, canLive } = useLiveCoach({
     live,
@@ -195,40 +256,41 @@ export default function App() {
   }, [bumpCaptureHistory, captureFrameBase64, frameReady, result]);
 
   const handleManualSuggest = () => {
-    if (manualUnits.length === 0) return;
-    void runAnalysis(manualUnits);
+    void refreshCounters();
   };
 
-  const runAnalysisRef = useRef(runAnalysis);
-  runAnalysisRef.current = runAnalysis;
-  const resultRef = useRef(result);
-  resultRef.current = result;
+  const handleClearSelections = useCallback(() => {
+    setManualWaves((waves) => clearAllWaves(waves));
+    setResult(null);
+    setLastCounterRefreshAt(null);
+  }, []);
+
+  const refreshCountersRef = useRef(refreshCounters);
+  refreshCountersRef.current = refreshCounters;
 
   const teamWavesKey = useMemo(() => JSON.stringify(teamWaves), [teamWaves]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      if (manualUnits.length > 0) {
-        void runAnalysisRef.current(manualUnits);
+      const units = manualArmyEntries(manualWavesRef.current);
+      if (units.length > 0) {
+        void refreshCountersRef.current();
         return;
       }
-      const detected = resultRef.current?.detectedUnits;
-      if (!detected?.length) return;
-      void analyzeFrame(
-        "",
-        teamWaves,
-        detected.map((u) => ({
-          name: u.name,
-          count: u.notes?.startsWith("×")
-            ? Math.max(1, parseInt(u.notes.slice(1), 10) || 1)
-            : 1,
-          wave: u.wave,
-        })),
-        waveShift
-      ).then(applyResult);
+
+      const current = resultRef.current;
+      if (current?.mode === "ai" && current.detectedUnits?.length) {
+        void refreshCountersRef.current();
+        return;
+      }
+
+      if (current?.detectedUnits?.length || current?.suggestions?.length) {
+        setResult(null);
+        setLastCounterRefreshAt(null);
+      }
     }, 450);
     return () => clearTimeout(id);
-  }, [manualUnitsKey, teamWavesKey, waveShift, teamWaves, applyResult]);
+  }, [manualUnitsKey, teamWavesKey, waveShift]);
 
   const handleStartCapture = async () => {
     setCapturePanelOpen(true);
@@ -446,6 +508,8 @@ export default function App() {
             waves={manualWaves}
             onChange={setManualWaves}
             onSubmit={handleManualSuggest}
+            onClearSelections={handleClearSelections}
+            refreshing={counterRefreshing}
           />
           {lastError && (
             <p className="status" style={{ color: "var(--danger)" }}>
@@ -454,7 +518,7 @@ export default function App() {
           )}
         </section>
 
-        <aside className="panel">
+        <aside className="panel panel-coach">
           <TeamSelection
             teamWaves={teamWaves}
             waveShift={waveShift}
@@ -466,7 +530,8 @@ export default function App() {
             result={result}
             live={live}
             scanning={scanning}
-            lastScanAt={lastScanAt}
+            lastScanAt={lastScanAt ?? lastCounterRefreshAt}
+            counterRefreshing={counterRefreshing}
           />
           {result?.scene && result.mode === "ai" && !live && (
             <p className="status" style={{ marginTop: "0.75rem" }}>

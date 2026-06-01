@@ -5,7 +5,8 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { AnalyzeResponse, PlayerRace } from "./api";
+import type { AnalyzeResponse, CounterSuggestion, PlayerRace } from "./api";
+import { formatCounterBuild } from "./suggestionFormat";
 
 function pipSupported(): boolean {
   return "documentPictureInPicture" in window;
@@ -13,18 +14,21 @@ function pipSupported(): boolean {
 
 function appendPipCard(
   root: HTMLElement,
-  enemyUnit: string,
-  playerRace: PlayerRace,
-  build: string[]
+  suggestion: CounterSuggestion,
+  playerRace: PlayerRace
 ): void {
   const card = document.createElement("div");
   card.className = "pip-card";
 
   const title = document.createElement("strong");
-  title.textContent = `vs ${enemyUnit}`;
+  const enemyLabel =
+    suggestion.enemyCount != null && suggestion.enemyCount > 1
+      ? `${suggestion.enemyUnit} ×${suggestion.enemyCount}`
+      : suggestion.enemyUnit;
+  title.textContent = `vs ${enemyLabel}`;
 
   const buildLine = document.createElement("span");
-  buildLine.textContent = `${playerRace}: ${build.join(", ")}`;
+  buildLine.textContent = `${suggestion.playerRace ?? playerRace}: ${formatCounterBuild(suggestion)}`;
 
   card.append(title, buildLine);
   root.appendChild(card);
@@ -52,7 +56,7 @@ function renderPipSuggestions(
   }
 
   for (const s of result.suggestions.slice(0, 5)) {
-    appendPipCard(root, s.enemyUnit, s.playerRace ?? playerRace, s.build);
+    appendPipCard(root, s, playerRace);
   }
 }
 

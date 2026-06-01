@@ -20,9 +20,17 @@ export type TeamWaves = [PlayerRace, PlayerRace | null, PlayerRace | null];
 /** How many waves your active team is ahead of enemy tags (0–2). */
 export type WaveShift = 0 | 1 | 2;
 
+export interface CounterBuildCount {
+  name: string;
+  suggested?: number;
+  role: "primary" | "alternative";
+}
+
 export interface CounterSuggestion {
   enemyUnit: string;
   build: string[];
+  buildCounts?: CounterBuildCount[];
+  enemyCount?: number;
   counterType: "hard" | "soft" | "general";
   tip?: string;
   playerRace?: PlayerRace;
