@@ -6,19 +6,28 @@ import {
   type VisionResult,
 } from "./shared.js";
 
+function resolveOpenAiKey(): string | null {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) return null;
+  if (/your-(key|actual)/i.test(key) || key === "sk-your-key-here") return null;
+  if (!key.startsWith("sk-") || key.length < 20) return null;
+  return key;
+}
+
 export function isOpenAiConfigured(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return resolveOpenAiKey() !== null;
 }
 
 export async function analyzeWithOpenAi(
   imageBase64: string,
   mimeType: string
 ): Promise<VisionResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = resolveOpenAiKey();
   if (!apiKey) {
     return {
       detectedUnits: [],
-      scene: "OPENAI_API_KEY not set.",
+      scene:
+        "OPENAI_API_KEY missing or still the placeholder — save server/.env and restart npm run dev.",
       mode: "heuristic",
     };
   }

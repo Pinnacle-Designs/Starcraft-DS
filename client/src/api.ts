@@ -1,5 +1,20 @@
 export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
+export interface ManualUnitInput {
+  name: string;
+  count: number;
+  wave?: 1 | 2 | 3;
+}
+
+export interface DetectedUnit {
+  name: string;
+  confidence: string;
+  notes?: string;
+  wave?: 1 | 2 | 3;
+}
+
+export type UnitsByRace = Record<PlayerRace, string[]>;
+
 export interface CounterSuggestion {
   enemyUnit: string;
   build: string[];
@@ -8,7 +23,7 @@ export interface CounterSuggestion {
 }
 
 export interface AnalyzeResponse {
-  detectedUnits: { name: string; confidence: string; notes?: string }[];
+  detectedUnits: DetectedUnit[];
   suggestions: CounterSuggestion[];
   playerRace: PlayerRace;
   mode: "ai" | "heuristic";
@@ -29,10 +44,22 @@ export interface ReplayPlayerInfo {
   result: string;
 }
 
+export interface UnitCatalog {
+  byRace: UnitsByRace;
+  tierByUnit: Record<string, number>;
+}
+
+export async function fetchUnitCatalog(): Promise<UnitCatalog> {
+  const res = await fetch("/api/units");
+  if (!res.ok) throw new Error("Failed to load units");
+  const data = (await res.json()) as UnitCatalog;
+  return { byRace: data.byRace, tierByUnit: data.tierByUnit ?? {} };
+}
+
 export async function analyzeFrame(
   imageBase64: string,
   playerRace: PlayerRace,
-  manualUnits?: string[]
+  manualUnits?: ManualUnitInput[]
 ): Promise<AnalyzeResponse> {
   const res = await fetch("/api/analyze", {
     method: "POST",
@@ -41,7 +68,7 @@ export async function analyzeFrame(
       imageBase64: imageBase64 || undefined,
       mimeType: "image/jpeg",
       playerRace,
-      manualUnits,
+      manualUnits: manualUnits?.length ? manualUnits : undefined,
     }),
   });
   if (!res.ok) {

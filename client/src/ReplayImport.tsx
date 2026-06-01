@@ -68,14 +68,34 @@ export function ReplayImport({ playerRace, onResult, onError }: Props) {
         Upload a <strong>.SC2Replay</strong> to extract enemy units and suggest
         counters (no screen capture needed).
       </p>
-      <input
-        type="file"
-        accept=".SC2Replay,.sc2replay"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void handleFile(f);
-        }}
-      />
+      <div className="file-picker">
+        <input
+          id="replay-file"
+          type="file"
+          className="file-picker-input"
+          accept=".SC2Replay,.sc2replay"
+          disabled={loading}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+          }}
+        />
+        <label
+          htmlFor="replay-file"
+          className={`btn file-picker-btn${loading ? " file-picker-btn-loading" : ""}`}
+        >
+          {loading && !file
+            ? "Reading replay…"
+            : file
+              ? "Change file"
+              : "Choose .SC2Replay file"}
+        </label>
+        {file && (
+          <span className="file-picker-name" title={file.name}>
+            {file.name}
+          </span>
+        )}
+      </div>
 
       {mapTitle && (
         <p className="status">
@@ -115,8 +135,7 @@ export function ReplayImport({ playerRace, onResult, onError }: Props) {
 
           <button
             type="button"
-            className="btn btn-primary"
-            style={{ marginTop: "0.5rem" }}
+            className="btn btn-primary btn-mt"
             disabled={loading || !file}
             onClick={() => void handleAnalyze()}
           >

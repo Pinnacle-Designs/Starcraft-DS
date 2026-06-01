@@ -1,4 +1,11 @@
-import type { AnalyzeResponse, PlayerRace } from "./api";
+import type { AnalyzeResponse, DetectedUnit, PlayerRace } from "./api";
+import { WAVE_DEFS } from "./manualArmy";
+
+function waveColorClass(wave: DetectedUnit["wave"]): string {
+  if (!wave) return "";
+  const def = WAVE_DEFS[wave - 1];
+  return def?.colorClass ?? "";
+}
 
 interface Props {
   playerRace: PlayerRace;
@@ -65,8 +72,20 @@ export function SuggestionsPanel({
       {result?.detectedUnits && result.detectedUnits.length > 0 && (
         <div className="detected-tags">
           {result.detectedUnits.map((u) => (
-            <span key={u.name} className="tag" title={u.confidence}>
+            <span
+              key={`${u.name}-${u.wave ?? 0}-${u.notes ?? ""}`}
+              className={`tag ${waveColorClass(u.wave)}`}
+              title={
+                u.wave
+                  ? `${WAVE_DEFS[u.wave - 1]?.label ?? "Wave"} · ${u.confidence}`
+                  : u.confidence
+              }
+            >
+              {u.wave ? (
+                <span className="tag-wave-dot" aria-hidden />
+              ) : null}
               {u.name}
+              {u.notes ? ` ${u.notes}` : ""}
             </span>
           ))}
         </div>

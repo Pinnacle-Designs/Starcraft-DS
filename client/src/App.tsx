@@ -1,15 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeFrame,
   fetchHealth,
   type AnalyzeResponse,
+  type ManualUnitInput,
   type PlayerRace,
   type VisionProviders,
 } from "./api";
+import { CaptureHistoryPanel } from "./CaptureHistoryPanel";
+import { saveCaptureFromAnalysis, saveCaptureFromBase64 } from "./captureHistory";
+import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { ReplayImport } from "./ReplayImport";
 import { SuggestionsPanel } from "./SuggestionsPanel";
+import {
+  EMPTY_MANUAL_WAVES,
+  manualArmyEntries,
+  type ManualWavesState,
+} from "./manualArmy";
 import { openOverlay, publishCoachState } from "./overlaySync";
-import { useLiveCoach, parseManualUnits } from "./useLiveCoach";
+import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 
@@ -21,8 +30,26 @@ export default function App() {
   const [vision, setVision] = useState<VisionProviders | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
-  const [manualInput, setManualInput] = useState("");
+  const [manualWaves, setManualWaves] =
+    useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [captureHistoryKey, setCaptureHistoryKey] = useState(0);
+
+  const bumpCaptureHistory = useCallback(() => {
+    setCaptureHistoryKey((k) => k + 1);
+  }, []);
+
+  const archiveFrame = useCallback(
+    async (
+      b64: string,
+      detectedUnits: { name: string }[],
+      options?: { throttleLive?: boolean }
+    ) => {
+      const saved = await saveCaptureFromAnalysis(b64, detectedUnits, options);
+      if (saved) bumpCaptureHistory();
+    },
+    [bumpCaptureHistory]
+  );
 
   const {
     videoRef,
@@ -51,8 +78,15 @@ export default function App() {
   }, []);
 
   const visionEnabled = Boolean(vision?.active);
-  const manualUnits = parseManualUnits(manualInput);
+  const manualUnits = useMemo(
+    () => manualArmyEntries(manualWaves),
+    [manualWaves]
+  );
   const canAnalyzeLive = visionEnabled || manualUnits.length > 0;
+  const manualUnitsKey = useMemo(
+    () => JSON.stringify(manualUnits),
+    [manualUnits]
+  );
 
   const applyResult = useCallback((data: AnalyzeResponse) => {
     setResult(data);
@@ -64,10 +98,13 @@ export default function App() {
     frameReady,
     playerRace,
     visionEnabled,
-    manualInput,
+    manualUnits,
     captureFrameBase64,
     onResult: applyResult,
     onError: setLastError,
+    onVisionFrame: (b64, data) => {
+      void archiveFrame(b64, data.detectedUnits, { throttleLive: true });
+    },
   });
 
   useEffect(() => {
@@ -82,7 +119,7 @@ export default function App() {
   }, [playerRace, result, live, scanning, lastScanAt]);
 
   const runAnalysis = useCallback(
-    async (units?: string[]) => {
+    async (units?: ManualUnitInput[]) => {
       setLoading(true);
       setLastError(null);
       try {
@@ -102,10 +139,11 @@ export default function App() {
         }
         const data = await analyzeFrame(b64, playerRace);
         applyResult(data);
+        void archiveFrame(b64, data.detectedUnits);
         if (data.detectedUnits.length === 0) {
           setLastError(
             data.scene?.slice(0, 140) ||
-              "No units detected. Use manual tags or check Ollama/OpenAI vision."
+              "No units detected. Use the manual army builder or check Ollama/OpenAI vision."
           );
         }
       } catch (e) {
@@ -120,13 +158,44 @@ export default function App() {
       manualUnits,
       playerRace,
       applyResult,
+      archiveFrame,
     ]
   );
+
+  const handleSaveSnapshot = useCallback(() => {
+    const b64 = captureFrameBase64();
+    if (!b64) {
+      setLastError(
+        frameReady
+          ? "Could not grab frame — try stopping and restarting capture."
+          : "Waiting for video — give it a second after capture starts."
+      );
+      return;
+    }
+    void saveCaptureFromBase64(b64, {
+      summary: result?.detectedUnits.length
+        ? result.detectedUnits.map((u) => u.name).join(", ")
+        : "Manual snapshot",
+    }).then((saved) => {
+      if (saved) bumpCaptureHistory();
+    });
+  }, [bumpCaptureHistory, captureFrameBase64, frameReady, result]);
 
   const handleManualSuggest = () => {
     if (manualUnits.length === 0) return;
     void runAnalysis(manualUnits);
   };
+
+  const runAnalysisRef = useRef(runAnalysis);
+  runAnalysisRef.current = runAnalysis;
+
+  useEffect(() => {
+    if (manualUnits.length === 0) return;
+    const id = window.setTimeout(() => {
+      void runAnalysisRef.current(manualUnits);
+    }, 450);
+    return () => clearTimeout(id);
+  }, [manualUnitsKey, playerRace]);
 
   const handleStartCapture = async () => {
     await start();
@@ -142,7 +211,7 @@ export default function App() {
   const handleToggleLive = () => {
     if (!canLive) {
       setLastError(
-        "Live coach needs Ollama (`ollama pull llava`) or OpenAI API key, OR enemy units in the manual field."
+        "Live coach needs Ollama (`ollama pull llava`) or OpenAI API key, OR enemy units in the manual builder."
       );
       return;
     }
@@ -158,12 +227,12 @@ export default function App() {
     if (live) {
       if (scanning) return "● Scanning capture for enemy units…";
       if (visionEnabled) return `● Live vision (${vision?.active}) — updates every few seconds.`;
-      return "● Live manual mode — refreshing counters from your unit list.";
+      return "● Live manual mode — refreshing counters from your army builder.";
     }
     if (!vision) return "";
     if (vision.active === "ollama") return " Local vision: Ollama ready.";
     if (vision.active === "openai") return " Cloud vision: OpenAI ready.";
-    return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY, or use manual units + Live coach.";
+    return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY, or tag enemy units + Live coach.";
   };
 
   return (
@@ -192,11 +261,6 @@ export default function App() {
                 className={`race-btn ${
                   playerRace === r ? `active-${r.toLowerCase()}` : ""
                 }`}
-                style={
-                  playerRace === r
-                    ? undefined
-                    : { opacity: 0.55, borderColor: "transparent" }
-                }
                 onClick={() => setPlayerRace(r)}
               >
                 {r}
@@ -274,12 +338,22 @@ export default function App() {
                     {pipActive ? "Close PiP" : "Pop out PiP"}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={!frameReady}
+                  onClick={handleSaveSnapshot}
+                >
+                  Save snapshot
+                </button>
                 <button type="button" className="btn" onClick={handleStopAll}>
                   Stop capture
                 </button>
               </>
             )}
           </div>
+
+          <CaptureHistoryPanel refreshKey={captureHistoryKey} />
 
           <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
 
@@ -289,25 +363,11 @@ export default function App() {
             onError={setLastError}
           />
 
-          <label className="status" htmlFor="manual-units">
-            Manual enemy units (comma-separated) — also used by Live coach
-          </label>
-          <input
-            id="manual-units"
-            className="manual-input"
-            placeholder="e.g. Mutalisk, Roach, Siege Tank"
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleManualSuggest()}
+          <ManualArmyBuilder
+            waves={manualWaves}
+            onChange={setManualWaves}
+            onSubmit={handleManualSuggest}
           />
-          <button
-            type="button"
-            className="btn"
-            style={{ marginTop: "0.5rem" }}
-            onClick={handleManualSuggest}
-          >
-            Get counters (no AI)
-          </button>
           {lastError && (
             <p className="status" style={{ color: "var(--danger)" }}>
               {lastError}

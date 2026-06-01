@@ -2,18 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   analyzeFrame,
   type AnalyzeResponse,
+  type ManualUnitInput,
   type PlayerRace,
 } from "./api";
 
 const LIVE_INTERVAL_MS = 4000;
 const LIVE_INTERVAL_MANUAL_MS = 2000;
-
-export function parseManualUnits(input: string): string[] {
-  return input
-    .split(/[,;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 interface Options {
   live: boolean;
@@ -21,10 +15,11 @@ interface Options {
   frameReady: boolean;
   playerRace: PlayerRace;
   visionEnabled: boolean;
-  manualInput: string;
+  manualUnits: ManualUnitInput[];
   captureFrameBase64: () => string | null;
   onResult: (data: AnalyzeResponse) => void;
   onError: (message: string | null) => void;
+  onVisionFrame?: (frameBase64: string, data: AnalyzeResponse) => void;
 }
 
 export function useLiveCoach({
@@ -33,15 +28,15 @@ export function useLiveCoach({
   frameReady,
   playerRace,
   visionEnabled,
-  manualInput,
+  manualUnits,
   captureFrameBase64,
   onResult,
   onError,
+  onVisionFrame,
 }: Options) {
   const [scanning, setScanning] = useState(false);
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
-  const manualUnits = parseManualUnits(manualInput);
   const manualOnly = manualUnits.length > 0 && !visionEnabled;
   const canLive = visionEnabled || manualUnits.length > 0;
 
@@ -66,6 +61,7 @@ export function useLiveCoach({
 
       const data = await analyzeFrame(b64, playerRace);
       onResult(data);
+      onVisionFrame?.(b64, data);
       setLastScanAt(Date.now());
 
       if (data.detectedUnits.length === 0) {
@@ -87,6 +83,7 @@ export function useLiveCoach({
     captureFrameBase64,
     onResult,
     onError,
+    onVisionFrame,
   ]);
 
   useEffect(() => {

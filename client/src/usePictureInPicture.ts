@@ -111,10 +111,24 @@ export function usePictureInPicture(
       .pip-suggestions {
         max-height: 42%;
         overflow-y: auto;
+        overflow-x: hidden;
         padding: 6px 8px;
         border-top: 2px solid #00e676;
         background: rgba(10, 14, 20, 0.95);
+        scrollbar-width: thin;
+        scrollbar-color: #2a4058 #0c1219;
       }
+      .pip-suggestions::-webkit-scrollbar { width: 8px; }
+      .pip-suggestions::-webkit-scrollbar-track {
+        background: #0c1219;
+        border-radius: 999px;
+      }
+      .pip-suggestions::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #3a5578, #2a4058);
+        border-radius: 999px;
+        border: 2px solid #0c1219;
+      }
+      .pip-suggestions::-webkit-scrollbar-thumb:hover { background: #4a6d96; }
       .pip-bar {
         font-size: 10px;
         font-weight: 700;

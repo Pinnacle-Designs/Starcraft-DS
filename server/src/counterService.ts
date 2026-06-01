@@ -25,8 +25,33 @@ interface CountersDb {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataPath = join(__dirname, "../../data/counters.json");
+const tierPath = join(__dirname, "../../data/unit-tiers.json");
 
 let db: CountersDb | null = null;
+let unitTiers: Record<string, number> | null = null;
+
+function loadUnitTiers(): Record<string, number> {
+  if (!unitTiers) {
+    const raw = JSON.parse(readFileSync(tierPath, "utf-8")) as Record<
+      string,
+      number
+    >;
+    unitTiers = {};
+    for (const [name, tier] of Object.entries(raw)) {
+      if (name.startsWith("_")) continue;
+      unitTiers[name] = tier;
+    }
+  }
+  return unitTiers;
+}
+
+export function getUnitTier(unitName: string): number {
+  return loadUnitTiers()[unitName] ?? 2;
+}
+
+export function getUnitTiersMap(): Record<string, number> {
+  return { ...loadUnitTiers() };
+}
 
 function loadDb(): CountersDb {
   if (!db) {
@@ -53,6 +78,29 @@ export function normalizeUnitName(raw: string): string | null {
 
 export function getAllUnitNames(): string[] {
   return Object.keys(loadDb().units);
+}
+
+export function getUnitsByRace(): Record<PlayerRace, string[]> {
+  const data = loadDb();
+  const byRace: Record<PlayerRace, string[]> = {
+    Protoss: [],
+    Terran: [],
+    Zerg: [],
+  };
+  for (const [name, entry] of Object.entries(data.units)) {
+    const race = entry.race as PlayerRace;
+    if (byRace[race]) byRace[race].push(name);
+  }
+  const tiers = loadUnitTiers();
+  for (const race of Object.keys(byRace) as PlayerRace[]) {
+    byRace[race].sort((a, b) => {
+      const ta = tiers[a] ?? 2;
+      const tb = tiers[b] ?? 2;
+      if (ta !== tb) return ta - tb;
+      return a.localeCompare(b);
+    });
+  }
+  return byRace;
 }
 
 export function getSuggestions(

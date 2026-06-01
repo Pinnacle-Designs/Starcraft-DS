@@ -5,6 +5,8 @@ import multer from "multer";
 import {
   getAllUnitNames,
   getSuggestions,
+  getUnitTiersMap,
+  getUnitsByRace,
   normalizeUnitName,
   type PlayerRace,
 } from "./counterService.js";
@@ -39,8 +41,38 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.get("/api/units", (_req, res) => {
-  res.json({ units: getAllUnitNames() });
+  res.json({
+    units: getAllUnitNames(),
+    byRace: getUnitsByRace(),
+    tierByUnit: getUnitTiersMap(),
+  });
 });
+
+function parseManualUnits(
+  input: unknown
+): { name: string; count: number; wave?: 1 | 2 | 3 }[] {
+  if (!Array.isArray(input)) return [];
+  const out: { name: string; count: number; wave?: 1 | 2 | 3 }[] = [];
+  for (const item of input) {
+    if (typeof item === "string") {
+      const name = normalizeUnitName(item);
+      if (name) out.push({ name, count: 1 });
+      continue;
+    }
+    if (item && typeof item === "object" && "name" in item) {
+      const name = normalizeUnitName(String((item as { name: string }).name));
+      const count = Math.max(
+        0,
+        Math.floor(Number((item as { count?: number }).count) || 0)
+      );
+      const rawWave = Number((item as { wave?: number }).wave);
+      const wave =
+        rawWave === 1 || rawWave === 2 || rawWave === 3 ? rawWave : undefined;
+      if (name && count > 0) out.push({ name, count, wave });
+    }
+  }
+  return out;
+}
 
 app.post("/api/analyze", async (req, res) => {
   try {
@@ -49,23 +81,29 @@ app.post("/api/analyze", async (req, res) => {
         imageBase64?: string;
         mimeType?: string;
         playerRace?: PlayerRace;
-        manualUnits?: string[];
+        manualUnits?: Array<
+          string | { name: string; count?: number; wave?: number }
+        >;
       };
 
-    let detected: { name: string; confidence: string; notes?: string }[] = [];
+    let detected: {
+      name: string;
+      confidence: string;
+      notes?: string;
+      wave?: 1 | 2 | 3;
+    }[] = [];
     let mode: "ai" | "heuristic" = "heuristic";
     let scene: string | undefined;
     let provider: string | undefined;
 
-    if (manualUnits?.length) {
-      detected = manualUnits
-        .map((n) => {
-          const canonical = normalizeUnitName(n);
-          return canonical
-            ? { name: canonical, confidence: "high" as const }
-            : null;
-        })
-        .filter((u): u is { name: string; confidence: "high" } => u !== null);
+    const parsedManual = parseManualUnits(manualUnits);
+    if (parsedManual.length) {
+      detected = parsedManual.map(({ name, count, wave }) => ({
+        name,
+        confidence: "high" as const,
+        notes: count > 1 ? `×${count}` : undefined,
+        wave,
+      }));
       mode = "heuristic";
     } else if (imageBase64) {
       const vision = await analyzeScreenshot(imageBase64, mimeType);
