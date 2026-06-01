@@ -1,17 +1,24 @@
 # Starcraft-DS
 
-Live counter coach for **StarCraft II**. Capture your game screen in the browser, use vision AI to spot enemy units, and get real-time build suggestions based on community counter charts.
+Live counter coach for **StarCraft II**. Capture your game screen in the browser, use vision AI to spot enemy units, tag armies across three waves, import replays, and get real-time build suggestions from community counter charts.
 
 ## Features
 
-- **Screen capture** — Share your SC2 window or monitor via the browser (`getDisplayMedia`).
-- **Local vision (Ollama)** — Each user runs Ollama on their own PC (auto-started by `npm run dev`; no shared API key).
-- **Cloud vision (OpenAI)** — Optional `OPENAI_API_KEY` if you prefer cloud over local Ollama.
-- **Overlay mode** — Pop out a compact coach window to place over the game (syncs with the main app).
-- **Replay import** — Upload `.SC2Replay` files; extracts enemy units from tracker events.
-- **Counter database** — Structured counters from [Osiris SC2 Guide](https://www.osirissc2guide.com/starcraft-2-counters-list.html), [Vaughn Royko charts](https://vaughnroyko.com/sciicounters/), and [Direct Strike guides](https://log.havrlant.cz/) (`data/counters.json`).
-- **Manual mode** — Type enemy units (e.g. `Mutalisk, Roach`) without any vision provider.
-- **Live coach** — Auto-analyzes every ~4.5 seconds while you play.
+| Area | What it does |
+|------|----------------|
+| **Screen capture** | Share your SC2 window or monitor via the browser (`getDisplayMedia`). |
+| **Local vision (Ollama)** | Each user runs Ollama on their own PC (auto-started by `npm run dev`; no shared API key). |
+| **Cloud vision (OpenAI)** | Optional `OPENAI_API_KEY` in `server/.env` if you prefer cloud over local Ollama. |
+| **Live coach** | Auto-analyzes every ~4s (vision) or ~2s (manual-only) while capturing. |
+| **Manual army builder** | Tag enemy units across **3 waves** (color-coded), per-unit counts, tech tiers from `data/unit-tiers.json`. |
+| **Replay import** | Upload `.SC2Replay` files; extracts enemy units from tracker events. |
+| **Capture history** | Saves recent JPEG frames in the browser for **7 days**; download or remove anytime (IndexedDB, not uploaded). |
+| **Overlay mode** | Compact always-on-top coach window (`Open overlay`); syncs with the main app. |
+| **Picture-in-Picture** | Floating preview + live counters in Chrome/Edge while capturing. |
+| **Electron desktop** | Native overlay with always-on-top and click-through (`npm run electron:dev`). |
+| **Counter database** | Structured counters from [Osiris SC2 Guide](https://www.osirissc2guide.com/starcraft-2-counters-list.html), [Vaughn Royko charts](https://vaughnroyko.com/sciicounters/), and [Direct Strike guides](https://log.havrlant.cz/) (`data/counters.json`). |
+
+See **[UI wireframes](docs/wireframes.md)** for layout diagrams and user flows.
 
 ## Quick start
 
@@ -30,11 +37,11 @@ npm run dev
 
 `npm run dev` will, for **each user on their own machine**:
 
-1. Start **Ollama** (`ollama serve`) if it is not already running  
-2. Download the **llava** vision model on first run (`ollama pull llava`)  
-3. Start the web app and API  
+1. Free ports **5173** and **3847** if needed (`kill-ports`)
+2. Start **Ollama** (`ollama serve`) if it is not already running and pull **llava** on first run
+3. Start the Express API and Vite client
 
-No OpenAI key required for live vision.
+No OpenAI key is required for live vision.
 
 Your browser should open **http://localhost:5173** automatically.
 
@@ -46,13 +53,16 @@ Your browser should open **http://localhost:5173** automatically.
 2. Use the URL Vite prints (should be **http://localhost:5173**).
 3. If the API failed, check the terminal for `Port 3847 is already in use`.
 
-1. Choose your race (Protoss / Terran / Zerg).
-2. **Overlay:** click **Open overlay** and position the small window over SC2 (pin always-on-top with your OS if available).
+### How to use (browser)
+
+1. Choose your race (Protoss / Terran / Zerg) in the header.
+2. **Overlay:** click **Open overlay** and position the small window over SC2 (pin always-on-top with your OS or use Electron).
 3. **Replay:** upload a `.SC2Replay`, pick your player slot, click **Analyze replay**.
-4. **Live play:** **Capture game screen** → **Live coach** (scans every ~4s). Needs **Ollama** or **OpenAI**, OR type enemy units in the manual field for live manual mode.
-5. **No AI:** enter enemy units manually → **Get counters**.
-6. **Picture-in-Picture:** while capturing, click **Pop out PiP** (Chrome/Edge) for a floating preview + live counters.
-7. **Electron desktop:** `npm run electron:dev` — native always-on-top overlay with click-through.
+4. **Live play:** **Capture game screen** → **Live coach** (needs Ollama or OpenAI, or tagged enemy waves for manual live mode).
+5. **Single frame:** **Analyze now** while capturing.
+6. **Manual (no vision):** use the **enemy wave builder** — counters refresh as you edit; click **Refresh counters** to force an update.
+7. **Save frames:** **Save snapshot** or automatic saves on analyze / live coach → expand **Recent captures** to download JPEGs (kept 7 days locally).
+8. **Picture-in-Picture:** while capturing, click **Pop out PiP** (Chrome/Edge) for a floating preview + live counters.
 
 API runs on **http://localhost:3847**
 
@@ -78,10 +88,28 @@ After **Capture game screen**, click **Pop out PiP**. The floating window shows 
 
 | Path | Purpose |
 |------|---------|
-| `client/` | React + Vite UI |
-| `server/` | Express API, vision + counter lookup |
+| `client/` | React + Vite UI (capture, builder, history, overlay route) |
+| `server/` | Express API, vision + counter lookup + replay parsing |
 | `data/counters.json` | Unit weakness / counter matrix |
-| `data/vision-system-prompt.txt` | AI training / inference prompt |
+| `data/unit-tiers.json` | Tech tier labels for manual army builder sorting |
+| `data/vision-system-prompt.txt` | Vision model instructions (JSON unit list) |
+| `docs/wireframes.md` | UI wireframes and flow diagrams |
+| `electron/` | Desktop shell and overlay window |
+
+## Client modules (high level)
+
+| Module | Role |
+|--------|------|
+| `App.tsx` | Main layout, capture controls, live coach wiring |
+| `ManualArmyBuilder.tsx` | Three-wave enemy army editor |
+| `CaptureHistoryPanel.tsx` | 7-day local capture list + download |
+| `captureHistory.ts` | IndexedDB storage and pruning |
+| `ReplayImport.tsx` | `.SC2Replay` upload flow |
+| `SuggestionsPanel.tsx` | Detected units + counter cards |
+| `Overlay.tsx` | Compact overlay route |
+| `useLiveCoach.ts` | Polling analyze while live |
+| `useScreenCapture.ts` | `getDisplayMedia` + frame grab |
+| `overlaySync.ts` | Main ↔ overlay state sync |
 
 ## How the AI is “trained”
 
@@ -106,10 +134,24 @@ To improve accuracy over time, extend `counters.json`, refine the vision prompt,
 | `OPENAI_VISION_MODEL` | Default `gpt-4o-mini` |
 | `PORT` | API port (default `3847`) |
 
+Copy `server/.env.example` to `server/.env` and restart `npm run dev` after changing keys.
+
+## API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Server + vision provider status |
+| `GET` | `/api/units` | Unit names, `byRace`, `tierByUnit` |
+| `POST` | `/api/analyze` | Image and/or `manualUnits` → counters |
+| `POST` | `/api/replay` | Upload replay → enemy units + counters |
+
+Capture history is stored only in the browser (IndexedDB), not on the server.
+
 ## Limitations
 
 - Browser capture requires Chromium/Edge/Firefox with display capture support.
-- Vision quality depends on resolution, UI scale, and camera angle; manual tags are more reliable for ranked play.
+- Vision quality depends on resolution, UI scale, and camera angle; manual wave tags are more reliable for ranked play.
+- Capture history is per-browser; clearing site data removes saved frames.
 - Counters are **guide-level** heuristics — upgrades, composition, and micro still matter (see Osiris “grain of salt” notes).
 
 ## License
