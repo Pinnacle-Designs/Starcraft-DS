@@ -44,6 +44,8 @@ export default function Overlay() {
   const playerRace: PlayerRace = state?.playerRace ?? "Terran";
   const result: AnalyzeResponse | null = state?.result ?? null;
   const live = state?.live ?? false;
+  const scanning = state?.scanning ?? false;
+  const lastScanAt = state?.lastScanAt ?? null;
 
   return (
     <div className="overlay-app">
@@ -58,6 +60,8 @@ export default function Overlay() {
           result={result}
           compact
           live={live}
+          scanning={scanning}
+          lastScanAt={lastScanAt}
         />
       </div>
 

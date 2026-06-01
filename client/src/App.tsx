@@ -337,4 +337,11 @@ export default function App() {
         <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
           Osiris SC2 Guide
         </a>
-        ,
+        ,{" "}
+        <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
+        , and{" "}
+        <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
+      </footer>
+    </div>
+  );
+}

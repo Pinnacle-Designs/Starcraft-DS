@@ -54,7 +54,11 @@ export function SuggestionsPanel({
 
       {compact && live && (
         <div className="pip-bar" style={{ marginBottom: 6 }}>
-          {scanning ? "● Scanning…" : `Updated ${formatScanTime(lastScanAt)}`}
+          {scanning
+            ? "● Scanning…"
+            : lastScanAt
+              ? `Updated ${formatScanTime(lastScanAt)}`
+              : "● Waiting for first scan…"}
         </div>
       )}
 
