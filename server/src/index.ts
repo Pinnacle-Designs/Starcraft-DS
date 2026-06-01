@@ -5,9 +5,12 @@ import multer from "multer";
 import {
   getAllUnitNames,
   getSuggestions,
+  getSuggestionsForUnits,
   getUnitTiersMap,
   getUnitsByRace,
   normalizeUnitName,
+  parseTeamRaces,
+  parseWaveShift,
   type PlayerRace,
 } from "./counterService.js";
 import { listReplayPlayers, parseReplayBuffer } from "./replayService.js";
@@ -76,11 +79,13 @@ function parseManualUnits(
 
 app.post("/api/analyze", async (req, res) => {
   try {
-    const { imageBase64, mimeType = "image/jpeg", playerRace, manualUnits } =
+    const { imageBase64, mimeType = "image/jpeg", playerRace, teamRaces, waveShift, manualUnits } =
       req.body as {
         imageBase64?: string;
         mimeType?: string;
         playerRace?: PlayerRace;
+        teamRaces?: unknown;
+        waveShift?: unknown;
         manualUnits?: Array<
           string | { name: string; count?: number; wave?: number }
         >;
@@ -117,13 +122,16 @@ app.post("/api/analyze", async (req, res) => {
     }
 
     const race = playerRace ?? "Terran";
-    const enemyNames = detected.map((d) => d.name);
-    const suggestions = getSuggestions(enemyNames, race);
+    const teams = parseTeamRaces(teamRaces, race);
+    const shift = parseWaveShift(waveShift);
+    const suggestions = getSuggestionsForUnits(detected, teams, shift);
 
     res.json({
       detectedUnits: detected,
       suggestions,
-      playerRace: race,
+      playerRace: teams[0],
+      teamRaces: teams,
+      waveShift: shift,
       mode,
       scene,
       provider,

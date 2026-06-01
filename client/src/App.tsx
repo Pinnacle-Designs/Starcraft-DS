@@ -4,14 +4,19 @@ import {
   fetchHealth,
   type AnalyzeResponse,
   type ManualUnitInput,
-  type PlayerRace,
   type VisionProviders,
+  type WaveShift,
 } from "./api";
 import { CaptureHistoryPanel } from "./CaptureHistoryPanel";
 import { saveCaptureFromAnalysis, saveCaptureFromBase64 } from "./captureHistory";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
-import { ReplayImport } from "./ReplayImport";
+import { VideoUpload } from "./VideoUpload";
 import { SuggestionsPanel } from "./SuggestionsPanel";
+import { TeamSelection } from "./TeamSelection";
+import {
+  DEFAULT_TEAM_WAVES,
+  primaryTeamRace,
+} from "./teamWaves";
 import {
   EMPTY_MANUAL_WAVES,
   manualArmyEntries,
@@ -22,10 +27,10 @@ import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 
-const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
-
 export default function App() {
-  const [playerRace, setPlayerRace] = useState<PlayerRace>("Terran");
+  const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
+  const [waveShift, setWaveShift] = useState<WaveShift>(0);
+  const playerRace = primaryTeamRace(teamWaves);
   const [live, setLive] = useState(false);
   const [vision, setVision] = useState<VisionProviders | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,6 +39,7 @@ export default function App() {
     useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
   const [lastError, setLastError] = useState<string | null>(null);
   const [captureHistoryKey, setCaptureHistoryKey] = useState(0);
+  const [capturePanelOpen, setCapturePanelOpen] = useState(false);
 
   const bumpCaptureHistory = useCallback(() => {
     setCaptureHistoryKey((k) => k + 1);
@@ -57,8 +63,11 @@ export default function App() {
     capturing,
     frameReady,
     error: captureError,
+    source: videoSource,
+    videoFileName,
     start,
     stop,
+    loadVideoFile,
     captureFrameBase64,
   } = useScreenCapture();
 
@@ -96,7 +105,8 @@ export default function App() {
     live,
     capturing,
     frameReady,
-    playerRace,
+    teamWaves,
+    waveShift,
     visionEnabled,
     manualUnits,
     captureFrameBase64,
@@ -110,13 +120,15 @@ export default function App() {
   useEffect(() => {
     publishCoachState({
       playerRace,
+      teamRaces: teamWaves,
+      waveShift,
       result,
       live,
       scanning,
       lastScanAt,
       updatedAt: Date.now(),
     });
-  }, [playerRace, result, live, scanning, lastScanAt]);
+  }, [teamWaves, waveShift, playerRace, result, live, scanning, lastScanAt]);
 
   const runAnalysis = useCallback(
     async (units?: ManualUnitInput[]) => {
@@ -125,7 +137,7 @@ export default function App() {
       try {
         const manual = units ?? manualUnits;
         if (manual.length > 0) {
-          applyResult(await analyzeFrame("", playerRace, manual));
+          applyResult(await analyzeFrame("", teamWaves, manual, waveShift));
           return;
         }
         const b64 = captureFrameBase64();
@@ -137,7 +149,7 @@ export default function App() {
           );
           return;
         }
-        const data = await analyzeFrame(b64, playerRace);
+        const data = await analyzeFrame(b64, teamWaves, undefined, waveShift);
         applyResult(data);
         void archiveFrame(b64, data.detectedUnits);
         if (data.detectedUnits.length === 0) {
@@ -156,7 +168,8 @@ export default function App() {
       captureFrameBase64,
       frameReady,
       manualUnits,
-      playerRace,
+      teamWaves,
+      waveShift,
       applyResult,
       archiveFrame,
     ]
@@ -188,16 +201,37 @@ export default function App() {
 
   const runAnalysisRef = useRef(runAnalysis);
   runAnalysisRef.current = runAnalysis;
+  const resultRef = useRef(result);
+  resultRef.current = result;
+
+  const teamWavesKey = useMemo(() => JSON.stringify(teamWaves), [teamWaves]);
 
   useEffect(() => {
-    if (manualUnits.length === 0) return;
     const id = window.setTimeout(() => {
-      void runAnalysisRef.current(manualUnits);
+      if (manualUnits.length > 0) {
+        void runAnalysisRef.current(manualUnits);
+        return;
+      }
+      const detected = resultRef.current?.detectedUnits;
+      if (!detected?.length) return;
+      void analyzeFrame(
+        "",
+        teamWaves,
+        detected.map((u) => ({
+          name: u.name,
+          count: u.notes?.startsWith("×")
+            ? Math.max(1, parseInt(u.notes.slice(1), 10) || 1)
+            : 1,
+          wave: u.wave,
+        })),
+        waveShift
+      ).then(applyResult);
     }, 450);
     return () => clearTimeout(id);
-  }, [manualUnitsKey, playerRace]);
+  }, [manualUnitsKey, teamWavesKey, waveShift, teamWaves, applyResult]);
 
   const handleStartCapture = async () => {
+    setCapturePanelOpen(true);
     await start();
     setResult(null);
     setLastError(null);
@@ -206,6 +240,7 @@ export default function App() {
   const handleStopAll = () => {
     setLive(false);
     stop();
+    setCapturePanelOpen(false);
   };
 
   const handleToggleLive = () => {
@@ -216,7 +251,7 @@ export default function App() {
       return;
     }
     if (!capturing) {
-      setLastError("Start screen capture before Live coach.");
+      setLastError("Start screen capture or upload a video before Live coach.");
       return;
     }
     setLive((v) => !v);
@@ -234,6 +269,23 @@ export default function App() {
     if (vision.active === "openai") return " Cloud vision: OpenAI ready.";
     return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY, or tag enemy units + Live coach.";
   };
+
+  const handleVideoUpload = (file: File) => {
+    setCapturePanelOpen(true);
+    setResult(null);
+    setLastError(null);
+    setLive(false);
+    void loadVideoFile(file);
+  };
+
+  const captureStatusLabel = () => {
+    if (live) return "Live coach";
+    if (capturing && videoSource === "file" && videoFileName) return videoFileName;
+    if (capturing) return videoSource === "file" ? "Video loaded" : "Capturing";
+    return null;
+  };
+
+  const captureStatus = captureStatusLabel();
 
   return (
     <div className="app">
@@ -258,115 +310,136 @@ export default function App() {
           >
             Open overlay
           </button>
-          <div className="race-picker">
-            {RACES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className={`race-btn ${
-                  playerRace === r ? `active-${r.toLowerCase()}` : ""
-                }`}
-                onClick={() => setPlayerRace(r)}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
       <p className="header-slogan">Make better decisions. Win more games.</p>
 
       <div className="grid">
         <section className="panel">
-          <div className="preview-wrap">
-            <video ref={videoRef} muted playsInline />
-            <canvas ref={canvasRef} hidden />
-            {!capturing && (
-              <div className="preview-placeholder">
-                Share your StarCraft II window or full screen to begin
-              </div>
-            )}
-            {capturing && !frameReady && (
-              <div className="preview-placeholder preview-loading">
-                Preparing capture…
-              </div>
-            )}
-          </div>
-
-          {captureError && (
-            <p className="status" style={{ color: "var(--danger)" }}>
-              {captureError}
-            </p>
-          )}
-
-          <div className="controls">
-            {!capturing ? (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleStartCapture()}
-              >
-                Capture game screen
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={loading || !canAnalyzeLive}
-                  onClick={() => void runAnalysis()}
+          <section className="panel-section capture-section">
+            <button
+              type="button"
+              className="panel-section-toggle capture-section-toggle"
+              onClick={() => setCapturePanelOpen((v) => !v)}
+              aria-expanded={capturePanelOpen}
+            >
+              <span className="panel-heading panel-heading-inline">
+                Screen capture &amp; video preview
+              </span>
+              {captureStatus && (
+                <span
+                  className={`panel-section-status capture-section-status${live ? " panel-section-status-live capture-section-status-live" : ""}`}
+                  title={captureStatus}
                 >
-                  {loading ? "Analyzing…" : "Analyze now"}
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${live ? "btn-danger" : "btn-primary"}`}
-                  disabled={!canLive}
-                  onClick={handleToggleLive}
-                >
-                  {live ? "Stop live coach" : "Live coach"}
-                </button>
-                {pipSupported && (
+                  {captureStatus}
+                </span>
+              )}
+              <span className="panel-section-chevron capture-history-chevron" aria-hidden>
+                {capturePanelOpen ? "▾" : "▸"}
+              </span>
+            </button>
+
+            <div
+              className={`panel-section-body capture-section-body${capturePanelOpen ? "" : " panel-section-body-collapsed capture-section-body-collapsed"}`}
+              aria-hidden={!capturePanelOpen}
+            >
+              <div className="preview-wrap">
+                <video
+                  ref={videoRef}
+                  muted={videoSource !== "file"}
+                  playsInline
+                  controls={videoSource === "file"}
+                />
+                <canvas ref={canvasRef} hidden />
+                {!capturing && (
+                  <div className="preview-placeholder">
+                    Share your StarCraft II window or upload a video below to begin
+                  </div>
+                )}
+                {capturing && !frameReady && (
+                  <div className="preview-placeholder preview-loading">
+                    {videoSource === "file"
+                      ? "Loading video…"
+                      : "Preparing capture…"}
+                  </div>
+                )}
+              </div>
+
+              {captureError && (
+                <p className="status" style={{ color: "var(--danger)" }}>
+                  {captureError}
+                </p>
+              )}
+
+              <div className="controls">
+                {!capturing ? (
                   <button
                     type="button"
-                    className="btn"
-                    onClick={() => {
-                      if (pipActive) closePip();
-                      else {
-                        openPip().catch((e) =>
-                          setLastError(
-                            e instanceof Error ? e.message : "PiP failed"
-                          )
-                        );
-                      }
-                    }}
+                    className="btn btn-primary"
+                    onClick={() => void handleStartCapture()}
                   >
-                    {pipActive ? "Close PiP" : "Pop out PiP"}
+                    Capture game screen
                   </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={loading || !canAnalyzeLive}
+                      onClick={() => void runAnalysis()}
+                    >
+                      {loading ? "Analyzing…" : "Analyze now"}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${live ? "btn-danger" : "btn-primary"}`}
+                      disabled={!canLive}
+                      onClick={handleToggleLive}
+                    >
+                      {live ? "Stop live coach" : "Live coach"}
+                    </button>
+                    {pipSupported && (
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => {
+                          if (pipActive) closePip();
+                          else {
+                            openPip().catch((e) =>
+                              setLastError(
+                                e instanceof Error ? e.message : "PiP failed"
+                              )
+                            );
+                          }
+                        }}
+                      >
+                        {pipActive ? "Close PiP" : "Pop out PiP"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={!frameReady}
+                      onClick={handleSaveSnapshot}
+                    >
+                      Save snapshot
+                    </button>
+                    <button type="button" className="btn" onClick={handleStopAll}>
+                      {videoSource === "file" ? "Clear video" : "Stop capture"}
+                    </button>
+                  </>
                 )}
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={!frameReady}
-                  onClick={handleSaveSnapshot}
-                >
-                  Save snapshot
-                </button>
-                <button type="button" className="btn" onClick={handleStopAll}>
-                  Stop capture
-                </button>
-              </>
-            )}
-          </div>
+              </div>
 
-          <CaptureHistoryPanel refreshKey={captureHistoryKey} />
+              <CaptureHistoryPanel refreshKey={captureHistoryKey} />
 
-          <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
+              <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
+            </div>
+          </section>
 
-          <ReplayImport
-            playerRace={playerRace}
-            onResult={applyResult}
-            onError={setLastError}
+          <VideoUpload
+            videoFileName={videoSource === "file" ? videoFileName : null}
+            onUpload={handleVideoUpload}
           />
 
           <ManualArmyBuilder
@@ -382,6 +455,12 @@ export default function App() {
         </section>
 
         <aside className="panel">
+          <TeamSelection
+            teamWaves={teamWaves}
+            waveShift={waveShift}
+            onChange={setTeamWaves}
+            onWaveShiftChange={setWaveShift}
+          />
           <SuggestionsPanel
             playerRace={playerRace}
             result={result}

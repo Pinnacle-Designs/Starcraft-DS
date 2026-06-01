@@ -1,10 +1,12 @@
-import type { AnalyzeResponse, PlayerRace } from "./api";
+import type { AnalyzeResponse, PlayerRace, TeamWaves, WaveShift } from "./api";
 
 export const OVERLAY_CHANNEL = "starcraft-ds-overlay";
 export const OVERLAY_STORAGE_KEY = "starcraft-ds-coach-state";
 
 export interface CoachState {
   playerRace: PlayerRace;
+  teamRaces?: TeamWaves;
+  waveShift?: WaveShift;
   result: AnalyzeResponse | null;
   live: boolean;
   scanning?: boolean;

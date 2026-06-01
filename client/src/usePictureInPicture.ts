@@ -52,7 +52,7 @@ function renderPipSuggestions(
   }
 
   for (const s of result.suggestions.slice(0, 5)) {
-    appendPipCard(root, s.enemyUnit, playerRace, s.build);
+    appendPipCard(root, s.enemyUnit, s.playerRace ?? playerRace, s.build);
   }
 }
 

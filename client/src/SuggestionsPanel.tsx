@@ -32,10 +32,12 @@ export function SuggestionsPanel({
   lastScanAt,
 }: Props) {
   return (
-    <div className={`suggestions ${compact ? "suggestions-compact" : ""}`}>
+    <div className={`panel-section suggestions${compact ? " suggestions-compact" : ""}`}>
       {!compact && (
-        <h2>
-          Counter suggestions
+        <h2 className="suggestions-title">
+          <span className="panel-heading panel-heading-inline">
+            Counter suggestions
+          </span>
           {live && scanning && (
             <span className="badge badge-live">Scanning…</span>
           )}
@@ -92,18 +94,36 @@ export function SuggestionsPanel({
       )}
 
       {result?.suggestions && result.suggestions.length > 0 ? (
-        result.suggestions.map((s) => (
+        result.suggestions.map((s) => {
+          const counterRace = s.playerRace ?? playerRace;
+          const detected = result.detectedUnits.find((u) => u.name === s.enemyUnit);
+          const waveClass = waveColorClass(detected?.wave);
+          return (
           <div
-            key={s.enemyUnit}
-            className={`suggestion-card ${s.counterType === "soft" ? "soft" : ""}`}
+            key={`${s.enemyUnit}-${counterRace}-${detected?.wave ?? 0}`}
+            className={`suggestion-card ${s.counterType === "soft" ? "soft" : ""}${waveClass ? ` ${waveClass}` : ""}`}
           >
-            <div className="enemy">vs {s.enemyUnit}</div>
+            <div className="enemy">
+              vs {s.enemyUnit}
+              {detected?.wave ? (
+                <span className="suggestion-wave">
+                  {WAVE_DEFS[detected.wave - 1]?.label}
+                </span>
+              ) : null}
+            </div>
             <div className="build">
-              {playerRace}: {s.build.join(", ")}
+              {counterRace}: {s.build.join(", ")}
+              {s.teamWave && s.teamWave !== detected?.wave ? (
+                <span className="suggestion-team-wave">
+                  {" "}
+                  · {WAVE_DEFS[s.teamWave - 1]?.label} team
+                </span>
+              ) : null}
             </div>
             {!compact && s.tip && <div className="tip">{s.tip}</div>}
           </div>
-        ))
+          );
+        })
       ) : (
         <p className="empty-hint">
           {live && scanning

@@ -3,7 +3,8 @@ import {
   analyzeFrame,
   type AnalyzeResponse,
   type ManualUnitInput,
-  type PlayerRace,
+  type TeamWaves,
+  type WaveShift,
 } from "./api";
 
 const LIVE_INTERVAL_MS = 4000;
@@ -13,7 +14,8 @@ interface Options {
   live: boolean;
   capturing: boolean;
   frameReady: boolean;
-  playerRace: PlayerRace;
+  teamWaves: TeamWaves;
+  waveShift: WaveShift;
   visionEnabled: boolean;
   manualUnits: ManualUnitInput[];
   captureFrameBase64: () => string | null;
@@ -26,7 +28,8 @@ export function useLiveCoach({
   live,
   capturing,
   frameReady,
-  playerRace,
+  teamWaves,
+  waveShift,
   visionEnabled,
   manualUnits,
   captureFrameBase64,
@@ -48,7 +51,7 @@ export function useLiveCoach({
 
     try {
       if (manualOnly) {
-        onResult(await analyzeFrame("", playerRace, manualUnits));
+        onResult(await analyzeFrame("", teamWaves, manualUnits, waveShift));
         setLastScanAt(Date.now());
         return;
       }
@@ -59,7 +62,7 @@ export function useLiveCoach({
         return;
       }
 
-      const data = await analyzeFrame(b64, playerRace);
+      const data = await analyzeFrame(b64, teamWaves, undefined, waveShift);
       onResult(data);
       onVisionFrame?.(b64, data);
       setLastScanAt(Date.now());
@@ -79,7 +82,8 @@ export function useLiveCoach({
   }, [
     manualOnly,
     manualUnits,
-    playerRace,
+    teamWaves,
+    waveShift,
     captureFrameBase64,
     onResult,
     onError,

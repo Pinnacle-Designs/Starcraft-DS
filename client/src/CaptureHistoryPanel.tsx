@@ -129,18 +129,18 @@ export function CaptureHistoryPanel({ refreshKey }: Props) {
   const retentionDays = Math.round(CAPTURE_RETENTION_MS / (24 * 60 * 60 * 1000));
 
   return (
-    <section className="capture-history">
+    <section className="panel-section-nested capture-history">
       <button
         type="button"
-        className="capture-history-toggle"
+        className="panel-section-toggle capture-history-toggle"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        Recent captures
-        <span className="capture-history-count">
+        <span className="panel-heading panel-heading-inline">Recent captures</span>
+        <span className="panel-section-count capture-history-count">
           {loading ? "…" : items.length}
         </span>
-        <span className="capture-history-chevron" aria-hidden>
+        <span className="panel-section-chevron capture-history-chevron" aria-hidden>
           {expanded ? "▾" : "▸"}
         </span>
       </button>

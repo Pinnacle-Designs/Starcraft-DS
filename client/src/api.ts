@@ -15,17 +15,27 @@ export interface DetectedUnit {
 
 export type UnitsByRace = Record<PlayerRace, string[]>;
 
+export type TeamWaves = [PlayerRace, PlayerRace | null, PlayerRace | null];
+
+/** How many waves your active team is ahead of enemy tags (0–2). */
+export type WaveShift = 0 | 1 | 2;
+
 export interface CounterSuggestion {
   enemyUnit: string;
   build: string[];
   counterType: "hard" | "soft" | "general";
   tip?: string;
+  playerRace?: PlayerRace;
+  /** Which of your team waves supplied the counter race. */
+  teamWave?: 1 | 2 | 3;
 }
 
 export interface AnalyzeResponse {
   detectedUnits: DetectedUnit[];
   suggestions: CounterSuggestion[];
   playerRace: PlayerRace;
+  teamRaces?: TeamWaves;
+  waveShift?: WaveShift;
   mode: "ai" | "heuristic";
   provider?: "openai" | "ollama";
   scene?: string;
@@ -58,8 +68,9 @@ export async function fetchUnitCatalog(): Promise<UnitCatalog> {
 
 export async function analyzeFrame(
   imageBase64: string,
-  playerRace: PlayerRace,
-  manualUnits?: ManualUnitInput[]
+  teamRaces: TeamWaves,
+  manualUnits?: ManualUnitInput[],
+  waveShift: WaveShift = 0
 ): Promise<AnalyzeResponse> {
   const res = await fetch("/api/analyze", {
     method: "POST",
@@ -67,7 +78,9 @@ export async function analyzeFrame(
     body: JSON.stringify({
       imageBase64: imageBase64 || undefined,
       mimeType: "image/jpeg",
-      playerRace,
+      playerRace: teamRaces[0],
+      teamRaces,
+      waveShift,
       manualUnits: manualUnits?.length ? manualUnits : undefined,
     }),
   });

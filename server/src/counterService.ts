@@ -9,6 +9,8 @@ export interface CounterSuggestion {
   build: string[];
   counterType: "hard" | "soft" | "general";
   tip?: string;
+  playerRace?: PlayerRace;
+  teamWave?: 1 | 2 | 3;
 }
 
 interface UnitEntry {
@@ -103,18 +105,80 @@ export function getUnitsByRace(): Record<PlayerRace, string[]> {
   return byRace;
 }
 
+export type TeamWaves = [PlayerRace, PlayerRace | null, PlayerRace | null];
+
+export type WaveShift = 0 | 1 | 2;
+
+function teamWaveForEnemy(
+  enemyWave: 1 | 2 | 3 | undefined,
+  shift: WaveShift
+): 1 | 2 | 3 {
+  const shifted = (enemyWave ?? 1) + shift;
+  return Math.min(3, Math.max(1, shifted)) as 1 | 2 | 3;
+}
+
+function parseWaveShift(value: unknown): WaveShift {
+  const n = Number(value);
+  if (n === 1 || n === 2) return n;
+  return 0;
+}
+
+function raceForWave(
+  teams: TeamWaves,
+  wave: 1 | 2 | 3 | undefined
+): PlayerRace {
+  const idx = (wave ?? 1) - 1;
+  for (let i = idx; i >= 0; i--) {
+    const race = teams[i];
+    if (race) return race;
+  }
+  return teams[0];
+}
+
+function parseTeamRaces(
+  teamRaces: unknown,
+  fallback: PlayerRace
+): TeamWaves {
+  if (!Array.isArray(teamRaces) || teamRaces.length < 1) {
+    return [fallback, null, null];
+  }
+  const races = ["Protoss", "Terran", "Zerg"] as const;
+  const pick = (v: unknown): PlayerRace | null =>
+    typeof v === "string" && races.includes(v as PlayerRace)
+      ? (v as PlayerRace)
+      : null;
+  return [
+    pick(teamRaces[0]) ?? fallback,
+    pick(teamRaces[1]),
+    pick(teamRaces[2]),
+  ];
+}
+
 export function getSuggestions(
   enemyUnits: string[],
   playerRace: PlayerRace
+): CounterSuggestion[] {
+  return getSuggestionsForUnits(
+    enemyUnits.map((name) => ({ name })),
+    [playerRace, null, null]
+  );
+}
+
+export function getSuggestionsForUnits(
+  units: Array<{ name: string; wave?: 1 | 2 | 3 }>,
+  teamRaces: TeamWaves,
+  waveShift: WaveShift = 0
 ): CounterSuggestion[] {
   const data = loadDb();
   const suggestions: CounterSuggestion[] = [];
   const seen = new Set<string>();
 
-  for (const raw of enemyUnits) {
-    const name = normalizeUnitName(raw);
+  for (const raw of units) {
+    const name = normalizeUnitName(raw.name);
     if (!name) continue;
-    const dedupeKey = `${name}:${playerRace}`;
+    const teamWave = teamWaveForEnemy(raw.wave, waveShift);
+    const playerRace = raceForWave(teamRaces, teamWave);
+    const dedupeKey = `${name}:${playerRace}:${raw.wave ?? 0}:${waveShift}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
@@ -129,11 +193,15 @@ export function getSuggestions(
       build: [...build],
       counterType: build.length <= 2 ? "hard" : "soft",
       tip: entry.tips || undefined,
+      playerRace,
+      teamWave,
     });
   }
 
   return suggestions;
 }
+
+export { parseTeamRaces, parseWaveShift };
 
 export function getUnitInfo(unitName: string) {
   const name = normalizeUnitName(unitName);

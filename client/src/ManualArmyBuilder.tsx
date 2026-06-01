@@ -54,9 +54,13 @@ export function ManualArmyBuilder({ waves, onChange, onSubmit }: Props) {
   const patchArmy = (next: typeof army) => onChange(updateActiveWave(waves, next));
 
   return (
-    <div className="manual-army">
+    <div className="panel-section manual-army">
       <div className="manual-army-header">
-        <span className="status">Enemy waves (up to 3)</span>
+        <h2 className="panel-section-title">
+          <span className="panel-heading panel-heading-inline">
+            Enemy waves (up to 3)
+          </span>
+        </h2>
         <div className="wave-tabs">
           {WAVE_DEFS.map((def) => {
             const count = waveEntries(waves.waves[def.index]).length;
@@ -95,7 +99,7 @@ export function ManualArmyBuilder({ waves, onChange, onSubmit }: Props) {
           </p>
 
           <div className="manual-army-header">
-            <span className="status">Opponent race ({waveDef.label})</span>
+            <span className="panel-subheading">Opponent race ({waveDef.label})</span>
             <div className="race-picker manual-army-races">
               {RACES.map((race) => (
                 <button
