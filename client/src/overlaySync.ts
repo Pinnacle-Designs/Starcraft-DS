@@ -77,3 +77,16 @@ export function openOverlayWindow(): Window | null {
     "width=400,height=560,menubar=no,toolbar=no,location=no,status=no"
   );
 }
+
+/** Browser popup or Electron native always-on-top window */
+export function openOverlay(): void {
+  if (window.starcraftDS?.isElectron) {
+    void window.starcraftDS.openNativeOverlay();
+    return;
+  }
+  openOverlayWindow();
+}
+
+export function isElectronApp(): boolean {
+  return Boolean(window.starcraftDS?.isElectron);
+}

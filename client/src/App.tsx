@@ -8,7 +8,8 @@ import {
 } from "./api";
 import { ReplayImport } from "./ReplayImport";
 import { SuggestionsPanel } from "./SuggestionsPanel";
-import { openOverlayWindow, publishCoachState } from "./overlaySync";
+import { openOverlay, publishCoachState } from "./overlaySync";
+import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 
 const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
@@ -32,6 +33,13 @@ export default function App() {
     stop,
     captureFrameBase64,
   } = useScreenCapture();
+
+  const { pipSupported, pipActive, openPip, closePip } = usePictureInPicture(
+    videoRef,
+    playerRace,
+    result,
+    live
+  );
 
   useEffect(() => {
     fetchHealth().then((h) => setVision(h.visionProviders));
@@ -123,8 +131,8 @@ export default function App() {
           <button
             type="button"
             className="btn"
-            onClick={() => openOverlayWindow()}
-            title="Open compact window to place over the game"
+            onClick={() => openOverlay()}
+            title="Always-on-top overlay (best in Electron desktop app)"
           >
             Open overlay
           </button>
@@ -195,6 +203,24 @@ export default function App() {
                 >
                   {live ? "Stop live coach" : "Live coach"}
                 </button>
+                {pipSupported && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      if (pipActive) closePip();
+                      else {
+                        openPip().catch((e) =>
+                          setLastError(
+                            e instanceof Error ? e.message : "PiP failed"
+                          )
+                        );
+                      }
+                    }}
+                  >
+                    {pipActive ? "Close PiP" : "Pop out PiP"}
+                  </button>
+                )}
                 <button type="button" className="btn" onClick={handleStopAll}>
                   Stop capture
                 </button>

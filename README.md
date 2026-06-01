@@ -36,8 +36,28 @@ Open **http://localhost:5173**
 3. **Replay:** upload a `.SC2Replay`, pick your player slot, click **Analyze replay**.
 4. **Live play:** **Capture game screen** → **Analyze now** or **Live coach** (needs Ollama or OpenAI).
 5. **No AI:** enter enemy units manually → **Get counters**.
+6. **Picture-in-Picture:** while capturing, click **Pop out PiP** (Chrome/Edge) for a floating preview + live counters.
+7. **Electron desktop:** `npm run electron:dev` — native always-on-top overlay with click-through.
 
 API runs on **http://localhost:3847**
+
+### Electron desktop app
+
+```bash
+npm run install:all
+npm run electron:dev
+```
+
+Opens the main window plus a frameless overlay. In the overlay:
+
+- **Always on top** — stays above StarCraft
+- **Click-through** — pass mouse clicks to the game while reading suggestions
+
+Use **Open overlay** in the main window to show the native overlay again.
+
+### Picture-in-Picture (browser)
+
+After **Capture game screen**, click **Pop out PiP**. The floating window shows your capture feed and updates counter suggestions when **Live coach** is on.
 
 ## Project layout
 
