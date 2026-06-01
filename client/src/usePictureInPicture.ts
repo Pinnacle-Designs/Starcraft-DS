@@ -11,13 +11,33 @@ function pipSupported(): boolean {
   return "documentPictureInPicture" in window;
 }
 
+function appendPipCard(
+  root: HTMLElement,
+  enemyUnit: string,
+  playerRace: PlayerRace,
+  build: string[]
+): void {
+  const card = document.createElement("div");
+  card.className = "pip-card";
+
+  const title = document.createElement("strong");
+  title.textContent = `vs ${enemyUnit}`;
+
+  const buildLine = document.createElement("span");
+  buildLine.textContent = `${playerRace}: ${build.join(", ")}`;
+
+  card.append(title, buildLine);
+  root.appendChild(card);
+}
+
 function renderPipSuggestions(
   root: HTMLElement,
   playerRace: PlayerRace,
   result: AnalyzeResponse | null,
   live: boolean
 ): void {
-  root.innerHTML = "";
+  root.replaceChildren();
+
   const header = document.createElement("div");
   header.className = "pip-bar";
   header.textContent = live ? "● LIVE COACH" : "SC2 COACH";
@@ -32,10 +52,7 @@ function renderPipSuggestions(
   }
 
   for (const s of result.suggestions.slice(0, 5)) {
-    const card = document.createElement("div");
-    card.className = "pip-card";
-    card.innerHTML = `<strong>vs ${s.enemyUnit}</strong><span>${playerRace}: ${s.build.join(", ")}</span>`;
-    root.appendChild(card);
+    appendPipCard(root, s.enemyUnit, playerRace, s.build);
   }
 }
 
