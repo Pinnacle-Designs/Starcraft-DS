@@ -23,6 +23,7 @@ import {
   manualArmyEntries,
   type ManualWavesState,
 } from "./manualArmy";
+import { captureMediaEnabled } from "./featureFlags";
 import { openOverlay, publishCoachState } from "./overlaySync";
 import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
@@ -378,6 +379,7 @@ export default function App() {
 
       <div className="grid">
         <section className="panel">
+          {captureMediaEnabled && (
           <section className="panel-section capture-section">
             <button
               type="button"
@@ -498,11 +500,14 @@ export default function App() {
               <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
             </div>
           </section>
+          )}
 
+          {captureMediaEnabled && (
           <VideoUpload
             videoFileName={videoSource === "file" ? videoFileName : null}
             onUpload={handleVideoUpload}
           />
+          )}
 
           <ManualArmyBuilder
             waves={manualWaves}
