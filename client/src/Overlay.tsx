@@ -130,6 +130,7 @@ export default function Overlay({ panel }: Props) {
   }, [captureScanError]);
 
   useEffect(() => {
+    document.documentElement.classList.add("overlay-electron-root");
     document.body.classList.add("overlay-mode", "overlay-panel-window");
     if (panel === "team") {
       document.body.classList.add("overlay-team-panel");
@@ -140,6 +141,7 @@ export default function Overlay({ panel }: Props) {
     const initial = loadCoachState();
     if (initial) applyRemoteState(initial);
     return () => {
+      document.documentElement.classList.remove("overlay-electron-root");
       document.body.classList.remove(
         "overlay-mode",
         "overlay-panel-window",

@@ -1830,6 +1830,27 @@ body.overlay-mode {
 
 body.overlay-electron.overlay-mode {
   background: transparent !important;
+  background-image: none !important;
+}
+
+html:has(body.overlay-electron.overlay-mode),
+html.overlay-electron-root {
+  background: transparent !important;
+}
+
+body.overlay-electron.overlay-mode::before,
+body.overlay-electron.overlay-mode::after {
+  display: none;
+}
+
+body.overlay-electron .overlay-panel-window-root {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: linear-gradient(
+    155deg,
+    rgba(20, 24, 30, 0.96) 0%,
+    rgba(10, 12, 16, 0.96) 100%
+  );
 }
 
 body.overlay-mode:not(.overlay-electron) {
