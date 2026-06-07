@@ -67,14 +67,12 @@ export async function analyzeWithOllama(
   mimeType: string
 ): Promise<VisionResult> {
   const model = process.env.OLLAMA_VISION_MODEL ?? "llava";
-  const referenceCollage = getUnitReferenceCollageBase64();
-  const referenceHint = referenceCollage
-    ? "\n\nYou receive two images: (1) the gameplay screenshot to analyze, (2) a labeled reference sheet of official SC2 unit portraits. Match visible in-game sprites, icons, and models to the exact unit names on the reference sheet."
-    : "";
-  const prompt = `${loadSystemPrompt()}${referenceHint}\n\n${VISION_USER_TEXT}`;
-  const images = referenceCollage
-    ? [imageBase64, referenceCollage]
-    : [imageBase64];
+  const useReferenceImage = process.env.OLLAMA_USE_REFERENCE_IMAGE === "true";
+  const referenceCollage = useReferenceImage
+    ? getUnitReferenceCollageBase64()
+    : null;
+  const prompt = `${loadSystemPrompt()}\n\n${VISION_USER_TEXT}`;
+  const images = [imageBase64];
 
   const res = await fetch(`${ollamaBaseUrl()}/api/chat`, {
     method: "POST",

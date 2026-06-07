@@ -10,7 +10,7 @@ import {
 } from "./openaiVision.js";
 import { detectFromText } from "./textDetection.js";
 import { analyzeWithTesseractSafe } from "./tesseractOcr.js";
-import type { VisionResult } from "./shared.js";
+import { filterVisionUnits, type VisionResult } from "./shared.js";
 
 export type { VisionResult } from "./shared.js";
 export { checkOllamaAvailable, isOpenAiConfigured, waitForOllamaVision };
@@ -80,36 +80,46 @@ export async function getVisionStatus(): Promise<{
   return { openai, ollama, ocr: true, active };
 }
 
+function finalizeVisionResult(result: VisionResult): VisionResult {
+  return {
+    ...result,
+    detectedUnits: filterVisionUnits(result.detectedUnits),
+  };
+}
+
 export async function analyzeScreenshot(
   imageBase64: string,
   mimeType: string
 ): Promise<VisionResult> {
   const pref = resolveProvider();
   const ollamaUp = await resolveOllamaReady();
+  let result: VisionResult;
 
   if (pref === "auto" || pref === "ollama") {
-    return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
-  }
-
-  if (pref === "ocr") {
+    result = await analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+  } else if (pref === "ocr") {
     const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
-    if (ocr.detectedUnits.length > 0 || !ollamaUp) return ocr;
-    return analyzeVisualFirst(imageBase64, mimeType, true);
-  }
-
-  if (pref === "openai") {
+    result =
+      ocr.detectedUnits.length > 0 || !ollamaUp
+        ? ocr
+        : await analyzeVisualFirst(imageBase64, mimeType, true);
+  } else if (pref === "openai") {
     if (isOpenAiConfigured()) {
       try {
-        return await analyzeWithOpenAiResilient(imageBase64, mimeType);
+        result = await analyzeWithOpenAiResilient(imageBase64, mimeType);
       } catch (err) {
         if (isOpenAiInsufficientQuotaError(err)) {
-          return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+          result = await analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+        } else {
+          throw err;
         }
-        throw err;
       }
+    } else {
+      result = await analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
     }
-    return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+  } else {
+    result = await analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
   }
 
-  return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+  return finalizeVisionResult(result);
 }

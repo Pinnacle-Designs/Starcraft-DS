@@ -83,7 +83,7 @@ export function useOverlayScreenCapture({
         );
       const summary =
         applied.addedCount > 0
-          ? `+${applied.addedCount} unit${applied.addedCount === 1 ? "" : "s"} (${waveBits.join(", ")}${applied.detectedUnits.length > 6 ? "…" : ""})`
+          ? `${applied.addedCount} unit${applied.addedCount === 1 ? "" : "s"} (${waveBits.join(", ")}${applied.detectedUnits.length > 6 ? "…" : ""})`
           : "No units detected";
       setLastCaptureAt(Date.now());
       setLastCaptureSummary(summary);

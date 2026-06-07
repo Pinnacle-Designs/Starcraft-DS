@@ -140,6 +140,28 @@ export function mergeDetectedIntoActiveWave(
   return mergeDetectedIntoWaves(state, withWave, enemyRace);
 }
 
+/** Replace wave counts from a fresh screenshot (does not add to prior captures). */
+export function replaceDetectedIntoWaves(
+  state: ManualWavesState,
+  detected: ManualUnitInput[],
+  enemyRace?: PlayerRace
+): ManualWavesState {
+  const races = state.waves.map((wave) => wave.enemyRace) as [
+    PlayerRace,
+    PlayerRace,
+    PlayerRace,
+  ];
+  const cleared: ManualWavesState = {
+    activeWave: state.activeWave,
+    waves: [
+      { enemyRace: races[0], counts: {} },
+      { enemyRace: races[1], counts: {} },
+      { enemyRace: races[2], counts: {} },
+    ],
+  };
+  return mergeDetectedIntoWaves(cleared, detected, enemyRace);
+}
+
 /** Route each detected unit to wave 1/2/3 (or active wave when wave omitted). */
 export function mergeDetectedIntoWaves(
   state: ManualWavesState,

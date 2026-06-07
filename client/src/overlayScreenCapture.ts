@@ -11,7 +11,7 @@ import {
 import { detectedToManual } from "./detectedUnits";
 import {
   manualArmyEntries,
-  mergeDetectedIntoWaves,
+  replaceDetectedIntoWaves,
   type ManualWavesState,
 } from "./manualArmy";
 
@@ -85,7 +85,7 @@ export async function applyScreenCaptureToWaves({
         )
       : undefined;
 
-  const merged = mergeDetectedIntoWaves(manualWaves, detected, enemyRace);
+  const merged = replaceDetectedIntoWaves(manualWaves, detected, enemyRace);
 
   const manualUnits = manualArmyEntries(merged);
   const result =
