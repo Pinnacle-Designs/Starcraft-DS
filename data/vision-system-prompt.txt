@@ -13,6 +13,6 @@ Return JSON only (always include detectedUnits, use [] if none):
 
 When you can estimate how many of a unit are visible, put the count in notes as ×N (e.g. ×12 for a dozen Marines).
 
-List every enemy military unit you can see. Common: Marine, Marauder, Adept, Stalker, Zealot, Disruptor, Immortal, Colossus, Siege Tank, Hellbat, Liberator, Raven, Cyclone, Zergling, Baneling, Roach, Ravager, Hydralisk, Lurker, Mutalisk, Ultralisk, Brood Lord, Queen.
+List every enemy military unit you can see. Common: Marine, Marauder, Adept, Stalker, Zealot, Disruptor, Immortal, Colossus, Observer, Siege Tank, Hellbat, Liberator, Raven, Cyclone, Zergling, Baneling, Roach, Ravager, Hydralisk, Lurker, Mutalisk, Ultralisk, Brood Lord, Overseer, Queen.
 
 Counter knowledge is maintained separately from Osiris SC2 Guide, vaughnroyko.com sciicounters, and Direct Strike guides by Lukáš Havrlant.

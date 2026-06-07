@@ -1,6 +1,13 @@
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import {
+  maxUnitsOnPlatform,
+  platformLaneForUnit,
+  platformSlotsForUnit,
+  stackPlatformSlots,
+  type PlatformLane,
+} from "./platformSlots.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const supplyPath = join(__dirname, "../../data/unit-supply.json");
@@ -64,6 +71,16 @@ export interface BuildCount {
   /** Whether your wave has unlocked this counter's tech tier. */
   buildable?: boolean;
   coverage?: CoverageStatus;
+  /** Unit's counters list explicitly includes this enemy. */
+  dedicatedCounter?: boolean;
+  /** Ground or air lane on the Direct Strike wave platform. */
+  platformLane?: PlatformLane;
+  /** Platform slots one unit consumes (ground or air). */
+  platformSlotsPerUnit?: number;
+  /** Max count of this unit that fits your wave platform lane. */
+  maxOnPlatform?: number;
+  /** True when count was reduced to fit the staging platform. */
+  platformLimited?: boolean;
 }
 
 const HARD_SUPPLY_RATIO = 0.72;
@@ -73,9 +90,16 @@ const GENERAL_SUPPLY_RATIO = 1;
 function suggestCountForCounter(
   targetCounterSupply: number,
   counterName: string
-): number {
+): { suggested: number; platformLimited: boolean; maxOnPlatform: number } {
   const unitSupply = Math.max(0.5, getUnitSupply(counterName));
-  return Math.max(1, Math.ceil(targetCounterSupply / unitSupply));
+  const supplyBased = Math.max(1, Math.ceil(targetCounterSupply / unitSupply));
+  const platformMax = maxUnitsOnPlatform(counterName);
+  const suggested = Math.min(supplyBased, platformMax);
+  return {
+    suggested,
+    platformLimited: suggested < supplyBased,
+    maxOnPlatform: platformMax,
+  };
 }
 
 export function suggestBuildCounts(
@@ -96,9 +120,23 @@ export function suggestBuildCounts(
   const enemySupply = getUnitSupply(enemyName) * enemyCount;
   const targetCounterSupply = Math.max(1, enemySupply * ratio);
 
-  return counterUnits.map((name, index) => ({
-    name,
-    suggested: suggestCountForCounter(targetCounterSupply, name),
-    role: index === 0 ? ("primary" as const) : ("alternative" as const),
-  }));
+  return counterUnits.map((name, index) => {
+    const count = suggestCountForCounter(targetCounterSupply, name);
+    return {
+      name,
+      suggested: count.suggested,
+      role: index === 0 ? ("primary" as const) : ("alternative" as const),
+      platformLane: platformLaneForUnit(name),
+      platformSlotsPerUnit: platformSlotsForUnit(name),
+      maxOnPlatform: count.maxOnPlatform,
+      platformLimited: count.platformLimited,
+    };
+  });
+}
+
+export function enemyStackPlatformUsage(
+  enemyName: string,
+  enemyCount: number
+): { lane: PlatformLane; slots: number; capacity: number } {
+  return stackPlatformSlots(enemyName, enemyCount);
 }

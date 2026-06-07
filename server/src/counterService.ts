@@ -2,10 +2,12 @@ import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
+  enemyStackPlatformUsage,
   parseEnemyCount,
   suggestBuildCounts,
   type BuildCount,
 } from "./counterQuantities.js";
+import { getPlatformCapacity } from "./platformSlots.js";
 
 export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
@@ -32,6 +34,10 @@ export interface CounterSuggestion {
   tip?: string;
   playerRace?: PlayerRace;
   teamWave?: 1 | 2 | 3;
+  /** Enemy stack footprint on the DS wave platform. */
+  enemyPlatformLane?: "ground" | "air";
+  enemyPlatformSlots?: number;
+  platformCapacity?: { ground: number; air: number };
 }
 
 interface UnitEntry {
@@ -114,6 +120,29 @@ function filterBuildForRace(
   });
 }
 
+/**
+ * If unit U's counters list includes the enemy, U is good against that enemy.
+ * Example: Cyclone counters Phoenix → Terran should build Cyclone vs Phoenix.
+ */
+function supplementCountersFromMatchups(
+  enemyName: string,
+  enemyRace: string,
+  playerRace: PlayerRace,
+  units: Record<string, UnitEntry>,
+  existing: string[]
+): string[] {
+  const ordered = [...existing];
+  const seen = new Set(existing);
+  for (const [unitName, unitEntry] of Object.entries(units)) {
+    if (unitEntry.race !== playerRace) continue;
+    const beats = unitEntry.counters?.[enemyRace] ?? [];
+    if (!beats.includes(enemyName) || seen.has(unitName)) continue;
+    seen.add(unitName);
+    ordered.push(unitName);
+  }
+  return ordered;
+}
+
 function asUnitTier(tier: number): UnitTier {
   if (tier <= 1) return 1;
   if (tier >= 3) return 3;
@@ -125,30 +154,41 @@ function tierOfUnit(unitName: string): UnitTier {
 }
 
 /**
- * Prefer counters your team wave can build without extra tier upgrades.
- * Within affordable options, list lower tech first (T1 beating T2/T3 in DS).
+ * Order counters by unlocked tech tier (not wave number).
+ * T1–T2 enemies: prefer lower-tech buildable options first.
+ * T3 enemies: prefer buildable counters closest to the enemy tier.
  */
-function prioritizeCountersForTeamWave(
+function prioritizeCountersByTech(
   build: string[],
-  teamWave: 1 | 2 | 3
+  maxTier: UnitTier,
+  enemyTier: UnitTier
 ): string[] {
   if (build.length <= 1) return build;
 
   const tierOf = (name: string) => tierOfUnit(name);
-  const affordable = build.filter((c) => tierOf(c) <= teamWave);
-  const needsTech = build.filter((c) => tierOf(c) > teamWave);
+  const buildable = build.filter((c) => tierOf(c) <= maxTier);
+  const locked = build.filter((c) => tierOf(c) > maxTier);
 
-  const sortLowFirst = (list: string[]) =>
+  const sortBuildable = (list: string[]) =>
     [...list].sort((a, b) => {
-      const diff = tierOf(a) - tierOf(b);
-      if (diff !== 0) return diff;
+      const aTier = tierOf(a);
+      const bTier = tierOf(b);
+      if (enemyTier >= 3) {
+        const aGap = Math.abs(aTier - enemyTier);
+        const bGap = Math.abs(bTier - enemyTier);
+        if (aGap !== bGap) return aGap - bGap;
+        if (aTier !== bTier) return bTier - aTier;
+      } else {
+        const diff = aTier - bTier;
+        if (diff !== 0) return diff;
+      }
       return build.indexOf(a) - build.indexOf(b);
     });
 
-  if (affordable.length > 0) {
-    return [...sortLowFirst(affordable), ...sortLowFirst(needsTech)];
+  if (buildable.length > 0) {
+    return [...sortBuildable(buildable), ...locked];
   }
-  return sortLowFirst(build);
+  return sortBuildable(build);
 }
 
 function coverageForCounts(owned: number, suggested: number): CoverageStatus {
@@ -187,7 +227,8 @@ function enrichCounterPath(
   path: BuildCount,
   enemyTier: UnitTier,
   owned: number,
-  maxTier: UnitTier
+  maxTier: UnitTier,
+  dedicatedCounter = false
 ): BuildCount {
   const counterTier = tierOfUnit(path.name);
   const suggested = path.suggested ?? 1;
@@ -202,10 +243,15 @@ function enrichCounterPath(
     stillNeed,
     buildable,
     coverage,
+    dedicatedCounter,
   };
 }
 
-function pathSortScore(path: BuildCount): number {
+function pathSortScore(
+  path: BuildCount,
+  enemyTier: UnitTier,
+  maxTier: UnitTier
+): number {
   const coverageRank =
     path.coverage === "covered"
       ? 0
@@ -213,33 +259,83 @@ function pathSortScore(path: BuildCount): number {
         ? 1
         : 2;
   const buildableRank = path.buildable === false ? 3 : 0;
-  const tier = path.counterTier ?? 2;
+  const dedicatedRank = path.dedicatedCounter ? 0 : 1;
+  const counterTier = path.counterTier ?? 2;
+
+  let tierRank: number;
+  if (enemyTier >= 3 && maxTier >= 3 && path.buildable !== false) {
+    const gap = Math.abs(counterTier - enemyTier);
+    tierRank = gap * 5 - counterTier;
+  } else if (path.budgetOption) {
+    tierRank = counterTier;
+  } else {
+    tierRank = counterTier + (counterTier < enemyTier ? 5 : 0);
+  }
+
   const stillNeed = path.stillNeed ?? path.suggested ?? 99;
-  return coverageRank * 1000 + buildableRank * 100 + tier * 10 + stillNeed;
+  return (
+    coverageRank * 1000 +
+    buildableRank * 100 +
+    dedicatedRank * 40 +
+    tierRank * 10 +
+    stillNeed
+  );
 }
 
-function assignRoles(paths: BuildCount[]): BuildCount[] {
+function assignRoles(
+  paths: BuildCount[],
+  enemyTier: UnitTier,
+  maxTier: UnitTier
+): BuildCount[] {
   if (paths.length === 0) return [];
-  const sorted = [...paths].sort((a, b) => pathSortScore(a) - pathSortScore(b));
-  return sorted.map((p, index) => ({
+  const score = (p: BuildCount) => pathSortScore(p, enemyTier, maxTier);
+  const sorted = [...paths].sort((a, b) => score(a) - score(b));
+  const buildable = sorted.filter((p) => p.buildable !== false);
+  const locked = sorted.filter((p) => p.buildable === false);
+  const ordered = buildable.length > 0 ? [...buildable, ...locked] : sorted;
+  return ordered.map((p, index) => ({
     ...p,
     role: index === 0 ? ("primary" as const) : ("alternative" as const),
   }));
 }
 
+function dedicatedCounterNames(
+  enemyName: string,
+  enemyRace: string,
+  playerRace: PlayerRace,
+  units: Record<string, UnitEntry>
+): Set<string> {
+  const names = new Set<string>();
+  for (const [unitName, unitEntry] of Object.entries(units)) {
+    if (unitEntry.race !== playerRace) continue;
+    const beats = unitEntry.counters?.[enemyRace] ?? [];
+    if (beats.includes(enemyName)) names.add(unitName);
+  }
+  return names;
+}
+
 function buildCounterPaths(
   rawBuild: string[],
   enemyName: string,
+  enemyRace: string,
+  playerRace: PlayerRace,
   enemyCount: number,
   enemyTier: UnitTier,
   counterType: "hard" | "soft" | "general",
   inventory: Record<string, number>,
-  maxTier: UnitTier
+  maxTier: UnitTier,
+  units: Record<string, UnitEntry>
 ): BuildCount[] {
+  const dedicated = dedicatedCounterNames(
+    enemyName,
+    enemyRace,
+    playerRace,
+    units
+  );
   const baseCounts = suggestBuildCounts(
     enemyName,
     enemyCount,
-    prioritizeCountersForTeamWave(rawBuild, maxTier),
+    prioritizeCountersByTech(rawBuild, maxTier, enemyTier),
     counterType
   );
   const byName = new Map(baseCounts.map((c) => [c.name, c]));
@@ -255,11 +351,12 @@ function buildCounterPaths(
       base,
       enemyTier,
       inventory[name] ?? 0,
-      maxTier
+      maxTier,
+      dedicated.has(name)
     );
   });
 
-  return assignRoles(allPaths);
+  return assignRoles(allPaths, enemyTier, maxTier);
 }
 
 function bestCoverage(paths: BuildCount[]): CoverageStatus {
@@ -410,7 +507,13 @@ export function getSuggestionsForUnits(
     if (!entry) continue;
 
     const rawBuild = filterBuildForRace(
-      entry.weakAgainst[playerRace] ?? [],
+      supplementCountersFromMatchups(
+        name,
+        entry.race,
+        playerRace,
+        data.units,
+        entry.weakAgainst[playerRace] ?? []
+      ),
       playerRace,
       data.units
     );
@@ -432,13 +535,17 @@ export function getSuggestionsForUnits(
     const counterPaths = buildCounterPaths(
       rawBuild,
       name,
+      entry.race,
+      playerRace,
       enemyCount,
       enemyTier,
       counterType,
       inventory,
-      maxTier
+      maxTier,
+      data.units
     );
     const build = counterPaths.map((p) => p.name);
+    const enemyPlatform = enemyStackPlatformUsage(name, enemyCount);
 
     suggestions.push({
       enemyUnit: name,
@@ -453,6 +560,9 @@ export function getSuggestionsForUnits(
       tip: entry.tips || undefined,
       playerRace,
       teamWave,
+      enemyPlatformLane: enemyPlatform.lane,
+      enemyPlatformSlots: enemyPlatform.slots,
+      platformCapacity: getPlatformCapacity(),
     });
   }
 

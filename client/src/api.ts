@@ -35,6 +35,10 @@ export interface CounterBuildCount {
   stillNeed?: number;
   buildable?: boolean;
   coverage?: CoverageStatus;
+  platformLane?: "ground" | "air";
+  platformSlotsPerUnit?: number;
+  maxOnPlatform?: number;
+  platformLimited?: boolean;
 }
 
 export interface CounterSuggestion {
@@ -55,6 +59,9 @@ export interface CounterSuggestion {
   counterPaths?: CounterBuildCount[];
   /** Best-path coverage from your current army. */
   coverage?: CoverageStatus;
+  enemyPlatformLane?: "ground" | "air";
+  enemyPlatformSlots?: number;
+  platformCapacity?: { ground: number; air: number };
 }
 
 export interface AnalyzeResponse {

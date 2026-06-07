@@ -1165,6 +1165,13 @@ button:focus-visible {
   font-weight: 500;
 }
 
+.suggestion-card .build-platform-hint {
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  line-height: 1.35;
+}
+
 .suggestion-card .tip {
   font-size: 0.85rem;
   color: var(--muted);

@@ -44,19 +44,10 @@ function pinOverlayAlwaysOnTop(win) {
   if (process.platform === "darwin") {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
-  if (typeof win.moveTop === "function") {
-    win.moveTop();
-  }
 }
 
-function repinAllOverlayWindows() {
-  for (const panel of Object.keys(overlayWindows)) {
-    pinOverlayAlwaysOnTop(overlayWindows[panel]);
-  }
-}
-
-function showOverlayWindow(win) {
-  if (!win || win.isDestroyed()) return;
+function bringOverlayForward(win) {
+  if (!win || win.isDestroyed() || !win.isVisible()) return;
   pinOverlayAlwaysOnTop(win);
   if (typeof win.showInactive === "function") {
     win.showInactive();
@@ -65,33 +56,41 @@ function showOverlayWindow(win) {
   }
 }
 
-function attachOverlayPinHandlers(win) {
-  if (!win || win.isDestroyed()) return;
-  const repin = () => pinOverlayAlwaysOnTop(win);
-  win.on("blur", repin);
-  win.on("show", repin);
-  win.on("focus", repin);
+function repinAllOverlayWindows() {
+  for (const panel of Object.keys(overlayWindows)) {
+    bringOverlayForward(overlayWindows[panel]);
+  }
 }
 
-function applyOverlayClickThrough(enabled) {
-  overlayClickThrough = Boolean(enabled);
+function showOverlayWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  bringOverlayForward(win);
+}
+
+function attachOverlayPinHandlers(win) {
+  if (!win || win.isDestroyed()) return;
+  win.on("show", () => bringOverlayForward(win));
+}
+
+function broadcastOverlayClickThrough() {
   for (const panel of Object.keys(overlayWindows)) {
     const win = overlayWindows[panel];
     if (!win || win.isDestroyed()) continue;
-    if (overlayClickThrough) {
-      win.setIgnoreMouseEvents(true, { forward: true });
-    } else {
+    if (!overlayClickThrough) {
       win.setIgnoreMouseEvents(false);
     }
     win.webContents.send("overlay:clickThroughState", overlayClickThrough);
   }
 }
 
+function applyOverlayClickThrough(enabled) {
+  overlayClickThrough = Boolean(enabled);
+  broadcastOverlayClickThrough();
+}
+
 function syncOverlayClickThrough(win) {
   if (!win || win.isDestroyed()) return;
-  if (overlayClickThrough) {
-    win.setIgnoreMouseEvents(true, { forward: true });
-  } else {
+  if (!overlayClickThrough) {
     win.setIgnoreMouseEvents(false);
   }
   win.webContents.send("overlay:clickThroughState", overlayClickThrough);
@@ -271,10 +270,6 @@ app.whenReady().then(() => {
   setTimeout(() => openAllOverlayPanels(), 800);
   registerOverlayShortcuts();
 
-  app.on("browser-window-blur", () => {
-    setTimeout(repinAllOverlayWindows, 50);
-  });
-
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
@@ -310,6 +305,16 @@ ipcMain.handle("overlay:setAlwaysOnTop", (event, enabled) => {
 
 ipcMain.handle("overlay:setClickThrough", (_event, enabled) => {
   applyOverlayClickThrough(enabled);
+});
+
+ipcMain.handle("overlay:setIgnoreMouseEvents", (event, ignore) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+  if (ignore) {
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setIgnoreMouseEvents(false);
+  }
 });
 
 ipcMain.on("shell:openExternal", (_e, url) => {

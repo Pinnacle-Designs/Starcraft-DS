@@ -110,19 +110,52 @@ export default function Overlay({ panel }: Props) {
   useEffect(() => subscribeCoachState(applyRemoteState), [applyRemoteState]);
 
   useEffect(() => {
-    if (!window.starcraftDS?.isElectron) return;
-    const repin = () => {
-      void window.starcraftDS?.setAlwaysOnTop(true);
-    };
-    repin();
-    window.addEventListener("blur", repin);
-    return () => window.removeEventListener("blur", repin);
-  }, []);
-
-  useEffect(() => {
     if (!window.starcraftDS?.onClickThroughStateChange) return;
     return window.starcraftDS.onClickThroughStateChange(setClickThrough);
   }, []);
+
+  useEffect(() => {
+    const api = window.starcraftDS;
+    if (!api?.setIgnoreMouseEvents) return;
+
+    const INTERACTIVE =
+      ".floating-overlay-panel-header, .floating-overlay-panel-footer";
+    let ignoring = false;
+
+    const applyIgnore = (ignore: boolean) => {
+      if (ignore === ignoring) return;
+      ignoring = ignore;
+      void api.setIgnoreMouseEvents!(ignore);
+    };
+
+    if (!clickThrough) {
+      applyIgnore(false);
+      return;
+    }
+
+    const pointerIsInteractive = (x: number, y: number) => {
+      const el = document.elementFromPoint(x, y);
+      return Boolean(el?.closest(INTERACTIVE));
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      applyIgnore(!pointerIsInteractive(e.clientX, e.clientY));
+    };
+
+    const onPointerLeave = () => {
+      applyIgnore(true);
+    };
+
+    applyIgnore(true);
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerleave", onPointerLeave);
+
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerleave", onPointerLeave);
+      applyIgnore(false);
+    };
+  }, [clickThrough]);
 
   const handleClickThroughChange = useCallback((enabled: boolean) => {
     if (!window.starcraftDS?.setClickThrough) return;

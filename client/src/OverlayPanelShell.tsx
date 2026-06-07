@@ -63,7 +63,10 @@ export function OverlayPanelShell({
             />
             Click-through (game receives clicks)
           </label>
-          <span className="overlay-hotkey-hint">Ctrl+Shift+D to toggle</span>
+          <span className="overlay-hotkey-hint">
+            Ctrl+Shift+D to toggle. Drag the header to move; footer stays
+            clickable.
+          </span>
         </footer>
       ) : null}
     </div>

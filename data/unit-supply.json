@@ -29,6 +29,7 @@
   "Dark Templar": 2,
   "Archon": 4,
   "Oracle": 2,
+  "Observer": 1,
   "Tempest": 4,
   "Void Ray": 4,
   "Zergling": 0.5,
@@ -44,5 +45,6 @@
   "Infestor": 2,
   "Swarm Host": 3,
   "Viper": 3,
-  "Queen": 2
+  "Queen": 2,
+  "Overseer": 2
 }

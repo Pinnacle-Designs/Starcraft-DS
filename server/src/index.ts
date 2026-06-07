@@ -14,6 +14,11 @@ import {
   parseWaveShift,
   type PlayerRace,
 } from "./counterService.js";
+import {
+  getPlatformCapacity,
+  getPlatformGrid,
+  getUnitPlatformFootprint,
+} from "./platformSlots.js";
 import { listReplayPlayers, parseReplayBuffer } from "./replayService.js";
 import { startOllamaForUser } from "./ollamaManager.js";
 import {
@@ -45,10 +50,17 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.get("/api/units", (_req, res) => {
+  const platformByUnit: Record<string, { ground: number; air: number }> = {};
+  for (const name of getAllUnitNames()) {
+    platformByUnit[name] = getUnitPlatformFootprint(name);
+  }
   res.json({
     units: getAllUnitNames(),
     byRace: getUnitsByRace(),
     tierByUnit: getUnitTiersMap(),
+    platformCapacity: getPlatformCapacity(),
+    platformGrid: getPlatformGrid(),
+    platformByUnit,
   });
 });
 

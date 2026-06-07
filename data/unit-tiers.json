@@ -7,6 +7,7 @@
   "Disruptor": 2,
   "Immortal": 2,
   "Oracle": 2,
+  "Observer": 2,
   "Phoenix": 2,
   "Void Ray": 2,
   "Dark Templar": 2,
@@ -44,5 +45,6 @@
   "Ultralisk": 3,
   "Brood Lord": 3,
   "Corruptor": 3,
-  "Viper": 3
+  "Viper": 3,
+  "Overseer": 2
 }

@@ -1,4 +1,8 @@
-import type { CounterBuildCount, CounterSuggestion, UnitTier } from "./api";
+import type {
+  CounterBuildCount,
+  CounterSuggestion,
+  UnitTier,
+} from "./api";
 
 export function tierLabel(tier: UnitTier | undefined): string | null {
   if (tier == null) return null;
@@ -80,6 +84,36 @@ export function formatCounterBuild(s: CounterSuggestion): string {
   }
 
   return s.build.join(", ");
+}
+
+export function formatPlatformHint(
+  s: CounterSuggestion,
+  entry?: CounterBuildCount
+): string | null {
+  const cap = s.platformCapacity;
+  const enemySlots = s.enemyPlatformSlots;
+  const lane = s.enemyPlatformLane;
+  if (!cap || enemySlots == null || !lane) return null;
+
+  const laneCap = lane === "air" ? cap.air : cap.ground;
+  const gridNote =
+    cap.ground === 216 ? " (18×12 diamond grid)" : "";
+  const enemyPart = `Enemy uses ~${Math.round(enemySlots)}/${laneCap} ${lane} cells${gridNote}`;
+
+  if (!entry?.platformSlotsPerUnit) return enemyPart;
+
+  const per = entry.platformSlotsPerUnit;
+  const max = entry.maxOnPlatform;
+  const stackSlots = (entry.suggested ?? 1) * per;
+  const counterPart = `your ${entry.suggested ?? 1}× ${entry.name} ≈ ${stackSlots} ${entry.platformLane ?? lane} cells`;
+  const limitPart =
+    entry.platformLimited && max != null
+      ? ` (platform max ~${max}×)`
+      : max != null
+        ? ` (fits up to ~${max}× on platform)`
+        : "";
+
+  return `${enemyPart}; ${counterPart}${limitPart}.`;
 }
 
 export function formatEnemyStack(

@@ -6,6 +6,7 @@ import {
   coverageSummary,
   formatOwnedNeed,
   formatEnemyStack,
+  formatPlatformHint,
   primaryBuildCount,
   alternativeBuildCounts,
   tierLabel,
@@ -338,6 +339,11 @@ export function SuggestionsPanel({
                   ? " — lower-tier option; mass enough to overwhelm (Direct Strike)"
                   : ""}
                 {s.counterType === "soft" ? " (soft counter — round up)" : ""}
+              </div>
+            ) : null}
+            {!compact && primary && formatPlatformHint(s, primary) ? (
+              <div className="build-platform-hint">
+                {formatPlatformHint(s, primary)}
               </div>
             ) : null}
             {!compact && s.tip && <div className="tip">{s.tip}</div>}

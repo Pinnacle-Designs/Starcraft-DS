@@ -11,7 +11,7 @@
       "https://log.havrlant.cz/counter-protoss/",
       "https://log.havrlant.cz/counter-zerg/"
     ],
-    "notes": "Hard counters beat decisively; soft counters are situational. Tier 1 openers (Marine/Stalker/Ling), tier 2 tech (Adept/Lurker/Liberator/Immortal), tier 3 finishers (Colossus/Thor/Brood Lord). Direct Strike: mass T1 can overwhelm a few high-tech units if enemy skipped tier; Phoenix does not counter Mutalisks; scan for cloaked T2."
+    "notes": "Hard counters beat decisively; soft counters are situational. Tier 1 openers (Marine/Stalker/Ling), tier 2 tech (Adept/Lurker/Liberator/Immortal), tier 3 finishers (Colossus/Thor/Brood Lord). Direct Strike: mass T1 can overwhelm a few high-tech units if enemy skipped tier; Phoenix does not counter Mutalisks; scan for cloaked T2. Wave platform is an 18×12 diamond grid per player (216 cells for ground and air); small units ~9 cells, massive ~36."
   },
   "units": {
     "Zealot": {
@@ -34,21 +34,21 @@
     },
     "Immortal": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Zealot", "Void Ray", "Disruptor"], "Terran": ["Marine", "Ghost", "Liberator", "Hellbat"], "Zerg": ["Zergling", "Ravager", "Lurker"] },
+      "weakAgainst": { "Protoss": ["Zealot", "Void Ray", "Disruptor"], "Terran": ["Marine", "Ghost", "Liberator", "Hellbat", "Cyclone"], "Zerg": ["Zergling", "Ravager", "Lurker"] },
       "counters": { "Protoss": ["Stalker", "Colossus"], "Terran": ["Marauder", "Thor", "Siege Tank"], "Zerg": ["Roach", "Ultralisk"] },
       "tips": "Hard counter to Roach."
     },
     "Colossus": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Stalker", "Tempest"], "Terran": ["Viking", "Thor"], "Zerg": ["Corruptor", "Viper", "Hydralisk"] },
+      "weakAgainst": { "Protoss": ["Stalker", "Tempest"], "Terran": ["Viking", "Thor", "Cyclone"], "Zerg": ["Corruptor", "Viper", "Hydralisk"] },
       "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["Marine", "Marauder"], "Zerg": ["Hydralisk", "Zergling", "Roach"] },
       "tips": "Needs Force Field/Zealot support vs Zerglings; Vikings for Terran."
     },
     "Phoenix": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Stalker", "Tempest"], "Terran": ["Marine", "Thor"], "Zerg": [] },
-      "counters": { "Protoss": ["Immortal"], "Terran": ["Banshee"], "Zerg": ["Mutalisk", "Overlord"] },
-      "tips": "Mass Mutalisk → Phoenix."
+      "weakAgainst": { "Protoss": ["Stalker", "Tempest"], "Terran": ["Marine", "Thor", "Cyclone"], "Zerg": [] },
+      "counters": { "Protoss": ["Immortal"], "Terran": ["Banshee"], "Zerg": [] },
+      "tips": "Good vs light air; in Direct Strike Mutalisks need Storm/Archon/Thor—not Phoenix alone."
     },
     "Carrier": {
       "race": "Protoss",
@@ -78,7 +78,13 @@
       "race": "Protoss",
       "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Viking", "Marine"], "Zerg": ["Queen", "Mutalisk"] },
       "counters": { "Protoss": ["Zealot", "Sentry"], "Terran": ["SCV", "Marine"], "Zerg": ["Drone"] },
-      "tips": "Rush unit—Viking comes too late; use turrets/early AA."
+      "tips": "Rush unit—Viking comes too late; use turrets/early AA. Right-click Phoenix icon for Observer."
+    },
+    "Observer": {
+      "race": "Protoss",
+      "weakAgainst": { "Protoss": ["Stalker", "Phoenix"], "Terran": ["Marine", "Viking", "Ghost"], "Zerg": ["Hydralisk", "Queen", "Corruptor"] },
+      "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "tips": "Detector only—kill with any AA; bring Observer/Raven/Overseer vs cloaked waves (DT/Ghost/Banshee/Lurker)."
     },
     "Tempest": {
       "race": "Protoss",
@@ -88,7 +94,7 @@
     },
     "Void Ray": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["High Templar", "Stalker"], "Terran": ["Marine", "Widow Mine", "Ghost"], "Zerg": ["Hydralisk", "Queen", "Infestor", "Viper"] },
+      "weakAgainst": { "Protoss": ["High Templar", "Stalker"], "Terran": ["Marine", "Widow Mine", "Ghost", "Cyclone"], "Zerg": ["Hydralisk", "Queen", "Infestor", "Viper"] },
       "counters": { "Protoss": ["Stalker"], "Terran": ["Hellion"], "Zerg": [] },
       "tips": "Clumps die to AoE; Queens/Parasitic Bomb hard counter in ZvP."
     },
@@ -154,9 +160,9 @@
     },
     "Battlecruiser": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Stalker", "Void Ray", "Tempest"], "Terran": ["Marine", "Viking"], "Zerg": ["Corruptor", "Viper"] },
+      "weakAgainst": { "Protoss": ["Stalker", "Void Ray", "Tempest"], "Terran": ["Marine", "Viking", "Thor"], "Zerg": ["Corruptor", "Viper", "Brood Lord"] },
       "counters": { "Protoss": [], "Terran": [], "Zerg": ["Zergling", "Roach", "Mutalisk", "Brood Lord"] },
-      "tips": ""
+      "tips": "Massive air—Corruptors/Vikings/Tempests; Thor High Impact Mode vs air."
     },
     "Widow Mine": {
       "race": "Terran",
@@ -256,9 +262,9 @@
     },
     "Cyclone": {
       "race": "Terran",
-      "weakAgainst": { "Protoss": ["Stalker", "Immortal"], "Terran": ["Marine", "Marauder", "Siege Tank"], "Zerg": ["Roach", "Ravager", "Lurker"] },
-      "counters": { "Protoss": ["Phoenix", "Void Ray"], "Terran": ["Medivac"], "Zerg": ["Mutalisk", "Corruptor"] },
-      "tips": "T2 lock-on anti-air; strong in Direct Strike team games."
+      "weakAgainst": { "Protoss": ["Stalker", "Immortal", "Disruptor"], "Terran": ["Marine", "Marauder", "Siege Tank"], "Zerg": ["Roach", "Ravager", "Lurker"] },
+      "counters": { "Protoss": ["Phoenix", "Void Ray", "Colossus"], "Terran": ["Medivac"], "Zerg": ["Mutalisk", "Corruptor"] },
+      "tips": "T2 lock-on anti-air; strong in Direct Strike team games. Counter with Stalkers or Immortals."
     },
     "Liberator": {
       "race": "Terran",
@@ -283,6 +289,12 @@
       "weakAgainst": { "Protoss": ["Stalker", "Immortal"], "Terran": ["Marine", "Marauder", "Siege Tank"], "Zerg": ["Hydralisk", "Lurker"] },
       "counters": { "Protoss": ["Immortal", "Sentry"], "Terran": ["Siege Tank"], "Zerg": ["Roach", "Queen"] },
       "tips": "Corrosive Bile vs Immortals and sieged units; not armored."
+    },
+    "Overseer": {
+      "race": "Zerg",
+      "weakAgainst": { "Protoss": ["Stalker", "Phoenix", "Void Ray"], "Terran": ["Marine", "Viking", "Thor"], "Zerg": ["Hydralisk", "Queen", "Corruptor"] },
+      "counters": { "Protoss": [], "Terran": [], "Zerg": [] },
+      "tips": "Detector—snipe with AA; essential vs cloaked Terran/Protoss. Morph from Overlord at T2."
     }
   },
   "aliases": {
@@ -351,6 +363,11 @@
     "lib": "Liberator",
     "libs": "Liberator",
     "raven": "Raven",
-    "ravens": "Raven"
+    "ravens": "Raven",
+    "observer": "Observer",
+    "observers": "Observer",
+    "obs": "Observer",
+    "overseer": "Overseer",
+    "overseers": "Overseer"
   }
 }

@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.invoke("overlay:setAlwaysOnTop", enabled),
   setClickThrough: (enabled) =>
     ipcRenderer.invoke("overlay:setClickThrough", enabled),
+  setIgnoreMouseEvents: (ignore) =>
+    ipcRenderer.invoke("overlay:setIgnoreMouseEvents", ignore),
   onClickThroughHotkey: (callback) => {
     const handler = () => callback();
     ipcRenderer.on("overlay:toggleClickThrough", handler);
