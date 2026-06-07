@@ -26,6 +26,11 @@ import {
   getVisionStatus,
 } from "./vision/index.js";
 import { detectFromText } from "./vision/textDetection.js";
+import {
+  getTrainingStats,
+  listTrainingSamples,
+  saveTrainingCorrection,
+} from "./training/trainingStore.js";
 
 startOllamaForUser();
 
@@ -46,7 +51,84 @@ app.get("/api/health", async (_req, res) => {
     vision: vision.active !== null,
     visionProviders: vision,
     units: getAllUnitNames().length,
+    training: getTrainingStats(),
   });
+});
+
+app.get("/api/training/stats", (_req, res) => {
+  res.json(getTrainingStats());
+});
+
+app.get("/api/training/samples", (req, res) => {
+  const limit = Math.min(
+    100,
+    Math.max(1, Number(req.query.limit) || 25)
+  );
+  res.json({ samples: listTrainingSamples(limit) });
+});
+
+app.post("/api/training/corrections", (req, res) => {
+  try {
+    const body = req.body as {
+      imageBase64?: string;
+      mimeType?: string;
+      rawDetected?: unknown;
+      corrected?: unknown;
+      source?: string;
+      provider?: string;
+      teamRaces?: unknown;
+      waveShift?: unknown;
+      scene?: string;
+      force?: boolean;
+    };
+
+    if (!body.imageBase64) {
+      res.status(400).json({ error: "imageBase64 required" });
+      return;
+    }
+
+    const rawDetected = parseManualUnits(body.rawDetected);
+    const corrected = parseManualUnits(body.corrected);
+    const source =
+      body.source === "overlay-hotkey" ||
+      body.source === "analyze-frame" ||
+      body.source === "live-coach" ||
+      body.source === "manual-confirm"
+        ? body.source
+        : "manual-confirm";
+
+    const result = saveTrainingCorrection({
+      imageBase64: body.imageBase64,
+      mimeType: body.mimeType ?? "image/jpeg",
+      rawDetected,
+      corrected,
+      source,
+      provider: body.provider,
+      teamRaces: parseTeamRaces(body.teamRaces, "Terran"),
+      waveShift: parseWaveShift(body.waveShift),
+      scene: body.scene,
+      force: Boolean(body.force),
+    });
+
+    if (!result.saved) {
+      res.status(200).json({
+        saved: false,
+        reason: result.reason,
+        stats: getTrainingStats(),
+      });
+      return;
+    }
+
+    res.json({
+      saved: true,
+      sample: result.sample,
+      stats: getTrainingStats(),
+    });
+  } catch (e) {
+    res.status(500).json({
+      error: e instanceof Error ? e.message : "Failed to save training sample",
+    });
+  }
 });
 
 app.get("/api/units", (_req, res) => {

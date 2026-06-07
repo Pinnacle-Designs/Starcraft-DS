@@ -1,10 +1,10 @@
+import { buildTrainingPromptSection } from "../training/trainingPrompt.js";
 import {
   loadSystemPrompt,
   parseVisionJson,
   VISION_USER_TEXT,
   type VisionResult,
 } from "./shared.js";
-import { getUnitReferenceCollageBase64 } from "./unitReference.js";
 
 function ollamaBaseUrl(): string {
   return (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434").replace(
@@ -67,11 +67,8 @@ export async function analyzeWithOllama(
   mimeType: string
 ): Promise<VisionResult> {
   const model = process.env.OLLAMA_VISION_MODEL ?? "llava";
-  const useReferenceImage = process.env.OLLAMA_USE_REFERENCE_IMAGE === "true";
-  const referenceCollage = useReferenceImage
-    ? getUnitReferenceCollageBase64()
-    : null;
-  const prompt = `${loadSystemPrompt()}\n\n${VISION_USER_TEXT}`;
+  const trainingSection = buildTrainingPromptSection();
+  const prompt = `${loadSystemPrompt()}${trainingSection}\n\n${VISION_USER_TEXT}`;
   const images = [imageBase64];
 
   const res = await fetch(`${ollamaBaseUrl()}/api/chat`, {

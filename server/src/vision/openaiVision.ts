@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { buildTrainingPromptSection } from "../training/trainingPrompt.js";
 import {
   loadSystemPrompt,
   parseVisionJson,
@@ -39,7 +40,10 @@ export async function analyzeWithOpenAi(
     model: process.env.OPENAI_VISION_MODEL ?? "gpt-4o-mini",
     max_tokens: 500,
     messages: [
-      { role: "system", content: loadSystemPrompt() },
+      {
+        role: "system",
+        content: `${loadSystemPrompt()}${buildTrainingPromptSection()}`,
+      },
       {
         role: "user",
         content: [

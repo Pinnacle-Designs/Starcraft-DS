@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AnalyzeResponse, WaveShift } from "./api";
 import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
@@ -14,8 +14,10 @@ import {
 import {
   clearAllWaves,
   EMPTY_MANUAL_WAVES,
+  manualArmyEntries,
   type ManualWavesState,
 } from "./manualArmy";
+import { useVisionTraining } from "./useVisionTraining";
 import {
   isElectronApp,
   loadCoachState,
@@ -59,6 +61,14 @@ export default function Overlay({ panel }: Props) {
   const [clickThrough, setClickThrough] = useState(false);
   const [hotkeyUiActive, setHotkeyUiActive] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [trainingSaving, setTrainingSaving] = useState(false);
+
+  const {
+    registerCapture: registerTrainingCapture,
+    submitCorrection: submitTrainingCorrection,
+    confirmCurrentLabels,
+    pendingCapture: trainingPending,
+  } = useVisionTraining({ teamRaces: teamWaves, waveShift });
 
   const analyzeOptions = useMemo(
     () => ({ tierUnlocked }),
@@ -123,7 +133,25 @@ export default function Overlay({ panel }: Props) {
       publishOverlayState(patch);
       setCaptureError(null);
     },
+    onTrainingCapture: registerTrainingCapture,
   });
+
+  const manualUnitsKey = useMemo(
+    () => JSON.stringify(manualArmyEntries(manualWaves)),
+    [manualWaves]
+  );
+  const submitTrainingCorrectionRef = useRef(submitTrainingCorrection);
+  submitTrainingCorrectionRef.current = submitTrainingCorrection;
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const units = manualArmyEntries(manualWaves);
+      if (units.length > 0) {
+        void submitTrainingCorrectionRef.current(units);
+      }
+    }, 600);
+    return () => clearTimeout(id);
+  }, [manualUnitsKey, manualWaves]);
 
   useEffect(() => {
     setCaptureError(captureScanError);
@@ -257,6 +285,16 @@ export default function Overlay({ panel }: Props) {
                 publishOverlayState({ manualWaves: waves });
               }}
               onClearSelections={handleClearSelections}
+              onSaveTraining={() => {
+                const units = manualArmyEntries(manualWaves);
+                if (units.length === 0) return;
+                setTrainingSaving(true);
+                void confirmCurrentLabels(units).finally(() =>
+                  setTrainingSaving(false)
+                );
+              }}
+              trainingPending={trainingPending}
+              trainingSaving={trainingSaving}
             />
           </div>
         </>

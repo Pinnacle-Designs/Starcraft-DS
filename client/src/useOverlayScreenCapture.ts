@@ -8,6 +8,7 @@ import {
 import { applyScreenCaptureToWaves } from "./overlayScreenCapture";
 import type { ManualWavesState } from "./manualArmy";
 import type { CoachState } from "./overlaySync";
+import type { PendingVisionCapture } from "./visionTraining";
 
 interface Options {
   enabled: boolean;
@@ -17,6 +18,7 @@ interface Options {
   analyzeOptions?: AnalyzeOptions;
   onWavesChange: (waves: ManualWavesState) => void;
   onCaptureComplete?: (patch: Partial<CoachState>) => void;
+  onTrainingCapture?: (capture: Omit<PendingVisionCapture, "capturedAt">) => void;
 }
 
 export function useOverlayScreenCapture({
@@ -27,6 +29,7 @@ export function useOverlayScreenCapture({
   analyzeOptions,
   onWavesChange,
   onCaptureComplete,
+  onTrainingCapture,
 }: Options) {
   const [scanning, setScanning] = useState(false);
   const [lastCaptureAt, setLastCaptureAt] = useState<number | null>(null);
@@ -75,6 +78,13 @@ export function useOverlayScreenCapture({
       });
 
       onWavesChange(applied.waves);
+      onTrainingCapture?.({
+        imageBase64: applied.imageBase64,
+        rawDetected: applied.detectedUnits,
+        source: "overlay-hotkey",
+        provider: applied.visionProvider,
+        scene: applied.visionScene,
+      });
       const waveBits = applied.detectedUnits
         .slice(0, 6)
         .map(
@@ -104,7 +114,7 @@ export function useOverlayScreenCapture({
       scanningRef.current = false;
       setScanning(false);
     }
-  }, [onCaptureComplete, onWavesChange]);
+  }, [onCaptureComplete, onTrainingCapture, onWavesChange]);
 
   useEffect(() => {
     if (!enabled || !window.starcraftDS?.onCaptureHotkey) return;

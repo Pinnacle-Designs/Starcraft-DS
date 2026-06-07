@@ -37,6 +37,9 @@ interface Props {
   onChange: (waves: ManualWavesState) => void;
   onSubmit?: () => void;
   onClearSelections?: () => void;
+  onSaveTraining?: () => void;
+  trainingPending?: boolean;
+  trainingSaving?: boolean;
   refreshing?: boolean;
   variant?: "enemy" | "friendly";
   teamWaves?: TeamWaves;
@@ -48,6 +51,9 @@ export function ManualArmyBuilder({
   onChange,
   onSubmit,
   onClearSelections,
+  onSaveTraining,
+  trainingPending = false,
+  trainingSaving = false,
   refreshing = false,
   variant = "enemy",
   teamWaves,
@@ -252,6 +258,17 @@ export function ManualArmyBuilder({
       >
         Clear selections
       </button>
+      {!isFriendly && onSaveTraining ? (
+        <button
+          type="button"
+          className="btn"
+          disabled={!trainingPending || allEntries.length === 0 || trainingSaving}
+          title="Save this screenshot with your unit labels so vision improves on future captures"
+          onClick={() => onSaveTraining()}
+        >
+          {trainingSaving ? "Saving…" : "Train from labels"}
+        </button>
+      ) : null}
       {!isFriendly && onSubmit ? (
         <button
           type="button"

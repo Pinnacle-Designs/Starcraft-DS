@@ -8,6 +8,7 @@
     "kill-ports": "node scripts/kill-dev-ports.cjs",
     "ensure-ollama": "node scripts/ensure-ollama.cjs",
     "fetch-unit-images": "node scripts/fetch-unit-images.cjs",
+    "export-training": "node scripts/export-training-dataset.cjs",
     "dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",

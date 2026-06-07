@@ -41,6 +41,7 @@ import { useLiveCoach } from "./useLiveCoach";
 import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
+import { useVisionTraining } from "./useVisionTraining";
 
 export default function App() {
   const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
@@ -65,6 +66,18 @@ export default function App() {
     null
   );
   const [overlayHint, setOverlayHint] = useState<string | null>(null);
+  const [trainingSaving, setTrainingSaving] = useState(false);
+
+  const {
+    stats: trainingStats,
+    lastSavedAt: trainingLastSavedAt,
+    saveError: trainingSaveError,
+    registerCapture: registerTrainingCapture,
+    submitCorrection: submitTrainingCorrection,
+    confirmCurrentLabels,
+    pendingCapture: trainingPending,
+    refreshStats: refreshTrainingStats,
+  } = useVisionTraining({ teamRaces: teamWaves, waveShift });
 
   const bumpCaptureHistory = useCallback(() => {
     setCaptureHistoryKey((k) => k + 1);
@@ -209,6 +222,7 @@ export default function App() {
     onCaptureComplete: (patch) => {
       if (patch.result) applyResult(patch.result);
     },
+    onTrainingCapture: registerTrainingCapture,
   });
 
   const { scanning, lastScanAt, canLive } = useLiveCoach({
@@ -224,6 +238,13 @@ export default function App() {
     onResult: applyResult,
     onError: setLastError,
     onVisionFrame: (b64, data) => {
+      registerTrainingCapture({
+        imageBase64: b64,
+        rawDetected: detectedToManual(data.detectedUnits),
+        source: "live-coach",
+        provider: data.provider,
+        scene: data.scene,
+      });
       void archiveFrame(b64, data.detectedUnits, { throttleLive: true });
     },
   });
@@ -337,6 +358,13 @@ export default function App() {
           analyzeOptions
         );
         applyResult(data);
+        registerTrainingCapture({
+          imageBase64: b64,
+          rawDetected: detectedToManual(data.detectedUnits),
+          source: "analyze-frame",
+          provider: data.provider,
+          scene: data.scene,
+        });
         void archiveFrame(b64, data.detectedUnits);
         if (data.detectedUnits.length === 0) {
           setLastError(
@@ -359,8 +387,20 @@ export default function App() {
       analyzeOptions,
       applyResult,
       archiveFrame,
+      registerTrainingCapture,
     ]
   );
+
+  const handleSaveTrainingLabels = useCallback(() => {
+    const units = manualArmyEntries(manualWaves);
+    if (units.length === 0) return;
+    setTrainingSaving(true);
+    void confirmCurrentLabels(units)
+      .then((result) => {
+        if (result.saved) void refreshTrainingStats();
+      })
+      .finally(() => setTrainingSaving(false));
+  }, [confirmCurrentLabels, manualWaves, refreshTrainingStats]);
 
   const handleSaveSnapshot = useCallback(() => {
     void (async () => {
@@ -406,16 +446,20 @@ export default function App() {
 
   const teamWavesKey = useMemo(() => JSON.stringify(teamWaves), [teamWaves]);
 
+  const submitTrainingCorrectionRef = useRef(submitTrainingCorrection);
+  submitTrainingCorrectionRef.current = submitTrainingCorrection;
+
   useEffect(() => {
     const id = window.setTimeout(() => {
       const units = manualArmyEntries(manualWavesRef.current);
       if (units.length > 0) {
         void refreshCountersRef.current();
+        void submitTrainingCorrectionRef.current(units);
         return;
       }
 
       const current = resultRef.current;
-      if (current?.mode === "ai" && current.detectedUnits?.length) {
+      if (current?.mode === "ai" && current?.detectedUnits?.length) {
         void refreshCountersRef.current();
         return;
       }
@@ -659,6 +703,27 @@ export default function App() {
               <CaptureHistoryPanel refreshKey={captureHistoryKey} />
 
               <p className={`status ${live ? "live" : ""}`}>{visionHint()}</p>
+              {trainingStats && trainingStats.total > 0 ? (
+                <p className="status training-status">
+                  Vision training: {trainingStats.total} saved example
+                  {trainingStats.total === 1 ? "" : "s"}
+                  {trainingStats.corrected > 0
+                    ? ` (${trainingStats.corrected} corrections)`
+                    : ""}
+                  {trainingLastSavedAt
+                    ? " — latest labels applied to future scans"
+                    : ""}
+                </p>
+              ) : (
+                <p className="status training-status">
+                  Fix unit tags after a capture to teach vision from your screenshots.
+                </p>
+              )}
+              {trainingSaveError ? (
+                <p className="status" style={{ color: "var(--danger)" }}>
+                  {trainingSaveError}
+                </p>
+              ) : null}
             </div>
           </section>
           )}
@@ -685,6 +750,9 @@ export default function App() {
             onChange={setManualWaves}
             onSubmit={handleManualSuggest}
             onClearSelections={handleClearSelections}
+            onSaveTraining={handleSaveTrainingLabels}
+            trainingPending={trainingPending}
+            trainingSaving={trainingSaving}
             refreshing={counterRefreshing}
           />
           <ManualArmyBuilder

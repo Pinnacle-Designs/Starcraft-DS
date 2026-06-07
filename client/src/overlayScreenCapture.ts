@@ -35,6 +35,9 @@ export interface ScreenCaptureApplyResult {
   detectedNames: string[];
   detectedUnits: ReturnType<typeof detectedToManual>;
   visionMode: AnalyzeResponse["mode"];
+  imageBase64: string;
+  visionProvider?: AnalyzeResponse["provider"];
+  visionScene?: string;
 }
 
 function emptyCounterResult(
@@ -106,5 +109,8 @@ export async function applyScreenCaptureToWaves({
     detectedNames: detected.map((u) => u.name),
     detectedUnits: detected,
     visionMode: vision.mode,
+    imageBase64,
+    visionProvider: vision.provider,
+    visionScene: vision.scene,
   };
 }

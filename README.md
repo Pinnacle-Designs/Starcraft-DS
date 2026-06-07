@@ -119,7 +119,28 @@ This project does not ship a custom neural network. Instead:
 2. **Vision prompt** — `data/vision-system-prompt.txt` instructs the model which units to detect and how to return JSON.
 3. **Runtime** — Frames go to local **Ollama** (`llava` by default) on each user’s machine, or optionally OpenAI; detected names are mapped through aliases and matched to your race’s counters.
 
-To improve accuracy over time, extend `counters.json`, refine the vision prompt, or swap in a fine-tuned vision model using the same JSON schema.
+### Learning from your corrections
+
+The app now saves **screenshot + labels** when you fix unit tags after a capture:
+
+1. Capture with the hotkey or **Analyze now**
+2. Correct enemy waves in the builder (or click **Train from labels**)
+3. Samples are stored under `data/training/` on the API server
+4. The next Ollama scans inject your recent corrections as few-shot examples in the vision prompt
+
+Export everything for external fine-tuning:
+
+```bash
+npm run export-training
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VISION_USE_TRAINING_EXAMPLES` | `true` | Inject saved corrections into Ollama prompts |
+| `VISION_TRAINING_EXAMPLES_MAX` | `5` | How many examples to include per scan |
+| `TRAINING_MAX_SAMPLES` | `500` | Max stored screenshots (oldest removed) |
+
+To improve accuracy manually, extend `counters.json`, refine `vision-system-prompt.txt`, or fine-tune a vision model using exported JSONL.
 
 ## Environment
 
