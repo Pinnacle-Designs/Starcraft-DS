@@ -23,7 +23,7 @@ import {
   manualArmyEntries,
   type ManualWavesState,
 } from "./manualArmy";
-import { captureMediaEnabled } from "./featureFlags";
+import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
 import { openOverlay, publishCoachState } from "./overlaySync";
 import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
@@ -364,16 +364,18 @@ export default function App() {
             />
           </h1>
         </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => openOverlay()}
-            title="Always-on-top overlay (best in Electron desktop app)"
-          >
-            Open overlay
-          </button>
-        </div>
+        {overlayEnabled && (
+          <div className="header-actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => openOverlay()}
+              title="Always-on-top overlay (best in Electron desktop app)"
+            >
+              Open overlay
+            </button>
+          </div>
+        )}
       </header>
       <p className="header-slogan">Make better decisions. Win more games.</p>
 
