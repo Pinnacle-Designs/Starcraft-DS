@@ -32,43 +32,30 @@ async function resolveOllamaReady(): Promise<boolean> {
   return waitForOllamaVision();
 }
 
-/** Ollama spots unit models on screen; OCR only backs up when visual finds nothing. */
+/** Ollama reads unit models on the screenshot; OCR only when visual AI is unavailable. */
 async function analyzeVisualFirst(
   imageBase64: string,
   mimeType: string,
   ollamaUp: boolean
 ): Promise<VisionResult> {
-  let visual: VisionResult | null = null;
-
   if (ollamaUp) {
-    visual = await analyzeWithOllamaSafe(imageBase64, mimeType);
-    if (visual.detectedUnits.length > 0) return visual;
-  }
-
-  const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
-  if (ocr.detectedUnits.length > 0) {
-    return {
-      ...ocr,
-      scene: visual
-        ? `Visual AI found no units; OCR read names on screen. ${ocr.scene ?? ""}`
-        : ocr.scene,
-    };
-  }
-
-  if (visual) {
+    const visual = await analyzeWithOllamaSafe(imageBase64, mimeType);
     return {
       ...visual,
       scene:
         visual.scene ??
-        "No enemy units detected on screen. Install Ollama + llava for visual detection without unit names.",
+        (visual.detectedUnits.length > 0
+          ? undefined
+          : "No enemy units detected in this screenshot."),
     };
   }
 
+  const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
   return {
     ...ocr,
     scene:
       ocr.scene ??
-      "No units detected. Install Ollama (ollama pull llava) for visual detection anywhere on the map.",
+      "No units detected. Install Ollama (ollama pull llava) for visual detection on screenshots.",
   };
 }
 

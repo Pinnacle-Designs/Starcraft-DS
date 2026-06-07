@@ -3,6 +3,19 @@ export interface CaptureHotkeyPayload {
   at: number;
 }
 
+export interface ScreenCaptureAccessResult {
+  ok: boolean;
+  granted?: boolean;
+  error?: string;
+}
+
+export interface ScreenCaptureNowResult {
+  ok: boolean;
+  base64?: string;
+  at?: number;
+  error?: string;
+}
+
 export interface SetCaptureHotkeyResult {
   ok: boolean;
   accelerator?: string;
@@ -34,7 +47,12 @@ export interface StarcraftDSElectron {
   setCaptureHotkey: (accelerator: string) => Promise<SetCaptureHotkeyResult>;
   beginHotkeyRecording: () => Promise<{ ok: boolean }>;
   endHotkeyRecording: () => Promise<{ ok: boolean }>;
+  cancelHotkeyRecording: () => Promise<{ ok: boolean }>;
+  onHotkeyRecordingCancelled: (callback: () => void) => () => void;
   onCaptureHotkey: (callback: (payload: CaptureHotkeyPayload) => void) => () => void;
+  requestScreenCaptureAccess: () => Promise<ScreenCaptureAccessResult>;
+  captureScreenNow: () => Promise<ScreenCaptureNowResult>;
+  getScreenCaptureStatus: () => Promise<{ granted: boolean }>;
 }
 
 declare global {

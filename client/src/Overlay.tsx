@@ -11,7 +11,11 @@ import {
   primaryTeamRace,
   type TierUnlocked,
 } from "./teamWaves";
-import { EMPTY_MANUAL_WAVES, type ManualWavesState } from "./manualArmy";
+import {
+  clearAllWaves,
+  EMPTY_MANUAL_WAVES,
+  type ManualWavesState,
+} from "./manualArmy";
 import {
   isElectronApp,
   loadCoachState,
@@ -53,6 +57,7 @@ export default function Overlay({ panel }: Props) {
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
   const [counterRefreshing, setCounterRefreshing] = useState(false);
   const [clickThrough, setClickThrough] = useState(false);
+  const [hotkeyUiActive, setHotkeyUiActive] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
 
   const analyzeOptions = useMemo(
@@ -84,9 +89,11 @@ export default function Overlay({ panel }: Props) {
         waveShift: patch.waveShift ?? waveShift,
         tierUnlocked: patch.tierUnlocked ?? tierUnlocked,
         manualWaves: patch.manualWaves ?? manualWaves,
-        result: patch.result ?? base?.result ?? null,
+        result:
+          patch.result !== undefined ? patch.result : (base?.result ?? null),
         live: patch.live ?? base?.live ?? false,
-        scanning: patch.scanning ?? base?.scanning,
+        scanning:
+          patch.scanning !== undefined ? patch.scanning : base?.scanning,
         lastScanAt:
           patch.lastScanAt !== undefined
             ? patch.lastScanAt
@@ -154,7 +161,7 @@ export default function Overlay({ panel }: Props) {
     if (!api?.setIgnoreMouseEvents) return;
 
     const INTERACTIVE =
-      ".floating-overlay-panel-header, .floating-overlay-panel-footer, .capture-hotkey-interactive";
+      ".floating-overlay-panel-header, .floating-overlay-panel-footer, .capture-hotkey-settings, .capture-hotkey-interactive, .overlay-interactive, .overlay-interactive *";
     let ignoring = false;
 
     const applyIgnore = (ignore: boolean) => {
@@ -163,10 +170,12 @@ export default function Overlay({ panel }: Props) {
       void api.setIgnoreMouseEvents!(ignore);
     };
 
-    if (!clickThrough) {
+    if (!clickThrough || hotkeyUiActive) {
       applyIgnore(false);
-      return;
+      if (!clickThrough) return;
     }
+
+    if (hotkeyUiActive) return;
 
     const pointerIsInteractive = (x: number, y: number) => {
       const el = document.elementFromPoint(x, y);
@@ -190,12 +199,20 @@ export default function Overlay({ panel }: Props) {
       document.removeEventListener("pointerleave", onPointerLeave);
       applyIgnore(false);
     };
-  }, [clickThrough]);
+  }, [clickThrough, hotkeyUiActive]);
 
   const handleClickThroughChange = useCallback((enabled: boolean) => {
     if (!window.starcraftDS?.setClickThrough) return;
     void window.starcraftDS.setClickThrough(enabled);
   }, []);
+
+  const handleClearSelections = useCallback(() => {
+    const cleared = clearAllWaves(manualWaves);
+    setManualWaves(cleared);
+    setResult(null);
+    setCaptureError(null);
+    publishOverlayState({ manualWaves: cleared, result: null });
+  }, [manualWaves, publishOverlayState]);
 
   // Chrome blocks two popups from one click — open team from the enemy popup instead.
   useEffect(() => {
@@ -223,6 +240,7 @@ export default function Overlay({ panel }: Props) {
               scanning={captureScanning}
               lastCaptureAt={lastCaptureAt}
               lastCaptureSummary={lastCaptureSummary}
+              onInteractionChange={setHotkeyUiActive}
             />
           ) : null}
           {captureError ? (
@@ -230,14 +248,17 @@ export default function Overlay({ panel }: Props) {
               {captureError}
             </p>
           ) : null}
-          <ManualArmyBuilder
-            waves={manualWaves}
-            collapsibleWaves
-            onChange={(waves) => {
-              setManualWaves(waves);
-              publishOverlayState({ manualWaves: waves });
-            }}
-          />
+          <div className="overlay-interactive">
+            <ManualArmyBuilder
+              waves={manualWaves}
+              collapsibleWaves
+              onChange={(waves) => {
+                setManualWaves(waves);
+                publishOverlayState({ manualWaves: waves });
+              }}
+              onClearSelections={handleClearSelections}
+            />
+          </div>
         </>
       ) : (
         <div className="overlay-team-stack">

@@ -6,6 +6,7 @@ const {
   ipcMain,
   screen,
   shell,
+  systemPreferences,
 } = require("electron");
 const fs = require("fs");
 const path = require("path");
@@ -33,6 +34,8 @@ const OVERLAY_PANELS = {
 };
 
 let mainWindow = null;
+let captureAccessWindow = null;
+let screenCaptureAccessGranted = false;
 const overlayWindows = { enemy: null, team: null };
 let overlayClickThrough = false;
 const DEFAULT_CAPTURE_HOTKEY = "Alt+Shift+C";
@@ -44,6 +47,11 @@ const CAPTURE_HOTKEY_FALLBACKS = [
 ];
 let captureHotkeyAccelerator = DEFAULT_CAPTURE_HOTKEY;
 let hotkeyRecording = false;
+let hotkeyRecordingBlurHandler = null;
+const HOTKEY_RECORDING_TIMEOUT_MS = 60_000;
+let hotkeyRecordingTimeout = null;
+
+const CLICK_THROUGH_HOTKEY = "Control+Shift+D";
 
 const OVERLAY_TOP_LEVEL =
   process.platform === "darwin" ? "floating" : "screen-saver";
@@ -145,7 +153,49 @@ function saveCaptureHotkey(accelerator) {
   }
 }
 
+function ensureCaptureAccessWindow() {
+  if (captureAccessWindow && !captureAccessWindow.isDestroyed()) {
+    return captureAccessWindow;
+  }
+
+  captureAccessWindow = new BrowserWindow({
+    width: 1,
+    height: 1,
+    x: -20000,
+    y: -20000,
+    frame: false,
+    show: false,
+    transparent: true,
+    opacity: 0,
+    skipTaskbar: true,
+    focusable: false,
+    hasShadow: false,
+    thickFrame: false,
+    resizable: false,
+    movable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      backgroundThrottling: false,
+    },
+  });
+  captureAccessWindow.setIgnoreMouseEvents(true, { forward: true });
+  void captureAccessWindow.loadURL("data:text/html,<html></html>");
+  return captureAccessWindow;
+}
+
+function screenCapturePermissionHint() {
+  if (process.platform === "darwin") {
+    return "Allow screen recording for Starcraft Coach in System Settings → Privacy & Security → Screen Recording, then try again.";
+  }
+  if (process.platform === "win32") {
+    return "Windows blocked screen capture. Close other screen recorders and try again.";
+  }
+  return "Screen capture permission denied.";
+}
+
 async function capturePrimaryScreenBase64() {
+  ensureCaptureAccessWindow();
   const display = screen.getPrimaryDisplay();
   const scale = display.scaleFactor || 1;
   const width = Math.max(1, Math.floor(display.size.width * scale));
@@ -163,15 +213,37 @@ async function capturePrimaryScreenBase64() {
   return source.thumbnail.toJPEG(92).toString("base64");
 }
 
+async function requestScreenCaptureAccess() {
+  ensureCaptureAccessWindow();
+  if (process.platform === "darwin") {
+    const status = systemPreferences.getMediaAccessStatus("screen");
+    if (status === "denied" || status === "restricted") {
+      screenCaptureAccessGranted = false;
+      return { ok: false, granted: false, error: screenCapturePermissionHint() };
+    }
+  }
+
+  try {
+    await capturePrimaryScreenBase64();
+    screenCaptureAccessGranted = true;
+    return { ok: true, granted: true };
+  } catch (err) {
+    screenCaptureAccessGranted = false;
+    const message = err instanceof Error ? err.message : "Screen capture failed";
+    return {
+      ok: false,
+      granted: false,
+      error: `${message}. ${screenCapturePermissionHint()}`,
+    };
+  }
+}
+
 function broadcastCaptureScreen(base64) {
   const payload = { base64, at: Date.now() };
-  const enemyWin = overlayWindows.enemy;
-  if (enemyWin && !enemyWin.isDestroyed()) {
-    enemyWin.webContents.send("overlay:captureScreen", payload);
-    return;
-  }
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("overlay:captureScreen", payload);
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send("overlay:captureScreen", payload);
+    }
   }
 }
 
@@ -208,22 +280,63 @@ function normalizeCaptureHotkey(input) {
     .join("+");
 }
 
-function registerCaptureHotkey(accelerator) {
-  if (globalShortcut.isRegistered(accelerator)) {
+function unregisterAccelerator(accelerator) {
+  if (accelerator && globalShortcut.isRegistered(accelerator)) {
     globalShortcut.unregister(accelerator);
   }
+}
+
+function registerClickThroughHotkey() {
+  unregisterAccelerator(CLICK_THROUGH_HOTKEY);
+  return globalShortcut.register(CLICK_THROUGH_HOTKEY, () => {
+    applyOverlayClickThrough(!overlayClickThrough);
+  });
+}
+
+function registerCaptureHotkey(accelerator) {
+  unregisterAccelerator(accelerator);
   return globalShortcut.register(accelerator, () => {
     void triggerScreenCapture();
   });
 }
 
-function registerOverlayHotkeys() {
-  globalShortcut.unregisterAll();
-  if (hotkeyRecording) return;
+function unregisterCaptureHotkey() {
+  unregisterAccelerator(captureHotkeyAccelerator);
+}
 
-  globalShortcut.register("Control+Shift+D", () => {
-    applyOverlayClickThrough(!overlayClickThrough);
-  });
+function clearHotkeyRecordingSession() {
+  hotkeyRecording = false;
+  if (hotkeyRecordingTimeout) {
+    clearTimeout(hotkeyRecordingTimeout);
+    hotkeyRecordingTimeout = null;
+  }
+  if (hotkeyRecordingBlurHandler) {
+    const { win, handler } = hotkeyRecordingBlurHandler;
+    if (win && !win.isDestroyed()) {
+      win.removeListener("blur", handler);
+    }
+    hotkeyRecordingBlurHandler = null;
+  }
+}
+
+function cancelHotkeyRecording(notifyRenderer) {
+  if (!hotkeyRecording) return;
+  clearHotkeyRecordingSession();
+  registerOverlayHotkeys();
+  if (notifyRenderer) {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send("overlay:hotkeyRecordingCancelled");
+      }
+    }
+  }
+}
+
+function registerOverlayHotkeys() {
+  unregisterCaptureHotkey();
+  registerClickThroughHotkey();
+
+  if (hotkeyRecording) return;
 
   const saved = normalizeCaptureHotkey(loadCaptureHotkey());
   const candidates = [
@@ -232,6 +345,7 @@ function registerOverlayHotkeys() {
   ];
   let registered = false;
   for (const candidate of candidates) {
+    if (candidate === CLICK_THROUGH_HOTKEY) continue;
     if (registerCaptureHotkey(candidate)) {
       captureHotkeyAccelerator = candidate;
       registered = true;
@@ -239,6 +353,7 @@ function registerOverlayHotkeys() {
         console.warn(
           `Capture hotkey "${saved}" unavailable; using "${candidate}" instead.`
         );
+        saveCaptureHotkey(candidate);
       }
       break;
     }
@@ -493,6 +608,30 @@ ipcMain.handle("overlay:setIgnoreMouseEvents", (event, ignore) => {
   }
 });
 
+ipcMain.handle("screenCapture:requestAccess", () =>
+  requestScreenCaptureAccess()
+);
+
+ipcMain.handle("screenCapture:captureNow", async () => {
+  if (!screenCaptureAccessGranted) {
+    const access = await requestScreenCaptureAccess();
+    if (!access.ok) {
+      return { ok: false, error: access.error ?? "Screen capture not available" };
+    }
+  }
+  try {
+    const base64 = await capturePrimaryScreenBase64();
+    return { ok: true, base64, at: Date.now() };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Screen capture failed";
+    return { ok: false, error: message };
+  }
+});
+
+ipcMain.handle("screenCapture:getStatus", () => ({
+  granted: screenCaptureAccessGranted,
+}));
+
 ipcMain.handle("overlay:getCaptureHotkey", () => loadCaptureHotkey());
 
 ipcMain.handle("overlay:getCaptureHotkeyStatus", () => ({
@@ -502,19 +641,34 @@ ipcMain.handle("overlay:getCaptureHotkeyStatus", () => ({
 }));
 
 ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
+  cancelHotkeyRecording(false);
   hotkeyRecording = true;
-  globalShortcut.unregisterAll();
+  unregisterCaptureHotkey();
+  registerClickThroughHotkey();
+
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) {
     win.focus();
     win.webContents.focus();
+    clearOverlayMouseIgnore(win);
   }
+
+  if (hotkeyRecordingTimeout) clearTimeout(hotkeyRecordingTimeout);
+  hotkeyRecordingTimeout = setTimeout(() => {
+    cancelHotkeyRecording(true);
+  }, HOTKEY_RECORDING_TIMEOUT_MS);
+
   return { ok: true };
 });
 
 ipcMain.handle("overlay:endHotkeyRecording", () => {
-  hotkeyRecording = false;
+  clearHotkeyRecordingSession();
   registerOverlayHotkeys();
+  return { ok: true };
+});
+
+ipcMain.handle("overlay:cancelHotkeyRecording", () => {
+  cancelHotkeyRecording(true);
   return { ok: true };
 });
 
@@ -526,15 +680,15 @@ ipcMain.handle("overlay:setCaptureHotkey", (_event, accelerator) => {
     ["Control", "Command", "CommandOrControl", "Alt", "Shift"].includes(part)
   );
   if (!hasModifier || parts.length < 2) {
-    hotkeyRecording = false;
+    clearHotkeyRecordingSession();
     registerOverlayHotkeys();
     return {
       ok: false,
       error: "Use at least one modifier (Ctrl, Alt, Shift) plus a key.",
     };
   }
-  if (next === "Control+Shift+D") {
-    hotkeyRecording = false;
+  if (next === CLICK_THROUGH_HOTKEY) {
+    clearHotkeyRecordingSession();
     registerOverlayHotkeys();
     return {
       ok: false,
@@ -543,12 +697,9 @@ ipcMain.handle("overlay:setCaptureHotkey", (_event, accelerator) => {
   }
 
   saveCaptureHotkey(next);
-  hotkeyRecording = false;
-  globalShortcut.unregisterAll();
-  globalShortcut.register("Control+Shift+D", () => {
-    applyOverlayClickThrough(!overlayClickThrough);
-  });
+  clearHotkeyRecordingSession();
   captureHotkeyAccelerator = next;
+  registerClickThroughHotkey();
   const captureRegistered = registerCaptureHotkey(next);
   if (!captureRegistered) {
     saveCaptureHotkey(previous);

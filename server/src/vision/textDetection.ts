@@ -109,10 +109,7 @@ function detectFuzzy(text: string): VisionResult["detectedUnits"] {
   return found;
 }
 
-/** Match unit names anywhere in OCR text (exact first, then fuzzy). */
+/** Match unit names in OCR text (exact phrases only — avoids UI false positives). */
 export function detectFromText(text: string): VisionResult {
-  const exact = detectExact(text);
-  const detectedUnits =
-    exact.length > 0 ? exact : detectFuzzy(text);
-  return { detectedUnits, mode: "heuristic" };
+  return { detectedUnits: detectExact(text), mode: "heuristic" };
 }

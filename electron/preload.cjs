@@ -35,10 +35,22 @@ contextBridge.exposeInMainWorld("starcraftDS", {
   beginHotkeyRecording: () =>
     ipcRenderer.invoke("overlay:beginHotkeyRecording"),
   endHotkeyRecording: () => ipcRenderer.invoke("overlay:endHotkeyRecording"),
+  cancelHotkeyRecording: () =>
+    ipcRenderer.invoke("overlay:cancelHotkeyRecording"),
+  onHotkeyRecordingCancelled: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("overlay:hotkeyRecordingCancelled", handler);
+    return () =>
+      ipcRenderer.removeListener("overlay:hotkeyRecordingCancelled", handler);
+  },
   onCaptureHotkey: (callback) => {
     const handler = (_event, payload) => callback(payload);
     ipcRenderer.on("overlay:captureScreen", handler);
     return () =>
       ipcRenderer.removeListener("overlay:captureScreen", handler);
   },
+  requestScreenCaptureAccess: () =>
+    ipcRenderer.invoke("screenCapture:requestAccess"),
+  captureScreenNow: () => ipcRenderer.invoke("screenCapture:captureNow"),
+  getScreenCaptureStatus: () => ipcRenderer.invoke("screenCapture:getStatus"),
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type VideoSource = "none" | "capture" | "file";
+export type VideoSource = "none" | "capture" | "file" | "electron";
 
 const VIDEO_EXTENSIONS =
   /\.(mp4|webm|ogg|ogv|mov|avi|mkv|m4v|wmv|flv|3gp|mpeg|mpg|ts|m2ts|mts)$/i;
@@ -10,12 +10,17 @@ export function isVideoFile(file: File): boolean {
   return VIDEO_EXTENSIONS.test(file.name);
 }
 
+function isElectronCapture(): boolean {
+  return Boolean(window.starcraftDS?.requestScreenCaptureAccess);
+}
+
 export function useScreenCapture() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileUrlRef = useRef<string | null>(null);
   const capturingRef = useRef(false);
+  const electronCaptureRef = useRef(false);
   const [capturing, setCapturing] = useState(false);
   const [frameReady, setFrameReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +43,7 @@ export function useScreenCapture() {
       video.load();
     }
     capturingRef.current = false;
+    electronCaptureRef.current = false;
     setCapturing(false);
     setFrameReady(false);
     setSource("none");
@@ -55,11 +61,35 @@ export function useScreenCapture() {
     onReady();
   }, []);
 
+  const startElectronCapture = useCallback(async () => {
+    const api = window.starcraftDS;
+    if (!api?.requestScreenCaptureAccess) return false;
+
+    const access = await api.requestScreenCaptureAccess();
+    if (!access.ok) {
+      setError(access.error ?? "Screen capture permission denied");
+      stop();
+      return true;
+    }
+
+    electronCaptureRef.current = true;
+    capturingRef.current = true;
+    setCapturing(true);
+    setSource("electron");
+    setFrameReady(true);
+    return true;
+  }, [stop]);
+
   const start = useCallback(async () => {
     stop();
     setError(null);
     setFrameReady(false);
     try {
+      if (isElectronCapture()) {
+        await startElectronCapture();
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           frameRate: { ideal: 15, max: 30 },
@@ -89,7 +119,7 @@ export function useScreenCapture() {
       );
       stop();
     }
-  }, [attachVideoReadyHandlers, stop]);
+  }, [attachVideoReadyHandlers, startElectronCapture, stop]);
 
   const loadVideoFile = useCallback(
     async (file: File) => {
@@ -137,7 +167,21 @@ export function useScreenCapture() {
     [attachVideoReadyHandlers, stop]
   );
 
-  const captureFrameBase64 = useCallback((): string | null => {
+  const captureFrameBase64 = useCallback(async (): Promise<string | null> => {
+    if (electronCaptureRef.current && window.starcraftDS?.captureScreenNow) {
+      try {
+        const shot = await window.starcraftDS.captureScreenNow();
+        if (!shot.ok || !shot.base64?.trim()) {
+          setError(shot.error ?? "Screen capture failed");
+          return null;
+        }
+        return shot.base64;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Screen capture failed");
+        return null;
+      }
+    }
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (

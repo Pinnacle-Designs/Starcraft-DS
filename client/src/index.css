@@ -1958,6 +1958,10 @@ body.overlay-electron .floating-overlay-panel-body * {
   display: none;
 }
 
+.floating-overlay-panel-body > .capture-hotkey-settings:first-child {
+  margin-top: 0;
+}
+
 .floating-overlay-panel-body .manual-army-header:first-child h2 {
   display: none;
 }
@@ -2107,6 +2111,14 @@ body.overlay-electron .floating-overlay-panel-body * {
 .overlay-hint {
   margin: 0.35rem 0 0.75rem;
   max-width: 52rem;
+}
+
+.floating-overlay-panel-footer .capture-hotkey-settings {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+  padding: 0.45rem 0;
+  border-top: none;
+  background: transparent;
 }
 
 .floating-overlay-panel-footer {
@@ -2259,6 +2271,10 @@ body.overlay-electron .floating-overlay-panel-body * {
   opacity: 0.92;
 }
 
-.floating-overlay-panel-body.passthrough .capture-hotkey-interactive {
+.floating-overlay-panel-body.passthrough .capture-hotkey-settings,
+.floating-overlay-panel-body.passthrough .capture-hotkey-interactive,
+.floating-overlay-panel-body.passthrough .overlay-interactive,
+.floating-overlay-panel-body.passthrough .overlay-interactive *,
+.floating-overlay-panel-footer .capture-hotkey-settings {
   pointer-events: auto;
 }

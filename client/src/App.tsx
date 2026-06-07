@@ -273,9 +273,9 @@ export default function App() {
       }
       if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
       if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
-      if (incoming.result) {
+      if (incoming.result !== undefined) {
         setResult(incoming.result);
-        setLastCounterRefreshAt(Date.now());
+        setLastCounterRefreshAt(incoming.result ? Date.now() : null);
       }
     });
   }, []);
@@ -320,12 +320,12 @@ export default function App() {
           );
           return;
         }
-        const b64 = captureFrameBase64();
+        const b64 = await captureFrameBase64();
         if (!b64) {
           setLastError(
             frameReady
-              ? "Could not grab frame — try stopping and restarting capture."
-              : "Waiting for video — give it a second after capture starts."
+              ? "Could not grab screenshot — try stopping and restarting capture."
+              : "Waiting for capture — give it a second after capture starts."
           );
           return;
         }
@@ -363,22 +363,23 @@ export default function App() {
   );
 
   const handleSaveSnapshot = useCallback(() => {
-    const b64 = captureFrameBase64();
-    if (!b64) {
-      setLastError(
-        frameReady
-          ? "Could not grab frame — try stopping and restarting capture."
-          : "Waiting for video — give it a second after capture starts."
-      );
-      return;
-    }
-    void saveCaptureFromBase64(b64, {
-      summary: result?.detectedUnits.length
-        ? result.detectedUnits.map((u) => u.name).join(", ")
-        : "Manual snapshot",
-    }).then((saved) => {
+    void (async () => {
+      const b64 = await captureFrameBase64();
+      if (!b64) {
+        setLastError(
+          frameReady
+            ? "Could not grab screenshot — try stopping and restarting capture."
+            : "Waiting for capture — give it a second after capture starts."
+        );
+        return;
+      }
+      const saved = await saveCaptureFromBase64(b64, {
+        summary: result?.detectedUnits.length
+          ? result.detectedUnits.map((u) => u.name).join(", ")
+          : "Manual snapshot",
+      });
       if (saved) bumpCaptureHistory();
-    });
+    })();
   }, [bumpCaptureHistory, captureFrameBase64, frameReady, result]);
 
   const handleManualSuggest = () => {
@@ -484,6 +485,7 @@ export default function App() {
   const captureStatusLabel = () => {
     if (live) return "Live coach";
     if (capturing && videoSource === "file" && videoFileName) return videoFileName;
+    if (capturing && videoSource === "electron") return "Primary display";
     if (capturing) return videoSource === "file" ? "Video loaded" : "Capturing";
     return null;
   };
@@ -569,10 +571,17 @@ export default function App() {
                 <canvas ref={canvasRef} hidden />
                 {!capturing && (
                   <div className="preview-placeholder">
-                    Share your StarCraft II window or upload a video below to begin
+                    {isElectronApp()
+                      ? "Start capture to analyze full-screen screenshots of your primary display (same as the capture hotkey)."
+                      : "Share your StarCraft II window or upload a video below to begin"}
                   </div>
                 )}
-                {capturing && !frameReady && (
+                {capturing && videoSource === "electron" && (
+                  <div className="preview-placeholder preview-electron-capture">
+                    Screen capture active — snapshots your primary display without a visible overlay.
+                  </div>
+                )}
+                {capturing && !frameReady && videoSource !== "electron" && (
                   <div className="preview-placeholder preview-loading">
                     {videoSource === "file"
                       ? "Loading video…"

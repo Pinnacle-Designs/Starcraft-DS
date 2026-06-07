@@ -11,6 +11,7 @@ import {
 
 interface Props {
   onHotkeyChange?: (accelerator: string) => void;
+  onInteractionChange?: (active: boolean) => void;
   scanning?: boolean;
   lastCaptureAt?: number | null;
   lastCaptureSummary?: string | null;
@@ -19,6 +20,7 @@ interface Props {
 
 export function CaptureHotkeySettings({
   onHotkeyChange,
+  onInteractionChange,
   scanning = false,
   lastCaptureAt = null,
   lastCaptureSummary = null,
@@ -32,6 +34,11 @@ export function CaptureHotkeySettings({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const recordingRef = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const pinMouseEvents = useCallback(() => {
+    void window.starcraftDS?.setIgnoreMouseEvents?.(false);
+  }, []);
 
   const endRecordingMode = useCallback(async () => {
     setRecording(false);
@@ -71,6 +78,37 @@ export function CaptureHotkeySettings({
   useEffect(() => {
     recordingRef.current = recording;
   }, [recording]);
+
+  useEffect(() => {
+    const api = window.starcraftDS;
+    if (!api?.onHotkeyRecordingCancelled) return;
+    return api.onHotkeyRecordingCancelled(() => {
+      setRecording(false);
+      setError(null);
+    });
+  }, []);
+
+  useEffect(() => {
+    onInteractionChange?.(recording || manualOpen);
+  }, [recording, manualOpen, onInteractionChange]);
+
+  useEffect(() => {
+    if (!recording) return;
+    pinMouseEvents();
+  }, [recording, pinMouseEvents]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const onPointerEnter = () => pinMouseEvents();
+    const onPointerDown = () => pinMouseEvents();
+    root.addEventListener("pointerenter", onPointerEnter);
+    root.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      root.removeEventListener("pointerenter", onPointerEnter);
+      root.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [pinMouseEvents]);
 
   useEffect(() => {
     return () => {
@@ -124,11 +162,12 @@ export function CaptureHotkeySettings({
 
   const startRecording = useCallback(async () => {
     setError(null);
+    pinMouseEvents();
     if (window.starcraftDS?.beginHotkeyRecording) {
       await window.starcraftDS.beginHotkeyRecording();
     }
     setRecording(true);
-  }, []);
+  }, [pinMouseEvents]);
 
   useEffect(() => {
     if (!recording) return;
@@ -161,6 +200,7 @@ export function CaptureHotkeySettings({
 
   return (
     <div
+      ref={rootRef}
       className={`capture-hotkey-settings capture-hotkey-interactive${
         compact ? " capture-hotkey-compact" : ""
       }`}
@@ -174,7 +214,7 @@ export function CaptureHotkeySettings({
           onClick={() => {
             void startRecording();
           }}
-          disabled={scanning || saving}
+          disabled={saving || recording}
         >
           {recording ? "Press shortcut…" : "Change"}
         </button>
@@ -182,7 +222,7 @@ export function CaptureHotkeySettings({
           type="button"
           className="btn btn-sm btn-ghost"
           onClick={resetHotkey}
-          disabled={scanning || saving || hotkey === DEFAULT_CAPTURE_HOTKEY}
+          disabled={saving || recording || hotkey === DEFAULT_CAPTURE_HOTKEY}
           title="Reset to default"
         >
           Reset
@@ -206,7 +246,7 @@ export function CaptureHotkeySettings({
           type="button"
           className="capture-hotkey-manual-toggle"
           onClick={() => setManualOpen((open) => !open)}
-          disabled={scanning || saving || recording}
+          disabled={saving || recording}
         >
           {manualOpen ? "Hide manual entry" : "Type shortcut manually"}
         </button>
@@ -218,7 +258,7 @@ export function CaptureHotkeySettings({
               value={manualValue}
               onChange={(e) => setManualValue(e.target.value)}
               placeholder="Ctrl+Shift+S"
-              disabled={scanning || saving || recording}
+              disabled={saving || recording}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -230,7 +270,7 @@ export function CaptureHotkeySettings({
               type="button"
               className="btn btn-sm"
               onClick={applyManual}
-              disabled={scanning || saving || recording || !manualValue.trim()}
+              disabled={saving || recording || !manualValue.trim()}
             >
               Apply
             </button>

@@ -46,6 +46,8 @@ export function useOverlayScreenCapture({
   const byRaceRef = useRef<Awaited<ReturnType<typeof fetchUnitCatalog>>["byRace"] | null>(
     null
   );
+  const scanningRef = useRef(false);
+  const lastCaptureEventAt = useRef(0);
 
   useEffect(() => {
     fetchUnitCatalog()
@@ -58,7 +60,8 @@ export function useOverlayScreenCapture({
   }, []);
 
   const runCapture = useCallback(async (imageBase64: string) => {
-    if (!imageBase64 || scanning) return;
+    if (!imageBase64?.trim() || scanningRef.current) return;
+    scanningRef.current = true;
     setScanning(true);
     setError(null);
     try {
@@ -98,13 +101,17 @@ export function useOverlayScreenCapture({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Screen capture failed");
     } finally {
+      scanningRef.current = false;
       setScanning(false);
     }
-  }, [onCaptureComplete, onWavesChange, scanning]);
+  }, [onCaptureComplete, onWavesChange]);
 
   useEffect(() => {
     if (!enabled || !window.starcraftDS?.onCaptureHotkey) return;
     return window.starcraftDS.onCaptureHotkey((payload) => {
+      const at = payload.at ?? 0;
+      if (at && at === lastCaptureEventAt.current) return;
+      lastCaptureEventAt.current = at;
       void runCapture(payload.base64);
     });
   }, [enabled, runCapture]);

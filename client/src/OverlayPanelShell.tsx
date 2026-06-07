@@ -7,6 +7,8 @@ interface Props {
   onClose: () => void;
   clickThrough?: boolean;
   onClickThroughChange?: (enabled: boolean) => void;
+  /** Rendered in the footer above click-through controls (always receives clicks). */
+  footerTop?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -16,6 +18,7 @@ export function OverlayPanelShell({
   onClose,
   clickThrough = false,
   onClickThroughChange,
+  footerTop,
   children,
 }: Props) {
   const electron = isElectronApp();
@@ -55,6 +58,7 @@ export function OverlayPanelShell({
       </div>
       {electron && onClickThroughChange ? (
         <footer className="floating-overlay-panel-footer">
+          {footerTop}
           <label className="overlay-toggle">
             <input
               type="checkbox"

@@ -20,7 +20,7 @@ interface Options {
   visionEnabled: boolean;
   manualUnits: ManualUnitInput[];
   analyzeOptions?: AnalyzeOptions;
-  captureFrameBase64: () => string | null;
+  captureFrameBase64: () => Promise<string | null>;
   onResult: (data: AnalyzeResponse) => void;
   onError: (message: string | null) => void;
   onVisionFrame?: (frameBase64: string, data: AnalyzeResponse) => void;
@@ -61,9 +61,9 @@ export function useLiveCoach({
         return;
       }
 
-      const b64 = captureFrameBase64();
+      const b64 = await captureFrameBase64();
       if (!b64) {
-        onError("Waiting for video frame…");
+        onError("Waiting for screen snapshot…");
         return;
       }
 
