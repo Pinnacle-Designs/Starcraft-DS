@@ -1,4 +1,9 @@
-import type { CounterBuildCount, CounterSuggestion } from "./api";
+import type { CounterBuildCount, CounterSuggestion, UnitTier } from "./api";
+
+export function tierLabel(tier: UnitTier | undefined): string | null {
+  if (tier == null) return null;
+  return `T${tier}`;
+}
 
 export function primaryBuildCount(
   s: CounterSuggestion
@@ -10,6 +15,40 @@ export function alternativeBuildCounts(
   s: CounterSuggestion
 ): CounterBuildCount[] {
   return s.buildCounts?.filter((b) => b.role === "alternative") ?? [];
+}
+
+export function allCounterPaths(s: CounterSuggestion): CounterBuildCount[] {
+  return s.counterPaths ?? s.buildCounts ?? [];
+}
+
+export function coverageSummary(
+  suggestions: CounterSuggestion[]
+): { covered: number; partial: number; uncovered: number } {
+  let covered = 0;
+  let partial = 0;
+  let uncovered = 0;
+  for (const s of suggestions) {
+    if (s.coverage === "covered") covered++;
+    else if (s.coverage === "partial") partial++;
+    else uncovered++;
+  }
+  return { covered, partial, uncovered };
+}
+
+export function formatOwnedNeed(entry: CounterBuildCount): string | null {
+  if (entry.owned == null && entry.stillNeed == null) return null;
+  const owned = entry.owned ?? 0;
+  const need = entry.stillNeed ?? 0;
+  if (entry.coverage === "covered") {
+    return `You have ${owned}× — covered`;
+  }
+  if (entry.coverage === "partial") {
+    return `You have ${owned}× — add ${need} more`;
+  }
+  if (owned > 0) {
+    return `You have ${owned}× — add ${need} more`;
+  }
+  return null;
 }
 
 export function formatBuildCountEntry(

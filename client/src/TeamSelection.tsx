@@ -1,6 +1,7 @@
-import type { PlayerRace, WaveShift } from "./api";
+import type { PlayerRace, TierUnlocked, UnitTier, WaveShift } from "./api";
 import { WAVE_DEFS } from "./manualArmy";
 import {
+  setTierUnlockedForWave,
   toggleTeamWaveRace,
   type TeamWaves,
 } from "./teamWaves";
@@ -13,18 +14,24 @@ const WAVE_SHIFT_OPTIONS: { value: WaveShift; label: string }[] = [
   { value: 2, label: "+2 waves" },
 ];
 
+const TIER_OPTIONS: UnitTier[] = [1, 2, 3];
+
 interface Props {
   teamWaves: TeamWaves;
   waveShift: WaveShift;
+  tierUnlocked: TierUnlocked;
   onChange: (teams: TeamWaves) => void;
   onWaveShiftChange: (shift: WaveShift) => void;
+  onTierUnlockedChange: (tiers: TierUnlocked) => void;
 }
 
 export function TeamSelection({
   teamWaves,
   waveShift,
+  tierUnlocked,
   onChange,
   onWaveShiftChange,
+  onTierUnlockedChange,
 }: Props) {
   return (
     <div className="panel-section team-selection">
@@ -41,23 +48,47 @@ export function TeamSelection({
           className={`team-wave-row ${def.colorClass}`}
         >
           <span className="team-wave-label">{def.label}</span>
-          <div className="race-picker team-wave-picker">
-            {RACES.map((race) => (
-              <button
-                key={race}
-                type="button"
-                className={`race-btn ${
-                  teamWaves[def.index] === race
-                    ? `active-${race.toLowerCase()}`
-                    : ""
-                }`}
-                onClick={() =>
-                  onChange(toggleTeamWaveRace(teamWaves, def.index, race))
-                }
-              >
-                {race}
-              </button>
-            ))}
+          <div className="team-wave-controls">
+            <div className="race-picker team-wave-picker">
+              {RACES.map((race) => (
+                <button
+                  key={race}
+                  type="button"
+                  className={`race-btn ${
+                    teamWaves[def.index] === race
+                      ? `active-${race.toLowerCase()}`
+                      : ""
+                  }`}
+                  onClick={() =>
+                    onChange(toggleTeamWaveRace(teamWaves, def.index, race))
+                  }
+                >
+                  {race}
+                </button>
+              ))}
+            </div>
+            <div className="team-wave-tier">
+              <span className="team-tier-label">Tech</span>
+              <div className="tier-unlock-picker">
+                {TIER_OPTIONS.map((tier) => (
+                  <button
+                    key={tier}
+                    type="button"
+                    className={`tier-unlock-btn${
+                      tierUnlocked[def.index] === tier ? " active" : ""
+                    }`}
+                    title={`Max tech tier unlocked on ${def.label}`}
+                    onClick={() =>
+                      onTierUnlockedChange(
+                        setTierUnlockedForWave(tierUnlocked, def.index, tier)
+                      )
+                    }
+                  >
+                    T{tier}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ))}
@@ -83,6 +114,8 @@ export function TeamSelection({
           : waveShift === 1
             ? "Your team is 1 wave ahead — enemy Wave 1 uses your Wave 2 counters, etc."
             : "Your team is 2 waves ahead — enemy Wave 1 uses your Wave 3 counters, etc."}
+        {" "}
+        Tech tier sets which counters you can still build.
       </p>
     </div>
   );

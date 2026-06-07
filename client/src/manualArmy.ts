@@ -1,4 +1,4 @@
-import type { ManualUnitInput, PlayerRace } from "./api";
+import type { ManualUnitInput, PlayerRace, TeamWaves } from "./api";
 
 export type WaveIndex = 0 | 1 | 2;
 
@@ -104,4 +104,19 @@ export function setEnemyRace(
   enemyRace: PlayerRace
 ): ManualArmyState {
   return { enemyRace, counts: {} };
+}
+
+/** Sync friendly wave race labels from team selection (keeps counts). */
+export function syncFriendlyWaveRaces(
+  state: ManualWavesState,
+  teamWaves: TeamWaves
+): ManualWavesState {
+  const waves = state.waves.map((wave, i) => {
+    const race =
+      teamWaves[i] ??
+      teamWaves[i - 1] ??
+      teamWaves[0];
+    return { ...wave, enemyRace: race };
+  }) as ManualWavesState["waves"];
+  return { ...state, waves };
 }

@@ -1,8 +1,9 @@
-import type { PlayerRace, TeamWaves, WaveShift } from "./api";
+import type { PlayerRace, TeamWaves, TierUnlocked, UnitTier, WaveShift } from "./api";
 
-export type { TeamWaves, WaveShift };
+export type { TeamWaves, WaveShift, TierUnlocked };
 
 export const DEFAULT_TEAM_WAVES: TeamWaves = ["Terran", null, null];
+export const DEFAULT_TIER_UNLOCKED: TierUnlocked = [1, 2, 3];
 
 export function primaryTeamRace(teams: TeamWaves): PlayerRace {
   return teams[0];
@@ -61,4 +62,14 @@ export function toggleTeamWaveRace(
     return setTeamWaveRace(teams, waveIndex, null);
   }
   return setTeamWaveRace(teams, waveIndex, race);
+}
+
+export function setTierUnlockedForWave(
+  tiers: TierUnlocked,
+  waveIndex: 0 | 1 | 2,
+  tier: UnitTier
+): TierUnlocked {
+  const next = [...tiers] as TierUnlocked;
+  next[waveIndex] = tier;
+  return next;
 }

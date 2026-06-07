@@ -44,11 +44,26 @@ export function parseEnemyCount(notes?: string, count?: number): number {
   return 1;
 }
 
+export type UnitTier = 1 | 2 | 3;
+
+export type CoverageStatus = "covered" | "partial" | "uncovered";
+
 export interface BuildCount {
   name: string;
   /** Estimated count if you use this counter on its own. */
   suggested?: number;
   role: "primary" | "alternative";
+  /** Production tech tier of this counter unit. */
+  counterTier?: UnitTier;
+  /** True when counter is lower tech than the enemy (mass T1 can work in Direct Strike). */
+  budgetOption?: boolean;
+  /** Friendly units already on the matching team wave. */
+  owned?: number;
+  /** Additional units needed beyond what you own. */
+  stillNeed?: number;
+  /** Whether your wave has unlocked this counter's tech tier. */
+  buildable?: boolean;
+  coverage?: CoverageStatus;
 }
 
 const HARD_SUPPLY_RATIO = 0.72;

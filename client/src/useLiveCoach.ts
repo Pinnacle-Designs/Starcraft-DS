@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   analyzeFrame,
+  type AnalyzeOptions,
   type AnalyzeResponse,
   type ManualUnitInput,
   type TeamWaves,
@@ -18,6 +19,7 @@ interface Options {
   waveShift: WaveShift;
   visionEnabled: boolean;
   manualUnits: ManualUnitInput[];
+  analyzeOptions?: AnalyzeOptions;
   captureFrameBase64: () => string | null;
   onResult: (data: AnalyzeResponse) => void;
   onError: (message: string | null) => void;
@@ -32,6 +34,7 @@ export function useLiveCoach({
   waveShift,
   visionEnabled,
   manualUnits,
+  analyzeOptions,
   captureFrameBase64,
   onResult,
   onError,
@@ -51,7 +54,9 @@ export function useLiveCoach({
 
     try {
       if (manualOnly) {
-        onResult(await analyzeFrame("", teamWaves, manualUnits, waveShift));
+        onResult(
+          await analyzeFrame("", teamWaves, manualUnits, waveShift, analyzeOptions)
+        );
         setLastScanAt(Date.now());
         return;
       }
@@ -62,7 +67,13 @@ export function useLiveCoach({
         return;
       }
 
-      const data = await analyzeFrame(b64, teamWaves, undefined, waveShift);
+      const data = await analyzeFrame(
+        b64,
+        teamWaves,
+        undefined,
+        waveShift,
+        analyzeOptions
+      );
       onResult(data);
       onVisionFrame?.(b64, data);
       setLastScanAt(Date.now());
@@ -82,6 +93,7 @@ export function useLiveCoach({
   }, [
     manualOnly,
     manualUnits,
+    analyzeOptions,
     teamWaves,
     waveShift,
     captureFrameBase64,

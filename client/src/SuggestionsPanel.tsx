@@ -1,7 +1,15 @@
 import { useEffect, useRef } from "react";
 import type { AnalyzeResponse, DetectedUnit, PlayerRace } from "./api";
 import { WAVE_DEFS } from "./manualArmy";
-import { formatEnemyStack, primaryBuildCount, alternativeBuildCounts } from "./suggestionFormat";
+import {
+  allCounterPaths,
+  coverageSummary,
+  formatOwnedNeed,
+  formatEnemyStack,
+  primaryBuildCount,
+  alternativeBuildCounts,
+  tierLabel,
+} from "./suggestionFormat";
 
 function waveColorClass(wave: DetectedUnit["wave"]): string {
   if (!wave) return "";
@@ -17,6 +25,18 @@ interface Props {
   scanning?: boolean;
   lastScanAt?: number | null;
   counterRefreshing?: boolean;
+}
+
+function coverageBadgeClass(status: string | undefined): string {
+  if (status === "covered") return "coverage-covered";
+  if (status === "partial") return "coverage-partial";
+  return "coverage-uncovered";
+}
+
+function coverageLabel(status: string | undefined): string {
+  if (status === "covered") return "Covered";
+  if (status === "partial") return "Partial";
+  return "Gap";
 }
 
 function formatScanTime(ts: number | null | undefined): string {
@@ -110,6 +130,31 @@ export function SuggestionsPanel({
         </div>
       )}
 
+      {result?.suggestions && result.suggestions.length > 0 && !compact && (() => {
+        const summary = coverageSummary(result.suggestions);
+        const hasInventory = summary.covered + summary.partial > 0;
+        if (!hasInventory && summary.uncovered === result.suggestions.length) return null;
+        return (
+          <div className="coverage-summary">
+            {summary.covered > 0 ? (
+              <span className="coverage-summary-item coverage-covered">
+                {summary.covered} covered
+              </span>
+            ) : null}
+            {summary.partial > 0 ? (
+              <span className="coverage-summary-item coverage-partial">
+                {summary.partial} need more
+              </span>
+            ) : null}
+            {summary.uncovered > 0 ? (
+              <span className="coverage-summary-item coverage-uncovered">
+                {summary.uncovered} gaps
+              </span>
+            ) : null}
+          </div>
+        );
+      })()}
+
       {result?.detectedUnits && result.detectedUnits.length > 0 && (
         <div className="detected-tags">
           {result.detectedUnits.map((u) => (
@@ -143,6 +188,8 @@ export function SuggestionsPanel({
           const waveClass = waveColorClass(detected?.wave ?? enemyWave);
           const primary = primaryBuildCount(s);
           const alternatives = alternativeBuildCounts(s);
+          const paths = allCounterPaths(s);
+          const showAllPaths = !compact && paths.length > 1;
           return (
           <div
             key={`${s.enemyUnit}-${counterRace}-${enemyWave}-${s.teamWave ?? 0}`}
@@ -150,6 +197,18 @@ export function SuggestionsPanel({
           >
             <div className="enemy">
               vs {formatEnemyStack(s.enemyUnit, s.enemyCount, detected?.notes)}
+              {tierLabel(s.enemyTier) ? (
+                <span className="counter-tier-badge enemy-tier-badge">
+                  {tierLabel(s.enemyTier)}
+                </span>
+              ) : null}
+              {s.coverage ? (
+                <span
+                  className={`coverage-badge ${coverageBadgeClass(s.coverage)}`}
+                >
+                  {coverageLabel(s.coverage)}
+                </span>
+              ) : null}
               {(detected?.wave ?? enemyWave) ? (
                 <span className="suggestion-wave">
                   {WAVE_DEFS[(detected?.wave ?? enemyWave)! - 1]?.label}
@@ -158,24 +217,97 @@ export function SuggestionsPanel({
             </div>
             {primary ? (
               <div className="build build-primary">
-                <span className="build-primary-label">Build</span>
-                <span className="build-primary-value">
-                  {counterRace}: {primary.suggested}× {primary.name}
+                <span className="build-primary-label">
+                  {primary.coverage === "covered" ? "Hold" : "Build"}
                 </span>
+                <span className="build-primary-value">
+                  {counterRace}:{" "}
+                  {primary.coverage === "covered"
+                    ? `${primary.owned ?? primary.suggested}× ${primary.name}`
+                    : primary.stillNeed != null && primary.stillNeed > 0
+                      ? `+${primary.stillNeed}× ${primary.name}`
+                      : `${primary.suggested}× ${primary.name}`}
+                  {tierLabel(primary.counterTier) ? (
+                    <span
+                      className={`counter-tier-badge${primary.budgetOption ? " counter-tier-budget" : ""}`}
+                    >
+                      {tierLabel(primary.counterTier)}
+                    </span>
+                  ) : null}
+                  {primary.buildable === false ? (
+                    <span className="counter-tier-badge counter-tier-locked">
+                      needs T{primary.counterTier}
+                    </span>
+                  ) : null}
+                </span>
+                {formatOwnedNeed(primary) ? (
+                  <span className="build-owned-hint">{formatOwnedNeed(primary)}</span>
+                ) : null}
               </div>
             ) : (
               <div className="build">
                 {counterRace}: {s.build.join(", ")}
               </div>
             )}
-            {alternatives.length > 0 ? (
+            {showAllPaths ? (
+              <div className="counter-paths">
+                <span className="build-alt-label">All counters</span>
+                <ul className="counter-path-list">
+                  {paths.map((p) => (
+                    <li
+                      key={p.name}
+                      className={`counter-path-item${p.role === "primary" ? " counter-path-primary" : ""}${p.buildable === false ? " counter-path-locked" : ""}`}
+                    >
+                      <span className="counter-path-name">
+                        {p.suggested != null ? `${p.suggested}× ` : ""}
+                        {p.name}
+                        {tierLabel(p.counterTier) ? (
+                          <span
+                            className={`counter-tier-badge${p.budgetOption ? " counter-tier-budget" : ""}`}
+                          >
+                            {tierLabel(p.counterTier)}
+                          </span>
+                        ) : null}
+                      </span>
+                      {p.coverage ? (
+                        <span
+                          className={`coverage-badge coverage-badge-sm ${coverageBadgeClass(p.coverage)}`}
+                        >
+                          {p.coverage === "covered"
+                            ? `have ${p.owned}×`
+                            : p.stillNeed != null && p.stillNeed > 0
+                              ? `+${p.stillNeed}`
+                              : coverageLabel(p.coverage)}
+                        </span>
+                      ) : null}
+                      {p.buildable === false ? (
+                        <span className="counter-tier-badge counter-tier-locked">
+                          T{p.counterTier}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : alternatives.length > 0 ? (
               <div className="build-alternatives">
                 <span className="build-alt-label">Also works</span>
                 <span className="build-alt-units">
                   {alternatives.map((a) => (
                     <span key={a.name} className="build-alt-option">
-                      {a.suggested != null ? `${a.suggested}× ` : ""}
+                      {a.stillNeed != null && a.stillNeed > 0
+                        ? `+${a.stillNeed}× `
+                        : a.suggested != null
+                          ? `${a.suggested}× `
+                          : ""}
                       {a.name}
+                      {tierLabel(a.counterTier) ? (
+                        <span
+                          className={`counter-tier-badge${a.budgetOption ? " counter-tier-budget" : ""}`}
+                        >
+                          {tierLabel(a.counterTier)}
+                        </span>
+                      ) : null}
                     </span>
                   ))}
                 </span>
@@ -188,12 +320,20 @@ export function SuggestionsPanel({
             ) : null}
             {!compact && primary?.suggested != null ? (
               <div className="build-quantity-hint">
-                Pick one counter — each amount is what you&apos;d need using that
-                unit alone vs{" "}
-                {s.enemyCount != null && s.enemyCount > 1
-                  ? `×${s.enemyCount} `
+                {primary.coverage === "covered"
+                  ? "Your current army covers this threat."
+                  : "Pick one counter — each amount is what you'd need using that unit alone vs "}
+                {primary.coverage !== "covered" && (
+                  <>
+                    {s.enemyCount != null && s.enemyCount > 1
+                      ? `×${s.enemyCount} `
+                      : ""}
+                    {s.enemyUnit}
+                  </>
+                )}
+                {primary.budgetOption
+                  ? " — lower-tier option; mass enough to overwhelm (Direct Strike)"
                   : ""}
-                {s.enemyUnit}
                 {s.counterType === "soft" ? " (soft counter — round up)" : ""}
               </div>
             ) : null}

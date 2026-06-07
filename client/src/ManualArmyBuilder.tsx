@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import {
   fetchUnitCatalog,
   type PlayerRace,
+  type TeamWaves,
   type UnitsByRace,
 } from "./api";
+import { raceForWave } from "./teamWaves";
 import {
   activeWaveArmy,
   clearWaveArmy,
@@ -23,9 +25,11 @@ const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
 interface Props {
   waves: ManualWavesState;
   onChange: (waves: ManualWavesState) => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   onClearSelections?: () => void;
   refreshing?: boolean;
+  variant?: "enemy" | "friendly";
+  teamWaves?: TeamWaves;
 }
 
 export function ManualArmyBuilder({
@@ -34,13 +38,21 @@ export function ManualArmyBuilder({
   onSubmit,
   onClearSelections,
   refreshing = false,
+  variant = "enemy",
+  teamWaves,
 }: Props) {
+  const isFriendly = variant === "friendly";
   const [byRace, setByRace] = useState<UnitsByRace | null>(null);
   const [tierByUnit, setTierByUnit] = useState<Record<string, number>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const army = activeWaveArmy(waves);
   const waveDef = WAVE_DEFS[waves.activeWave];
+  const friendlyRace =
+    teamWaves && isFriendly
+      ? raceForWave(teamWaves, (waves.activeWave + 1) as 1 | 2 | 3)
+      : army.enemyRace;
+  const displayRace = isFriendly ? friendlyRace : army.enemyRace;
 
   useEffect(() => {
     fetchUnitCatalog()
@@ -53,7 +65,7 @@ export function ManualArmyBuilder({
       );
   }, []);
 
-  const units = byRace?.[army.enemyRace] ?? [];
+  const units = byRace?.[displayRace] ?? [];
   const allEntries = manualArmyEntries(waves);
   const waveOnlyEntries = waveEntries(army);
   const total = manualArmyTotal(waves);
@@ -65,7 +77,7 @@ export function ManualArmyBuilder({
       <div className="manual-army-header">
         <h2 className="panel-section-title">
           <span className="panel-heading panel-heading-inline">
-            Enemy waves (up to 3)
+            {isFriendly ? "Your army (up to 3)" : "Enemy waves (up to 3)"}
           </span>
         </h2>
         <div className="wave-tabs">
@@ -101,29 +113,39 @@ export function ManualArmyBuilder({
       {byRace && (
         <>
           <p className={`status manual-army-hint ${waveDef.colorClass}`}>
-            Editing <strong>{waveDef.label}</strong> — {army.enemyRace} units by
-            tech tier. Counters update automatically when any wave changes.
+            Editing <strong>{waveDef.label}</strong> — {displayRace} units by
+            tech tier.
+            {isFriendly
+              ? " Tag what you already have on the battlefield."
+              : " Counters update automatically when any wave changes."}
           </p>
 
-          <div className="manual-army-header">
-            <span className="panel-subheading">Opponent race ({waveDef.label})</span>
-            <div className="race-picker manual-army-races">
-              {RACES.map((race) => (
-                <button
-                  key={race}
-                  type="button"
-                  className={`race-btn ${
-                    army.enemyRace === race
-                      ? `active-${race.toLowerCase()}`
-                      : ""
-                  }`}
-                  onClick={() => patchArmy(setEnemyRace(army, race))}
-                >
-                  {race}
-                </button>
-              ))}
+          {!isFriendly ? (
+            <div className="manual-army-header">
+              <span className="panel-subheading">Opponent race ({waveDef.label})</span>
+              <div className="race-picker manual-army-races">
+                {RACES.map((race) => (
+                  <button
+                    key={race}
+                    type="button"
+                    className={`race-btn ${
+                      army.enemyRace === race
+                        ? `active-${race.toLowerCase()}`
+                        : ""
+                    }`}
+                    onClick={() => patchArmy(setEnemyRace(army, race))}
+                  >
+                    {race}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="manual-army-header">
+              <span className="panel-subheading">Team race ({waveDef.label})</span>
+              <span className="friendly-race-label">{displayRace}</span>
+            </div>
+          )}
 
           <div className={`manual-army-grid ${waveDef.colorClass}`}>
             {units.flatMap((name, index) => {
@@ -215,14 +237,16 @@ export function ManualArmyBuilder({
             >
               Clear selections
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={allEntries.length === 0 || refreshing}
-              onClick={() => onSubmit()}
-            >
-              {refreshing ? "Refreshing…" : "Refresh counters"}
-            </button>
+            {!isFriendly && onSubmit ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={allEntries.length === 0 || refreshing}
+                onClick={() => onSubmit()}
+              >
+                {refreshing ? "Refreshing…" : "Refresh counters"}
+              </button>
+            ) : null}
           </div>
         </>
       )}

@@ -15,12 +15,15 @@ import { SuggestionsPanel } from "./SuggestionsPanel";
 import { TeamSelection } from "./TeamSelection";
 import {
   DEFAULT_TEAM_WAVES,
+  DEFAULT_TIER_UNLOCKED,
   primaryTeamRace,
+  type TierUnlocked,
 } from "./teamWaves";
 import {
   clearAllWaves,
   EMPTY_MANUAL_WAVES,
   manualArmyEntries,
+  syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
 import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
@@ -32,6 +35,11 @@ import { useScreenCapture } from "./useScreenCapture";
 export default function App() {
   const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
   const [waveShift, setWaveShift] = useState<WaveShift>(0);
+  const [tierUnlocked, setTierUnlocked] =
+    useState<TierUnlocked>(DEFAULT_TIER_UNLOCKED);
+  const [friendlyWaves, setFriendlyWaves] = useState<ManualWavesState>(() =>
+    syncFriendlyWaveRaces(EMPTY_MANUAL_WAVES, DEFAULT_TEAM_WAVES)
+  );
   const playerRace = primaryTeamRace(teamWaves);
   const [live, setLive] = useState(false);
   const [vision, setVision] = useState<VisionProviders | null>(null);
@@ -97,10 +105,29 @@ export default function App() {
     () => manualArmyEntries(manualWaves),
     [manualWaves]
   );
+  const friendlyUnits = useMemo(
+    () => manualArmyEntries(friendlyWaves),
+    [friendlyWaves]
+  );
+  const analyzeOptions = useMemo(
+    () => ({
+      friendlyUnits: friendlyUnits.length ? friendlyUnits : undefined,
+      tierUnlocked,
+    }),
+    [friendlyUnits, tierUnlocked]
+  );
   const canAnalyzeLive = visionEnabled || manualUnits.length > 0;
   const manualUnitsKey = useMemo(
     () => JSON.stringify(manualUnits),
     [manualUnits]
+  );
+  const friendlyUnitsKey = useMemo(
+    () => JSON.stringify(friendlyUnits),
+    [friendlyUnits]
+  );
+  const tierUnlockedKey = useMemo(
+    () => JSON.stringify(tierUnlocked),
+    [tierUnlocked]
   );
 
   const applyResult = useCallback((data: AnalyzeResponse) => {
@@ -114,6 +141,8 @@ export default function App() {
   teamWavesRef.current = teamWaves;
   const waveShiftRef = useRef(waveShift);
   waveShiftRef.current = waveShift;
+  const analyzeOptionsRef = useRef(analyzeOptions);
+  analyzeOptionsRef.current = analyzeOptions;
   const resultRef = useRef(result);
   resultRef.current = result;
 
@@ -139,7 +168,9 @@ export default function App() {
     setLastError(null);
     try {
       if (units.length > 0) {
-        applyResult(await analyzeFrame("", teams, units, shift));
+        applyResult(
+          await analyzeFrame("", teams, units, shift, analyzeOptionsRef.current)
+        );
         return;
       }
 
@@ -149,7 +180,8 @@ export default function App() {
             "",
             teams,
             detectedToManual(current.detectedUnits),
-            shift
+            shift,
+            analyzeOptionsRef.current
           )
         );
         return;
@@ -171,6 +203,7 @@ export default function App() {
     waveShift,
     visionEnabled,
     manualUnits,
+    analyzeOptions,
     captureFrameBase64,
     onResult: applyResult,
     onError: setLastError,
@@ -199,7 +232,9 @@ export default function App() {
       try {
         const manual = units ?? manualUnits;
         if (manual.length > 0) {
-          applyResult(await analyzeFrame("", teamWaves, manual, waveShift));
+          applyResult(
+            await analyzeFrame("", teamWaves, manual, waveShift, analyzeOptions)
+          );
           return;
         }
         const b64 = captureFrameBase64();
@@ -211,7 +246,13 @@ export default function App() {
           );
           return;
         }
-        const data = await analyzeFrame(b64, teamWaves, undefined, waveShift);
+        const data = await analyzeFrame(
+          b64,
+          teamWaves,
+          undefined,
+          waveShift,
+          analyzeOptions
+        );
         applyResult(data);
         void archiveFrame(b64, data.detectedUnits);
         if (data.detectedUnits.length === 0) {
@@ -232,6 +273,7 @@ export default function App() {
       manualUnits,
       teamWaves,
       waveShift,
+      analyzeOptions,
       applyResult,
       archiveFrame,
     ]
@@ -262,9 +304,18 @@ export default function App() {
 
   const handleClearSelections = useCallback(() => {
     setManualWaves((waves) => clearAllWaves(waves));
+    setFriendlyWaves((waves) => clearAllWaves(waves));
     setResult(null);
     setLastCounterRefreshAt(null);
   }, []);
+
+  const handleTeamWavesChange = useCallback(
+    (teams: typeof teamWaves) => {
+      setTeamWaves(teams);
+      setFriendlyWaves((waves) => syncFriendlyWaveRaces(waves, teams));
+    },
+    []
+  );
 
   const refreshCountersRef = useRef(refreshCounters);
   refreshCountersRef.current = refreshCounters;
@@ -291,7 +342,7 @@ export default function App() {
       }
     }, 450);
     return () => clearTimeout(id);
-  }, [manualUnitsKey, teamWavesKey, waveShift]);
+  }, [manualUnitsKey, friendlyUnitsKey, tierUnlockedKey, teamWavesKey, waveShift]);
 
   const handleStartCapture = async () => {
     setCapturePanelOpen(true);
@@ -518,6 +569,13 @@ export default function App() {
             onClearSelections={handleClearSelections}
             refreshing={counterRefreshing}
           />
+          <ManualArmyBuilder
+            variant="friendly"
+            waves={friendlyWaves}
+            teamWaves={teamWaves}
+            onChange={setFriendlyWaves}
+            onClearSelections={handleClearSelections}
+          />
           {lastError && (
             <p className="status" style={{ color: "var(--danger)" }}>
               {lastError}
@@ -529,8 +587,10 @@ export default function App() {
           <TeamSelection
             teamWaves={teamWaves}
             waveShift={waveShift}
-            onChange={setTeamWaves}
+            tierUnlocked={tierUnlocked}
+            onChange={handleTeamWavesChange}
             onWaveShiftChange={setWaveShift}
+            onTierUnlockedChange={setTierUnlocked}
           />
           <SuggestionsPanel
             playerRace={playerRace}

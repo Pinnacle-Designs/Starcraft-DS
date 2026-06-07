@@ -10,6 +10,7 @@ import {
   getUnitsByRace,
   normalizeUnitName,
   parseTeamRaces,
+  parseTierUnlocked,
   parseWaveShift,
   type PlayerRace,
 } from "./counterService.js";
@@ -79,17 +80,29 @@ function parseManualUnits(
 
 app.post("/api/analyze", async (req, res) => {
   try {
-    const { imageBase64, mimeType = "image/jpeg", playerRace, teamRaces, waveShift, manualUnits } =
-      req.body as {
-        imageBase64?: string;
-        mimeType?: string;
-        playerRace?: PlayerRace;
-        teamRaces?: unknown;
-        waveShift?: unknown;
-        manualUnits?: Array<
-          string | { name: string; count?: number; wave?: number }
-        >;
-      };
+    const {
+      imageBase64,
+      mimeType = "image/jpeg",
+      playerRace,
+      teamRaces,
+      waveShift,
+      manualUnits,
+      friendlyUnits,
+      tierUnlocked,
+    } = req.body as {
+      imageBase64?: string;
+      mimeType?: string;
+      playerRace?: PlayerRace;
+      teamRaces?: unknown;
+      waveShift?: unknown;
+      manualUnits?: Array<
+        string | { name: string; count?: number; wave?: number }
+      >;
+      friendlyUnits?: Array<
+        string | { name: string; count?: number; wave?: number }
+      >;
+      tierUnlocked?: unknown;
+    };
 
     let detected: {
       name: string;
@@ -124,6 +137,8 @@ app.post("/api/analyze", async (req, res) => {
     const race = playerRace ?? "Terran";
     const teams = parseTeamRaces(teamRaces, race);
     const shift = parseWaveShift(waveShift);
+    const parsedFriendly = parseManualUnits(friendlyUnits);
+    const tiers = parseTierUnlocked(tierUnlocked);
     const suggestions = getSuggestionsForUnits(
       parsedManual.length
         ? parsedManual.map(({ name, count, wave }) => ({ name, count, wave }))
@@ -133,7 +148,9 @@ app.post("/api/analyze", async (req, res) => {
             notes: u.notes,
           })),
       teams,
-      shift
+      shift,
+      parsedFriendly,
+      tiers
     );
 
     res.json({
