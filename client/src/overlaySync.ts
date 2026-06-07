@@ -27,6 +27,7 @@ export interface CoachState {
   live: boolean;
   scanning?: boolean;
   lastScanAt?: number | null;
+  counterRefreshing?: boolean;
   /** Prevents sync echo between main window and overlay. */
   origin?: string;
   updatedAt: number;
@@ -109,15 +110,16 @@ function clampPopupPosition(
   };
 }
 
-function openOverlayPanelWindow(panel: OverlayPanelId): Window | null {
-  const spec = OVERLAY_PANELS[panel];
-  const pos = clampPopupPosition(
-    loadPanelPosition(spec.storageKey, spec.defaultPosition),
-    spec.width,
-    spec.height
-  );
-  const url = `${window.location.origin}${overlayPanelHref(panel)}`;
-  const features = [
+export interface OverlayOpenResult {
+  enemy: boolean;
+  team: boolean;
+}
+
+function overlayWindowFeatures(
+  spec: (typeof OVERLAY_PANELS)[OverlayPanelId],
+  pos: { x: number; y: number }
+): string {
+  return [
     `width=${spec.width}`,
     `height=${spec.height}`,
     `left=${pos.x}`,
@@ -126,41 +128,50 @@ function openOverlayPanelWindow(panel: OverlayPanelId): Window | null {
     "toolbar=no",
     "location=no",
     "status=no",
+    "resizable=yes",
+    "scrollbars=yes",
   ].join(",");
-  return window.open(url, `starcraft-ds-overlay-${panel}`, features);
 }
 
-type WebOverlayOpener = () => void;
-let webOverlayOpener: WebOverlayOpener | null = null;
+/** Opens one overlay as a separate browser window (not confined to the parent tab). */
+export function openOverlayPanel(panel: OverlayPanelId): Window | null {
+  const spec = OVERLAY_PANELS[panel];
+  const pos = clampPopupPosition(
+    loadPanelPosition(spec.storageKey, spec.defaultPosition),
+    spec.width,
+    spec.height
+  );
+  const url = `${window.location.origin}${overlayPanelHref(panel)}`;
+  const name = `starcraft-ds-overlay-${panel}`;
+  const features = overlayWindowFeatures(spec, pos);
 
-/** Register in-page overlay panels (browser main window). */
-export function registerWebOverlayOpener(opener: WebOverlayOpener): () => void {
-  webOverlayOpener = opener;
-  return () => {
-    if (webOverlayOpener === opener) webOverlayOpener = null;
-  };
+  const win = window.open(url, name, features);
+  if (!win || win.closed) return null;
+  try {
+    win.focus();
+  } catch {
+    /* ignore */
+  }
+  return win;
 }
 
-function openOverlayPopups(): boolean {
-  const enemy = openOverlayPanelWindow("enemy");
-  const team = openOverlayPanelWindow("team");
-  return Boolean(enemy && team);
+function openOverlayPopups(): OverlayOpenResult {
+  const enemy = Boolean(openOverlayPanel("enemy"));
+  const team = Boolean(openOverlayPanel("team"));
+  // Browsers often block a 2nd popup from one click; enemy panel spawns team on load.
+  return { enemy, team: team || enemy };
 }
 
 /**
  * Electron: separate always-on-top OS windows.
- * Browser: in-page floating panels (and popup windows when allowed).
+ * Browser: separate popup windows that can be placed anywhere on screen.
  */
-export function openOverlay(): void {
+export function openOverlay(): OverlayOpenResult | void {
   if (window.starcraftDS?.isElectron) {
     void window.starcraftDS.openNativeOverlay();
     return;
   }
-  if (webOverlayOpener) {
-    webOverlayOpener();
-    return;
-  }
-  openOverlayPopups();
+  return openOverlayPopups();
 }
 
 export function isElectronApp(): boolean {

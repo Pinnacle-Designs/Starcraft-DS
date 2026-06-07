@@ -33,15 +33,8 @@ import {
   OVERLAY_SYNC_ORIGIN,
   openOverlay,
   publishCoachState,
-  registerWebOverlayOpener,
   subscribeCoachState,
 } from "./overlaySync";
-import {
-  loadWebOverlayVisibility,
-  saveWebOverlayVisibility,
-  type PanelVisibility,
-} from "./overlayStorage";
-import { WebOverlayPanels } from "./WebOverlayPanels";
 import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
@@ -68,15 +61,7 @@ export default function App() {
   const [lastCounterRefreshAt, setLastCounterRefreshAt] = useState<number | null>(
     null
   );
-  const [webOverlayVisible, setWebOverlayVisible] = useState<PanelVisibility>(
-    () => loadWebOverlayVisibility()
-  );
-  const [webOverlaySession, setWebOverlaySession] = useState(
-    () => {
-      const vis = loadWebOverlayVisibility();
-      return vis.enemy || vis.team;
-    }
-  );
+  const [overlayHint, setOverlayHint] = useState<string | null>(null);
 
   const bumpCaptureHistory = useCallback(() => {
     setCaptureHistoryKey((k) => k + 1);
@@ -235,19 +220,22 @@ export default function App() {
     },
   });
 
-  useEffect(() => {
-    return registerWebOverlayOpener(() => {
-      setWebOverlayVisible({ enemy: true, team: true });
-      setWebOverlaySession(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    saveWebOverlayVisibility(webOverlayVisible);
-    if (webOverlayVisible.enemy || webOverlayVisible.team) {
-      setWebOverlaySession(true);
+  const handleOpenOverlay = useCallback(() => {
+    setOverlayHint(null);
+    const result = openOverlay();
+    if (!result) return;
+    if (!result.enemy && !result.team) {
+      setOverlayHint(
+        "Popups were blocked. Allow popups for this site, then try again."
+      );
+      return;
     }
-  }, [webOverlayVisible]);
+    if (!result.enemy) {
+      setOverlayHint(
+        "Could not open overlay panels. Allow popups for this site, then try again."
+      );
+    }
+  }, []);
 
   useEffect(() => {
     return subscribeCoachState((incoming) => {
@@ -275,6 +263,7 @@ export default function App() {
       live,
       scanning,
       lastScanAt,
+      counterRefreshing,
       origin: MAIN_SYNC_ORIGIN,
       updatedAt: Date.now(),
     });
@@ -288,6 +277,7 @@ export default function App() {
     live,
     scanning,
     lastScanAt,
+    counterRefreshing,
   ]);
 
   const runAnalysis = useCallback(
@@ -485,15 +475,25 @@ export default function App() {
             <button
               type="button"
               className="btn"
-              onClick={() => openOverlay()}
-              title="Open enemy waves and team selection as draggable overlay panels over the page"
+              onClick={handleOpenOverlay}
+              title="Open enemy waves and team selection in separate windows you can place over your game"
             >
               Open game overlay
             </button>
+            <p className="overlay-note">
+              {isElectronApp()
+                ? "Opens always-on-top enemy and team panels you can drag over your game."
+                : "Opens two separate windows you can place over your game. Allow popups for this site — team selection opens automatically after enemy waves."}
+            </p>
           </div>
         )}
       </header>
       <p className="header-slogan">Make better decisions. Win more games.</p>
+      {overlayHint ? (
+        <p className="status overlay-hint" role="status">
+          {overlayHint}
+        </p>
+      ) : null}
 
       <div className="grid">
         <section className="panel">
@@ -685,21 +685,6 @@ export default function App() {
         <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
       </footer>
 
-      {overlayEnabled && !isElectronApp() ? (
-        <WebOverlayPanels
-          visible={webOverlayVisible}
-          onVisibleChange={setWebOverlayVisible}
-          sessionActive={webOverlaySession}
-          manualWaves={manualWaves}
-          onManualWavesChange={setManualWaves}
-          teamWaves={teamWaves}
-          onTeamWavesChange={handleTeamWavesChange}
-          waveShift={waveShift}
-          onWaveShiftChange={setWaveShift}
-          tierUnlocked={tierUnlocked}
-          onTierUnlockedChange={setTierUnlocked}
-        />
-      ) : null}
     </div>
   );
 }

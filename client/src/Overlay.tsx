@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import type { WaveShift } from "./api";
+import type { AnalyzeResponse, WaveShift } from "./api";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
+import { SuggestionsPanel } from "./SuggestionsPanel";
 import { TeamSelection } from "./TeamSelection";
 import { OverlayPanelShell } from "./OverlayPanelShell";
 import {
   DEFAULT_TEAM_WAVES,
   DEFAULT_TIER_UNLOCKED,
+  primaryTeamRace,
   type TierUnlocked,
 } from "./teamWaves";
 import { EMPTY_MANUAL_WAVES, type ManualWavesState } from "./manualArmy";
 import {
+  isElectronApp,
   loadCoachState,
+  openOverlayPanel,
   OVERLAY_SYNC_ORIGIN,
   publishCoachState,
   subscribeCoachState,
@@ -41,6 +45,11 @@ export default function Overlay({ panel }: Props) {
     useState<TierUnlocked>(DEFAULT_TIER_UNLOCKED);
   const [manualWaves, setManualWaves] =
     useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
+  const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [live, setLive] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [lastScanAt, setLastScanAt] = useState<number | null>(null);
+  const [counterRefreshing, setCounterRefreshing] = useState(false);
 
   const applyRemoteState = useCallback((incoming: CoachState) => {
     if (incoming.origin === OVERLAY_SYNC_ORIGIN) return;
@@ -48,6 +57,13 @@ export default function Overlay({ panel }: Props) {
     if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
     if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
     if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
+    setResult(incoming.result);
+    setLive(incoming.live);
+    if (incoming.scanning != null) setScanning(incoming.scanning);
+    if (incoming.lastScanAt !== undefined) setLastScanAt(incoming.lastScanAt ?? null);
+    if (incoming.counterRefreshing != null) {
+      setCounterRefreshing(incoming.counterRefreshing);
+    }
   }, []);
 
   const publishOverlayState = useCallback(
@@ -93,6 +109,15 @@ export default function Overlay({ panel }: Props) {
     void window.starcraftDS.setAlwaysOnTop(true);
   }, []);
 
+  // Chrome blocks two popups from one click — open team from the enemy popup instead.
+  useEffect(() => {
+    if (panel !== "enemy" || isElectronApp()) return;
+    const t = window.setTimeout(() => {
+      openOverlayPanel("team");
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [panel]);
+
   return (
     <OverlayPanelShell title={spec.title} onClose={closeOverlayWindow}>
       {panel === "enemy" ? (
@@ -104,23 +129,33 @@ export default function Overlay({ panel }: Props) {
           }}
         />
       ) : (
-        <TeamSelection
-          teamWaves={teamWaves}
-          waveShift={waveShift}
-          tierUnlocked={tierUnlocked}
-          onChange={(teams) => {
-            setTeamWaves(teams);
-            publishOverlayState({ teamRaces: teams });
-          }}
-          onWaveShiftChange={(shift) => {
-            setWaveShift(shift);
-            publishOverlayState({ waveShift: shift });
-          }}
-          onTierUnlockedChange={(tiers) => {
-            setTierUnlocked(tiers);
-            publishOverlayState({ tierUnlocked: tiers });
-          }}
-        />
+        <div className="overlay-team-stack">
+          <TeamSelection
+            teamWaves={teamWaves}
+            waveShift={waveShift}
+            tierUnlocked={tierUnlocked}
+            onChange={(teams) => {
+              setTeamWaves(teams);
+              publishOverlayState({ teamRaces: teams });
+            }}
+            onWaveShiftChange={(shift) => {
+              setWaveShift(shift);
+              publishOverlayState({ waveShift: shift });
+            }}
+            onTierUnlockedChange={(tiers) => {
+              setTierUnlocked(tiers);
+              publishOverlayState({ tierUnlocked: tiers });
+            }}
+          />
+          <SuggestionsPanel
+            playerRace={primaryTeamRace(teamWaves)}
+            result={result}
+            live={live}
+            scanning={scanning}
+            lastScanAt={lastScanAt}
+            counterRefreshing={counterRefreshing}
+          />
+        </div>
       )}
     </OverlayPanelShell>
   );

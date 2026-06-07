@@ -1,14 +1,5 @@
 export type OverlayPanelId = "enemy" | "team";
 
-export interface PanelVisibility {
-  enemy: boolean;
-  team: boolean;
-}
-
-const WEB_VIS_KEY = "starcraft-ds-web-overlay-vis";
-
-const DEFAULT_WEB_VISIBILITY: PanelVisibility = { enemy: false, team: false };
-
 export interface PanelPosition {
   x: number;
   y: number;
@@ -28,17 +19,17 @@ export const OVERLAY_PANELS: Record<OverlayPanelId, OverlayPanelSpec> = {
     id: "enemy",
     storageKey: "enemy-waves",
     title: "Enemy waves",
-    width: 380,
-    height: 520,
+    width: 300,
+    height: 820,
     defaultPosition: { x: 24, y: 24 },
   },
   team: {
     id: "team",
     storageKey: "team-selection",
     title: "Team selection",
-    width: 380,
-    height: 440,
-    defaultPosition: { x: 408, y: 24 },
+    width: 300,
+    height: 920,
+    defaultPosition: { x: 336, y: 24 },
   },
 };
 
@@ -72,28 +63,6 @@ export function savePanelPosition(
 ): void {
   try {
     localStorage.setItem(`${POS_PREFIX}${storageKey}`, JSON.stringify(pos));
-  } catch {
-    /* quota */
-  }
-}
-
-export function loadWebOverlayVisibility(): PanelVisibility {
-  try {
-    const raw = sessionStorage.getItem(WEB_VIS_KEY);
-    if (!raw) return DEFAULT_WEB_VISIBILITY;
-    const parsed = JSON.parse(raw) as Partial<PanelVisibility>;
-    return {
-      enemy: parsed.enemy === true,
-      team: parsed.team === true,
-    };
-  } catch {
-    return DEFAULT_WEB_VISIBILITY;
-  }
-}
-
-export function saveWebOverlayVisibility(vis: PanelVisibility): void {
-  try {
-    sessionStorage.setItem(WEB_VIS_KEY, JSON.stringify(vis));
   } catch {
     /* quota */
   }

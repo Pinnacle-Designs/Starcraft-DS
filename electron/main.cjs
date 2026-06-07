@@ -13,17 +13,17 @@ const isDev = !app.isPackaged;
 
 const OVERLAY_PANELS = {
   enemy: {
-    width: 380,
-    height: 520,
+    width: 300,
+    height: 820,
     defaultX: 24,
     defaultY: 24,
     panel: "enemy",
     title: "Enemy waves",
   },
   team: {
-    width: 380,
-    height: 440,
-    defaultX: 408,
+    width: 300,
+    height: 920,
+    defaultX: 336,
     defaultY: 24,
     panel: "team",
     title: "Team selection",
@@ -130,7 +130,7 @@ function createOverlayPanelWindow(panel) {
     y,
     width: config.width,
     height: config.height,
-    minWidth: 300,
+    minWidth: 260,
     minHeight: 200,
     title: config.title,
     alwaysOnTop: true,
