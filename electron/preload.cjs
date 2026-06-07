@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("starcraftDS", {
   isElectron: true,
   openNativeOverlay: () => ipcRenderer.invoke("overlay:open"),
+  closeOverlayPanel: () => ipcRenderer.invoke("overlay:close"),
   setAlwaysOnTop: (enabled) =>
     ipcRenderer.invoke("overlay:setAlwaysOnTop", enabled),
   setClickThrough: (enabled) =>

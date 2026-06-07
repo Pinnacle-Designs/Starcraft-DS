@@ -2,21 +2,74 @@ const {
   app,
   BrowserWindow,
   ipcMain,
+  screen,
   shell,
-  globalShortcut,
 } = require("electron");
+const fs = require("fs");
 const path = require("path");
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
 const isDev = !app.isPackaged;
 
-let mainWindow = null;
-let overlayWindow = null;
+const OVERLAY_PANELS = {
+  enemy: {
+    width: 380,
+    height: 520,
+    defaultX: 24,
+    defaultY: 24,
+    panel: "enemy",
+    title: "Enemy waves",
+  },
+  team: {
+    width: 380,
+    height: 440,
+    defaultX: 408,
+    defaultY: 24,
+    panel: "team",
+    title: "Team selection",
+  },
+};
 
-function appUrl(hash = "") {
-  if (isDev) return `${DEV_URL}${hash}`;
+let mainWindow = null;
+const overlayWindows = { enemy: null, team: null };
+
+function positionsFile() {
+  return path.join(app.getPath("userData"), "overlay-panel-positions.json");
+}
+
+function loadOverlayPositions() {
+  try {
+    return JSON.parse(fs.readFileSync(positionsFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveOverlayPosition(panel, x, y) {
+  const all = loadOverlayPositions();
+  all[panel] = { x, y };
+  try {
+    fs.writeFileSync(positionsFile(), JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clampOverlayBounds(x, y, width, height) {
+  const area = screen.getPrimaryDisplay().workArea;
+  const maxX = Math.max(area.x, area.x + area.width - width);
+  const maxY = Math.max(area.y, area.y + area.height - height);
+  return {
+    x: Math.min(Math.max(x, area.x), maxX),
+    y: Math.min(Math.max(y, area.y), maxY),
+  };
+}
+
+function panelLoadUrl(config) {
+  const query = `panel=${config.panel}`;
+  if (isDev) return `${DEV_URL}?${query}`;
   const indexPath = path.join(__dirname, "../client/dist/index.html");
-  return `file://${indexPath}${hash}`;
+  return `file://${indexPath}?${query}`;
 }
 
 function getPreloadPath() {
@@ -36,35 +89,58 @@ function createMainWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL(appUrl());
+    mainWindow.loadURL(DEV_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, "../client/dist/index.html"));
   }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
-    if (overlayWindow) overlayWindow.close();
+    for (const panel of Object.keys(overlayWindows)) {
+      const win = overlayWindows[panel];
+      if (win && !win.isDestroyed()) win.close();
+      overlayWindows[panel] = null;
+    }
   });
 }
 
-function createOverlayWindow() {
-  if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.focus();
-    return overlayWindow;
+function createOverlayPanelWindow(panel) {
+  const config = OVERLAY_PANELS[panel];
+  if (!config) return null;
+
+  const existing = overlayWindows[panel];
+  if (existing && !existing.isDestroyed()) {
+    existing.show();
+    existing.focus();
+    return existing;
   }
 
-  overlayWindow = new BrowserWindow({
-    width: 400,
-    height: 560,
-    minWidth: 280,
+  const saved = loadOverlayPositions()[panel];
+  const rawX = saved?.x ?? config.defaultX;
+  const rawY = saved?.y ?? config.defaultY;
+  const { x, y } = clampOverlayBounds(
+    rawX,
+    rawY,
+    config.width,
+    config.height
+  );
+
+  const win = new BrowserWindow({
+    x,
+    y,
+    width: config.width,
+    height: config.height,
+    minWidth: 300,
     minHeight: 200,
-    title: "SC2 Coach Overlay",
+    title: config.title,
     alwaysOnTop: true,
     frame: false,
     transparent: true,
     resizable: true,
     skipTaskbar: false,
     hasShadow: true,
+    fullscreenable: false,
+    show: false,
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -72,35 +148,45 @@ function createOverlayWindow() {
     },
   });
 
-  overlayWindow.setAlwaysOnTop(true, "screen-saver");
-  if (isDev) {
-    overlayWindow.loadURL(appUrl("#/overlay"));
-  } else {
-    overlayWindow.loadFile(
-      path.join(__dirname, "../client/dist/index.html"),
-      { hash: "#/overlay" }
-    );
-  }
+  win.setAlwaysOnTop(true, "screen-saver");
 
-  overlayWindow.on("closed", () => {
-    overlayWindow = null;
+  win.once("ready-to-show", () => {
+    if (!win.isDestroyed()) win.show();
   });
 
-  return overlayWindow;
+  void win.loadURL(panelLoadUrl(config));
+
+  win.on("moved", () => {
+    if (win.isDestroyed()) return;
+    const [px, py] = win.getPosition();
+    saveOverlayPosition(panel, px, py);
+    const storageKey =
+      panel === "enemy" ? "enemy-waves" : "team-selection";
+    win.webContents
+      .executeJavaScript(
+        `try { localStorage.setItem('starcraft-ds-overlay-pos-${storageKey}', JSON.stringify({x:${px},y:${py}})); } catch(e) {}`
+      )
+      .catch(() => {});
+  });
+
+  win.on("closed", () => {
+    overlayWindows[panel] = null;
+  });
+
+  overlayWindows[panel] = win;
+  return win;
 }
 
-function registerOverlayShortcuts() {
-  globalShortcut.register("Control+Shift+D", () => {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.webContents.send("overlay:toggleClickThrough");
-    }
-  });
+function openAllOverlayPanels() {
+  createOverlayPanelWindow("enemy");
+  setTimeout(() => {
+    createOverlayPanelWindow("team");
+  }, 200);
 }
 
 app.whenReady().then(() => {
   createMainWindow();
-  setTimeout(() => createOverlayWindow(), 600);
-  registerOverlayShortcuts();
+  setTimeout(() => openAllOverlayPanels(), 800);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -108,16 +194,16 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  globalShortcut.unregisterAll();
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("will-quit", () => {
-  globalShortcut.unregisterAll();
+ipcMain.handle("overlay:open", () => {
+  openAllOverlayPanels();
 });
 
-ipcMain.handle("overlay:open", () => {
-  createOverlayWindow();
+ipcMain.handle("overlay:close", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) win.close();
 });
 
 ipcMain.handle("overlay:setAlwaysOnTop", (event, enabled) => {

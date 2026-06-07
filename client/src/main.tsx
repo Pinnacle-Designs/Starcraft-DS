@@ -3,13 +3,13 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import Overlay from "./Overlay";
 import { overlayEnabled } from "./featureFlags";
+import { parseOverlayPanel } from "./overlayStorage";
 import "./index.css";
 
-const isOverlay =
-  overlayEnabled &&
-  (window.location.hash === "#/overlay" ||
-    new URLSearchParams(window.location.search).get("overlay") === "1");
+const overlayPanel = overlayEnabled ? parseOverlayPanel() : null;
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>{isOverlay ? <Overlay /> : <App />}</StrictMode>
+  <StrictMode>
+    {overlayPanel ? <Overlay panel={overlayPanel} /> : <App />}
+  </StrictMode>
 );

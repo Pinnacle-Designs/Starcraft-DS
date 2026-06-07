@@ -27,7 +27,13 @@ import {
   type ManualWavesState,
 } from "./manualArmy";
 import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
-import { openOverlay, publishCoachState } from "./overlaySync";
+import {
+  MAIN_SYNC_ORIGIN,
+  OVERLAY_SYNC_ORIGIN,
+  openOverlay,
+  publishCoachState,
+  subscribeCoachState,
+} from "./overlaySync";
 import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
@@ -213,17 +219,45 @@ export default function App() {
   });
 
   useEffect(() => {
+    return subscribeCoachState((incoming) => {
+      if (incoming.origin !== OVERLAY_SYNC_ORIGIN) return;
+      if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
+      if (incoming.teamRaces) {
+        setTeamWaves(incoming.teamRaces);
+        setFriendlyWaves((waves) =>
+          syncFriendlyWaveRaces(waves, incoming.teamRaces!)
+        );
+      }
+      if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
+      if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
+    });
+  }, []);
+
+  useEffect(() => {
     publishCoachState({
       playerRace,
       teamRaces: teamWaves,
       waveShift,
+      tierUnlocked,
+      manualWaves,
       result,
       live,
       scanning,
       lastScanAt,
+      origin: MAIN_SYNC_ORIGIN,
       updatedAt: Date.now(),
     });
-  }, [teamWaves, waveShift, playerRace, result, live, scanning, lastScanAt]);
+  }, [
+    teamWaves,
+    waveShift,
+    tierUnlocked,
+    manualWaves,
+    playerRace,
+    result,
+    live,
+    scanning,
+    lastScanAt,
+  ]);
 
   const runAnalysis = useCallback(
     async (units?: ManualUnitInput[]) => {
@@ -421,9 +455,9 @@ export default function App() {
               type="button"
               className="btn"
               onClick={() => openOverlay()}
-              title="Always-on-top overlay (best in Electron desktop app)"
+              title="Open enemy waves and team selection as separate always-on-top panels"
             >
-              Open overlay
+              Open game overlay
             </button>
           </div>
         )}

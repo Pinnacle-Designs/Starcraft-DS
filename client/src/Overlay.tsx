@@ -1,96 +1,127 @@
-import { useEffect, useState } from "react";
-import type { AnalyzeResponse, PlayerRace } from "./api";
-import { SuggestionsPanel } from "./SuggestionsPanel";
+import { useCallback, useEffect, useState } from "react";
+import type { WaveShift } from "./api";
+import { ManualArmyBuilder } from "./ManualArmyBuilder";
+import { TeamSelection } from "./TeamSelection";
+import { OverlayPanelShell } from "./OverlayPanelShell";
 import {
-  isElectronApp,
+  DEFAULT_TEAM_WAVES,
+  DEFAULT_TIER_UNLOCKED,
+  type TierUnlocked,
+} from "./teamWaves";
+import { EMPTY_MANUAL_WAVES, type ManualWavesState } from "./manualArmy";
+import {
   loadCoachState,
+  OVERLAY_SYNC_ORIGIN,
+  publishCoachState,
   subscribeCoachState,
   type CoachState,
 } from "./overlaySync";
+import {
+  type OverlayPanelId,
+  OVERLAY_PANELS,
+} from "./overlayStorage";
 
-export default function Overlay() {
-  const [state, setState] = useState<CoachState | null>(() => loadCoachState());
-  const [alwaysOnTop, setAlwaysOnTop] = useState(true);
-  const [clickThrough, setClickThrough] = useState(false);
-  const electron = isElectronApp();
+interface Props {
+  panel: OverlayPanelId;
+}
 
-  useEffect(() => {
-    document.body.classList.add("overlay-mode");
-    if (electron) document.body.classList.add("overlay-electron");
-    return () => {
-      document.body.classList.remove("overlay-mode", "overlay-electron");
-    };
-  }, [electron]);
+function closeOverlayWindow(): void {
+  if (window.starcraftDS?.closeOverlayPanel) {
+    void window.starcraftDS.closeOverlayPanel();
+    return;
+  }
+  window.close();
+}
 
-  useEffect(() => subscribeCoachState(setState), []);
+export default function Overlay({ panel }: Props) {
+  const spec = OVERLAY_PANELS[panel];
+  const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
+  const [waveShift, setWaveShift] = useState<WaveShift>(0);
+  const [tierUnlocked, setTierUnlocked] =
+    useState<TierUnlocked>(DEFAULT_TIER_UNLOCKED);
+  const [manualWaves, setManualWaves] =
+    useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
 
-  useEffect(() => {
-    if (!window.starcraftDS?.onClickThroughHotkey) return;
-    return window.starcraftDS.onClickThroughHotkey(() => {
-      setClickThrough((v) => !v);
-    });
+  const applyRemoteState = useCallback((incoming: CoachState) => {
+    if (incoming.origin === OVERLAY_SYNC_ORIGIN) return;
+    if (incoming.teamRaces) setTeamWaves(incoming.teamRaces);
+    if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
+    if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
+    if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
   }, []);
 
-  useEffect(() => {
-    if (!electron || !window.starcraftDS) return;
-    void window.starcraftDS.setAlwaysOnTop(alwaysOnTop);
-  }, [alwaysOnTop, electron]);
+  const publishOverlayState = useCallback(
+    (patch: Partial<CoachState>) => {
+      const base = loadCoachState();
+      publishCoachState({
+        playerRace: patch.teamRaces?.[0] ?? base?.playerRace ?? teamWaves[0],
+        teamRaces: patch.teamRaces ?? teamWaves,
+        waveShift: patch.waveShift ?? waveShift,
+        tierUnlocked: patch.tierUnlocked ?? tierUnlocked,
+        manualWaves: patch.manualWaves ?? manualWaves,
+        result: base?.result ?? null,
+        live: base?.live ?? false,
+        scanning: base?.scanning,
+        lastScanAt: base?.lastScanAt,
+        origin: OVERLAY_SYNC_ORIGIN,
+        updatedAt: Date.now(),
+      });
+    },
+    [teamWaves, waveShift, tierUnlocked, manualWaves]
+  );
 
   useEffect(() => {
-    if (!electron || !window.starcraftDS) return;
-    void window.starcraftDS.setClickThrough(clickThrough);
-  }, [clickThrough, electron]);
+    document.body.classList.add("overlay-mode", "overlay-panel-window");
+    if (window.starcraftDS?.isElectron) {
+      document.body.classList.add("overlay-electron");
+    }
+    const initial = loadCoachState();
+    if (initial) applyRemoteState(initial);
+    return () => {
+      document.body.classList.remove(
+        "overlay-mode",
+        "overlay-panel-window",
+        "overlay-electron"
+      );
+    };
+  }, [applyRemoteState]);
 
-  const playerRace: PlayerRace = state?.playerRace ?? "Terran";
-  const result: AnalyzeResponse | null = state?.result ?? null;
-  const live = state?.live ?? false;
-  const scanning = state?.scanning ?? false;
-  const lastScanAt = state?.lastScanAt ?? null;
+  useEffect(() => subscribeCoachState(applyRemoteState), [applyRemoteState]);
+
+  useEffect(() => {
+    if (!window.starcraftDS?.isElectron) return;
+    void window.starcraftDS.setAlwaysOnTop(true);
+  }, []);
 
   return (
-    <div className="overlay-app">
-      <header className="overlay-header overlay-drag">
-        <span className="logo">SC2 COACH</span>
-        {live && <span className="live-dot">● LIVE</span>}
-      </header>
-
-      <div className={clickThrough ? "overlay-content passthrough" : "overlay-content"}>
-        <SuggestionsPanel
-          playerRace={playerRace}
-          result={result}
-          compact
-          live={live}
-          scanning={scanning}
-          lastScanAt={lastScanAt}
+    <OverlayPanelShell title={spec.title} onClose={closeOverlayWindow}>
+      {panel === "enemy" ? (
+        <ManualArmyBuilder
+          waves={manualWaves}
+          onChange={(waves) => {
+            setManualWaves(waves);
+            publishOverlayState({ manualWaves: waves });
+          }}
         />
-      </div>
-
-      {electron && (
-        <div className="overlay-controls">
-          <label className="overlay-toggle">
-            <input
-              type="checkbox"
-              checked={alwaysOnTop}
-              onChange={(e) => setAlwaysOnTop(e.target.checked)}
-            />
-            Always on top
-          </label>
-          <label className="overlay-toggle">
-            <input
-              type="checkbox"
-              checked={clickThrough}
-              onChange={(e) => setClickThrough(e.target.checked)}
-            />
-            Click-through (game receives clicks)
-          </label>
-        </div>
+      ) : (
+        <TeamSelection
+          teamWaves={teamWaves}
+          waveShift={waveShift}
+          tierUnlocked={tierUnlocked}
+          onChange={(teams) => {
+            setTeamWaves(teams);
+            publishOverlayState({ teamRaces: teams });
+          }}
+          onWaveShiftChange={(shift) => {
+            setWaveShift(shift);
+            publishOverlayState({ waveShift: shift });
+          }}
+          onTierUnlockedChange={(tiers) => {
+            setTierUnlocked(tiers);
+            publishOverlayState({ tierUnlocked: tiers });
+          }}
+        />
       )}
-
-      <footer className="overlay-footer">
-        {electron
-          ? "Drag header to move. Click-through: Ctrl+Shift+D to toggle when enabled."
-          : "Drag over your game. Use Electron for true always-on-top."}
-      </footer>
-    </div>
+    </OverlayPanelShell>
   );
 }

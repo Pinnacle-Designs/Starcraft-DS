@@ -1,16 +1,34 @@
-import type { AnalyzeResponse, PlayerRace, TeamWaves, WaveShift } from "./api";
+import type {
+  AnalyzeResponse,
+  PlayerRace,
+  TeamWaves,
+  TierUnlocked,
+  WaveShift,
+} from "./api";
+import type { ManualWavesState } from "./manualArmy";
+import {
+  loadPanelPosition,
+  OVERLAY_PANELS,
+  type OverlayPanelId,
+} from "./overlayStorage";
 
 export const OVERLAY_CHANNEL = "starcraft-ds-overlay";
 export const OVERLAY_STORAGE_KEY = "starcraft-ds-coach-state";
+export const MAIN_SYNC_ORIGIN = "main";
+export const OVERLAY_SYNC_ORIGIN = "overlay";
 
 export interface CoachState {
   playerRace: PlayerRace;
   teamRaces?: TeamWaves;
   waveShift?: WaveShift;
+  tierUnlocked?: TierUnlocked;
+  manualWaves?: ManualWavesState;
   result: AnalyzeResponse | null;
   live: boolean;
   scanning?: boolean;
   lastScanAt?: number | null;
+  /** Prevents sync echo between main window and overlay. */
+  origin?: string;
   updatedAt: number;
 }
 
@@ -73,22 +91,56 @@ export function subscribeCoachState(
   };
 }
 
-export function openOverlayWindow(): Window | null {
-  const url = `${window.location.origin}${window.location.pathname}#/overlay`;
-  return window.open(
-    url,
-    "starcraft-ds-overlay",
-    "width=400,height=560,menubar=no,toolbar=no,location=no,status=no"
-  );
+export function overlayPanelHref(panel: OverlayPanelId): string {
+  const base = window.location.pathname || "/";
+  return `${base}?panel=${panel}`;
 }
 
-/** Browser popup or Electron native always-on-top window */
+function clampPopupPosition(
+  pos: { x: number; y: number },
+  width: number,
+  height: number
+): { x: number; y: number } {
+  const maxX = Math.max(0, window.screen.availWidth - width);
+  const maxY = Math.max(0, window.screen.availHeight - height);
+  return {
+    x: Math.min(Math.max(pos.x, 0), maxX),
+    y: Math.min(Math.max(pos.y, 0), maxY),
+  };
+}
+
+function openOverlayPanelWindow(panel: OverlayPanelId): Window | null {
+  const spec = OVERLAY_PANELS[panel];
+  const pos = clampPopupPosition(
+    loadPanelPosition(spec.storageKey, spec.defaultPosition),
+    spec.width,
+    spec.height
+  );
+  const url = `${window.location.origin}${overlayPanelHref(panel)}`;
+  const features = [
+    `width=${spec.width}`,
+    `height=${spec.height}`,
+    `left=${pos.x}`,
+    `top=${pos.y}`,
+    "menubar=no",
+    "toolbar=no",
+    "location=no",
+    "status=no",
+  ].join(",");
+  return window.open(url, `starcraft-ds-overlay-${panel}`, features);
+}
+
+/** Opens enemy + team as separate always-on-top panel windows. */
 export function openOverlay(): void {
   if (window.starcraftDS?.isElectron) {
     void window.starcraftDS.openNativeOverlay();
     return;
   }
-  openOverlayWindow();
+  const enemy = openOverlayPanelWindow("enemy");
+  const team = openOverlayPanelWindow("team");
+  if (!team && enemy) {
+    window.setTimeout(() => openOverlayPanelWindow("team"), 250);
+  }
 }
 
 export function isElectronApp(): boolean {
