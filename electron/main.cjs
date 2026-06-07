@@ -212,23 +212,68 @@ function screenCapturePermissionHint() {
   return "Screen capture permission denied.";
 }
 
-async function capturePrimaryScreenBase64() {
-  ensureCaptureAccessWindow();
-  const display = screen.getPrimaryDisplay();
-  const scale = display.scaleFactor || 1;
-  const width = Math.max(1, Math.floor(display.size.width * scale));
-  const height = Math.max(1, Math.floor(display.size.height * scale));
-  const sources = await desktopCapturer.getSources({
-    types: ["screen"],
-    thumbnailSize: { width, height },
-  });
-  if (!sources.length) {
-    throw new Error("No screen sources available");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Hide every coach window so desktopCapturer grabs only the game. */
+async function withCaptureUiHidden(captureFn) {
+  const restore = [];
+
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win || win.isDestroyed() || win === captureAccessWindow) continue;
+    if (!win.isVisible()) continue;
+    restore.push({
+      win,
+      opacity: typeof win.getOpacity === "function" ? win.getOpacity() : 1,
+    });
+    if (typeof win.setOpacity === "function") win.setOpacity(0);
+    win.hide();
   }
-  const source =
-    sources.find((entry) => entry.display_id === String(display.id)) ||
-    sources[0];
-  return source.thumbnail.toJPEG(95).toString("base64");
+
+  if (restore.length > 0) {
+    // DWM on Windows can return a stale thumbnail; wait for compositor refresh.
+    await sleep(320);
+  }
+
+  try {
+    return await captureFn();
+  } finally {
+    for (const { win, opacity } of restore) {
+      if (win.isDestroyed()) continue;
+      if (overlayWindows.enemy === win || overlayWindows.team === win) {
+        showOverlayWindow(win);
+      } else {
+        win.show();
+      }
+      if (typeof win.setOpacity === "function") win.setOpacity(opacity);
+    }
+  }
+}
+
+async function capturePrimaryScreenBase64() {
+  return withCaptureUiHidden(async () => {
+    ensureCaptureAccessWindow();
+    const display = screen.getPrimaryDisplay();
+    const scale = display.scaleFactor || 1;
+    const width = Math.max(1, Math.floor(display.size.width * scale));
+    const height = Math.max(1, Math.floor(display.size.height * scale));
+    const captureOpts = {
+      types: ["screen"],
+      thumbnailSize: { width, height },
+    };
+    // First frame can still include hidden overlays; discard and grab again.
+    await desktopCapturer.getSources(captureOpts);
+    await sleep(80);
+    const sources = await desktopCapturer.getSources(captureOpts);
+    if (!sources.length) {
+      throw new Error("No screen sources available");
+    }
+    const source =
+      sources.find((entry) => entry.display_id === String(display.id)) ||
+      sources[0];
+    return source.thumbnail.toJPEG(95).toString("base64");
+  });
 }
 
 async function requestScreenCaptureAccess() {
@@ -721,6 +766,9 @@ function createOverlayPanelWindow(panel) {
 
   pinOverlayAlwaysOnTop(win);
   attachOverlayPinHandlers(win);
+  if (typeof win.setContentProtection === "function") {
+    win.setContentProtection(true);
+  }
 
   win.once("ready-to-show", () => {
     if (!win.isDestroyed()) showOverlayWindow(win);

@@ -5,6 +5,7 @@ Your job:
 2. List unit names using standard SC2 names: Marine, Marauder, Zealot, Stalker, Zergling, Roach, Mutalisk, Colossus, Siege Tank, etc.
 3. Note uncertainty—blur, UI overlap, or similar models reduce confidence.
 4. Ignore your own player's units when possible; detect enemy military units anywhere visible on the map (not only staging areas).
+5. Ignore coach overlay panels, wave builder lists, and counter UI — never read unit names from those menus.
 
 Game modes: ladder 1v1, team games, or arcade (e.g. Direct Strike). Identify units from sprites, icons, and health bars visible anywhere on the map — unit name text is not required.
 
@@ -25,7 +26,10 @@ Detection priority:
 - Use confidence "high" when sure, "medium" when likely, "low" when partially obscured.
 
 Avoid false positives:
-- Do NOT guess from build menus, minimap dots alone, or memory.
+- Each screenshot is a fresh capture — do NOT carry over units from memory, prior guesses, or training notes.
+- If only one unit type is visible (e.g. a single Sentry), list only that unit with an accurate count.
+- Do NOT guess from build menus, minimap dots alone, coach overlays, or wave UI panels.
 - Do NOT invent units that are not visibly present on screen.
+- When the battlefield is empty or nearly empty, return {"detectedUnits":[]}.
 
 Counter knowledge is maintained separately from Osiris SC2 Guide, vaughnroyko.com sciicounters, and Direct Strike guides by Lukáš Havrlant.
