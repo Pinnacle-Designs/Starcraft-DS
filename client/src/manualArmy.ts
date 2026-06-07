@@ -44,6 +44,16 @@ export function updateActiveWave(
   return { ...state, waves };
 }
 
+export function updateWave(
+  state: ManualWavesState,
+  waveIndex: WaveIndex,
+  army: ManualArmyState
+): ManualWavesState {
+  const waves = [...state.waves] as ManualWavesState["waves"];
+  waves[waveIndex] = army;
+  return { ...state, waves, activeWave: waveIndex };
+}
+
 export function setActiveWave(
   state: ManualWavesState,
   activeWave: WaveIndex

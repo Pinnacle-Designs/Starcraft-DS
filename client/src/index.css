@@ -584,6 +584,78 @@ button:focus-visible {
   margin: 0;
 }
 
+.wave-collapsible-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.wave-collapsible {
+  border-radius: 4px;
+  background: rgba(10, 12, 16, 0.35);
+  border: 1px solid rgba(70, 78, 90, 0.35);
+  overflow: hidden;
+}
+
+.wave-collapsible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.4rem 0.45rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.wave-collapsible-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.wave-collapsible-summary {
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9rem;
+}
+
+.wave-collapsible-body {
+  padding: 0 0.45rem 0.45rem;
+}
+
+.wave-collapsible.wave-red .wave-collapsible-label {
+  color: #ff6b6b;
+}
+
+.wave-collapsible.wave-amber .wave-collapsible-label {
+  color: var(--amber);
+}
+
+.wave-collapsible.wave-cyan .wave-collapsible-label {
+  color: var(--cyan);
+}
+
+.manual-army-actions-inline {
+  margin-top: 0.35rem;
+  padding-top: 0;
+  border-top: none;
+}
+
 .team-wave-row {
   display: grid;
   grid-template-columns: 3.5rem minmax(0, 1fr);
@@ -1900,6 +1972,23 @@ body.overlay-electron .floating-overlay-panel-body * {
   grid-template-columns: minmax(0, 1fr);
   gap: 0.3rem;
   padding: 0.35rem 0.4rem;
+}
+
+.floating-overlay-panel-body .wave-collapsible-list {
+  gap: 0.3rem;
+}
+
+.floating-overlay-panel-body .wave-collapsible-toggle {
+  padding: 0.35rem 0.4rem;
+}
+
+.floating-overlay-panel-body .wave-collapsible-body {
+  padding: 0 0.4rem 0.4rem;
+}
+
+.floating-overlay-panel-body .wave-collapsible-summary {
+  max-width: 7.5rem;
+  font-size: 0.58rem;
 }
 
 .floating-overlay-panel-body .team-wave-label {

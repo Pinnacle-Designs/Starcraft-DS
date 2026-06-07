@@ -151,6 +151,7 @@ export default function Overlay({ panel }: Props) {
       {panel === "enemy" ? (
         <ManualArmyBuilder
           waves={manualWaves}
+          collapsibleWaves
           onChange={(waves) => {
             setManualWaves(waves);
             publishOverlayState({ manualWaves: waves });
@@ -162,6 +163,7 @@ export default function Overlay({ panel }: Props) {
             teamWaves={teamWaves}
             waveShift={waveShift}
             tierUnlocked={tierUnlocked}
+            collapsibleWaves
             onChange={(teams) => {
               setTeamWaves(teams);
               publishOverlayState({ teamRaces: teams });
