@@ -72,13 +72,20 @@ function attachOverlayPinHandlers(win) {
   win.on("show", () => bringOverlayForward(win));
 }
 
+function setOverlayClickThroughMouseIgnore(win, enabled) {
+  if (!win || win.isDestroyed()) return;
+  if (enabled) {
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setIgnoreMouseEvents(false);
+  }
+}
+
 function broadcastOverlayClickThrough() {
   for (const panel of Object.keys(overlayWindows)) {
     const win = overlayWindows[panel];
     if (!win || win.isDestroyed()) continue;
-    if (!overlayClickThrough) {
-      win.setIgnoreMouseEvents(false);
-    }
+    setOverlayClickThroughMouseIgnore(win, overlayClickThrough);
     win.webContents.send("overlay:clickThroughState", overlayClickThrough);
   }
 }
@@ -90,9 +97,7 @@ function applyOverlayClickThrough(enabled) {
 
 function syncOverlayClickThrough(win) {
   if (!win || win.isDestroyed()) return;
-  if (!overlayClickThrough) {
-    win.setIgnoreMouseEvents(false);
-  }
+  setOverlayClickThroughMouseIgnore(win, overlayClickThrough);
   win.webContents.send("overlay:clickThroughState", overlayClickThrough);
 }
 
@@ -269,6 +274,10 @@ app.whenReady().then(() => {
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);
   registerOverlayShortcuts();
+
+  app.on("browser-window-blur", () => {
+    setTimeout(repinAllOverlayWindows, 50);
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
