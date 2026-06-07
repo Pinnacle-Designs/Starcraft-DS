@@ -218,14 +218,6 @@ export default function Overlay({ panel }: Props) {
     >
       {panel === "enemy" ? (
         <>
-          <ManualArmyBuilder
-            waves={manualWaves}
-            collapsibleWaves
-            onChange={(waves) => {
-              setManualWaves(waves);
-              publishOverlayState({ manualWaves: waves });
-            }}
-          />
           {isElectronApp() ? (
             <CaptureHotkeySettings
               scanning={captureScanning}
@@ -238,6 +230,14 @@ export default function Overlay({ panel }: Props) {
               {captureError}
             </p>
           ) : null}
+          <ManualArmyBuilder
+            waves={manualWaves}
+            collapsibleWaves
+            onChange={(waves) => {
+              setManualWaves(waves);
+              publishOverlayState({ manualWaves: waves });
+            }}
+          />
         </>
       ) : (
         <div className="overlay-team-stack">

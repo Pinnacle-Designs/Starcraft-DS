@@ -194,7 +194,12 @@ export default function App() {
     }
   }, [applyResult]);
 
-  useOverlayScreenCapture({
+  const {
+    scanning: captureScanning,
+    lastCaptureAt,
+    lastCaptureSummary,
+    error: captureScanError,
+  } = useOverlayScreenCapture({
     enabled: isElectronApp(),
     manualWaves,
     teamWaves,
@@ -509,9 +514,6 @@ export default function App() {
                 ? "Opens always-on-top enemy and team panels you can drag over your game."
                 : "Opens two separate windows you can place over your game. Allow popups for this site — team selection opens automatically after enemy waves."}
             </p>
-            {isElectronApp() ? (
-              <CaptureHotkeySettings compact />
-            ) : null}
           </div>
         )}
       </header>
@@ -654,6 +656,16 @@ export default function App() {
           />
           )}
 
+          {isElectronApp() ? (
+            <CaptureHotkeySettings
+              scanning={captureScanning}
+              lastCaptureAt={lastCaptureAt}
+              lastCaptureSummary={lastCaptureSummary}
+            />
+          ) : null}
+          {captureScanError ? (
+            <p className="capture-hotkey-error">{captureScanError}</p>
+          ) : null}
           <ManualArmyBuilder
             waves={manualWaves}
             onChange={setManualWaves}
