@@ -48,8 +48,23 @@ const CAPTURE_HOTKEY_FALLBACKS = [
 let captureHotkeyAccelerator = DEFAULT_CAPTURE_HOTKEY;
 let hotkeyRecording = false;
 let hotkeyRecordingBlurHandler = null;
+let hotkeyRecordingInputHandlers = null;
+let clickThroughBeforeRecording = false;
 const HOTKEY_RECORDING_TIMEOUT_MS = 60_000;
 let hotkeyRecordingTimeout = null;
+
+const MODIFIER_ONLY_KEYS = new Set([
+  "Control",
+  "Shift",
+  "Alt",
+  "Meta",
+  "OS",
+  "Command",
+  "CapsLock",
+  "Tab",
+  "NumLock",
+  "ScrollLock",
+]);
 
 const CLICK_THROUGH_HOTKEY = "Control+Shift+D";
 
@@ -306,8 +321,116 @@ function unregisterCaptureHotkey() {
   unregisterAccelerator(captureHotkeyAccelerator);
 }
 
+function stopHotkeyRecordingInputCapture() {
+  if (!hotkeyRecordingInputHandlers) return;
+  const { handler, wins } = hotkeyRecordingInputHandlers;
+  for (const win of wins) {
+    if (!win.isDestroyed()) {
+      win.webContents.removeListener("before-input-event", handler);
+    }
+  }
+  hotkeyRecordingInputHandlers = null;
+}
+
+function acceleratorFromInput(input) {
+  if (!input || input.type !== "keyDown") return null;
+  const key = input.key;
+  if (!key || key === "Escape" || MODIFIER_ONLY_KEYS.has(key)) return null;
+
+  const parts = [];
+  if (input.control) parts.push("Control");
+  if (input.alt) parts.push("Alt");
+  if (input.shift) parts.push("Shift");
+  if (input.meta) parts.push("Command");
+  if (parts.length === 0) return null;
+
+  let token = key;
+  if (token === " ") token = "Space";
+  else if (token.length === 1) token = token.toUpperCase();
+  else if (/^f\d{1,2}$/i.test(token)) token = token.toUpperCase();
+  else if (token === "ArrowUp") token = "Up";
+  else if (token === "ArrowDown") token = "Down";
+  else if (token === "ArrowLeft") token = "Left";
+  else if (token === "ArrowRight") token = "Right";
+
+  parts.push(token);
+  return normalizeCaptureHotkey(parts.join("+"));
+}
+
+function broadcastHotkeyRecorded(accelerator) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send("overlay:hotkeyRecorded", { accelerator });
+    }
+  }
+}
+
+function broadcastHotkeyRecordFailed(error) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send("overlay:hotkeyRecordFailed", { error });
+    }
+  }
+}
+
+function startHotkeyRecordingInputCapture() {
+  stopHotkeyRecordingInputCapture();
+  const handler = (event, input) => {
+    if (!hotkeyRecording) return;
+
+    if (input.type === "keyDown" && input.key === "Escape") {
+      event.preventDefault();
+      cancelHotkeyRecording(true);
+      return;
+    }
+
+    const accelerator = acceleratorFromInput(input);
+    if (!accelerator) return;
+
+    event.preventDefault();
+    const result = applyCaptureHotkey(accelerator);
+    if (result.ok) {
+      broadcastHotkeyRecorded(result.accelerator ?? accelerator);
+    } else {
+      registerOverlayHotkeys();
+      broadcastHotkeyRecordFailed(
+        result.error ?? "Hotkey could not be registered."
+      );
+    }
+  };
+
+  const wins = BrowserWindow.getAllWindows().filter((win) => !win.isDestroyed());
+  for (const win of wins) {
+    win.webContents.on("before-input-event", handler);
+  }
+  hotkeyRecordingInputHandlers = { handler, wins };
+}
+
+function setupHotkeyRecordingFocusGuard(win) {
+  if (!win || win.isDestroyed()) return;
+  if (hotkeyRecordingBlurHandler) {
+    const { win: prevWin, handler } = hotkeyRecordingBlurHandler;
+    if (prevWin && !prevWin.isDestroyed()) {
+      prevWin.removeListener("blur", handler);
+    }
+  }
+  const handler = () => {
+    if (!hotkeyRecording) return;
+    setTimeout(() => {
+      if (!hotkeyRecording || !win || win.isDestroyed()) return;
+      pinOverlayAlwaysOnTop(win);
+      win.show();
+      win.focus();
+      win.webContents.focus();
+    }, 30);
+  };
+  win.on("blur", handler);
+  hotkeyRecordingBlurHandler = { win, handler };
+}
+
 function clearHotkeyRecordingSession() {
   hotkeyRecording = false;
+  stopHotkeyRecordingInputCapture();
   if (hotkeyRecordingTimeout) {
     clearTimeout(hotkeyRecordingTimeout);
     hotkeyRecordingTimeout = null;
@@ -319,6 +442,49 @@ function clearHotkeyRecordingSession() {
     }
     hotkeyRecordingBlurHandler = null;
   }
+  if (clickThroughBeforeRecording) {
+    applyOverlayClickThrough(true);
+    clickThroughBeforeRecording = false;
+  }
+}
+
+function applyCaptureHotkey(accelerator) {
+  const previous = loadCaptureHotkey();
+  const next = normalizeCaptureHotkey(accelerator);
+  const parts = next.split("+");
+  const hasModifier = parts.some((part) =>
+    ["Control", "Command", "CommandOrControl", "Alt", "Shift"].includes(part)
+  );
+  if (!hasModifier || parts.length < 2) {
+    clearHotkeyRecordingSession();
+    return {
+      ok: false,
+      error: "Use at least one modifier (Ctrl, Alt, Shift) plus a key.",
+    };
+  }
+  if (next === CLICK_THROUGH_HOTKEY) {
+    clearHotkeyRecordingSession();
+    return {
+      ok: false,
+      error: "Ctrl+Shift+D is reserved for click-through toggle.",
+    };
+  }
+
+  saveCaptureHotkey(next);
+  clearHotkeyRecordingSession();
+  captureHotkeyAccelerator = next;
+  registerClickThroughHotkey();
+  const captureRegistered = registerCaptureHotkey(next);
+  if (!captureRegistered) {
+    saveCaptureHotkey(previous);
+    captureHotkeyAccelerator = previous;
+    registerOverlayHotkeys();
+    return {
+      ok: false,
+      error: `Could not register "${next}". Try a different combination.`,
+    };
+  }
+  return { ok: true, accelerator: next };
 }
 
 function cancelHotkeyRecording(notifyRenderer) {
@@ -658,12 +824,25 @@ ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
   unregisterCaptureHotkey();
   registerClickThroughHotkey();
 
+  clickThroughBeforeRecording = overlayClickThrough;
+  if (overlayClickThrough) {
+    applyOverlayClickThrough(false);
+  }
+
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) {
+    pinOverlayAlwaysOnTop(win);
+    win.show();
     win.focus();
     win.webContents.focus();
     clearOverlayMouseIgnore(win);
+    setupHotkeyRecordingFocusGuard(win);
   }
+  for (const panel of Object.keys(overlayWindows)) {
+    clearOverlayMouseIgnore(overlayWindows[panel]);
+  }
+
+  startHotkeyRecordingInputCapture();
 
   if (hotkeyRecordingTimeout) clearTimeout(hotkeyRecordingTimeout);
   hotkeyRecordingTimeout = setTimeout(() => {
@@ -685,44 +864,11 @@ ipcMain.handle("overlay:cancelHotkeyRecording", () => {
 });
 
 ipcMain.handle("overlay:setCaptureHotkey", (_event, accelerator) => {
-  const previous = loadCaptureHotkey();
-  const next = normalizeCaptureHotkey(accelerator);
-  const parts = next.split("+");
-  const hasModifier = parts.some((part) =>
-    ["Control", "Command", "CommandOrControl", "Alt", "Shift"].includes(part)
-  );
-  if (!hasModifier || parts.length < 2) {
-    clearHotkeyRecordingSession();
+  const result = applyCaptureHotkey(accelerator);
+  if (!result.ok) {
     registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: "Use at least one modifier (Ctrl, Alt, Shift) plus a key.",
-    };
   }
-  if (next === CLICK_THROUGH_HOTKEY) {
-    clearHotkeyRecordingSession();
-    registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: "Ctrl+Shift+D is reserved for click-through toggle.",
-    };
-  }
-
-  saveCaptureHotkey(next);
-  clearHotkeyRecordingSession();
-  captureHotkeyAccelerator = next;
-  registerClickThroughHotkey();
-  const captureRegistered = registerCaptureHotkey(next);
-  if (!captureRegistered) {
-    saveCaptureHotkey(previous);
-    captureHotkeyAccelerator = previous;
-    registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: `Could not register "${next}". Try a different combination.`,
-    };
-  }
-  return { ok: true, accelerator: next };
+  return result;
 });
 
 ipcMain.on("shell:openExternal", (_e, url) => {

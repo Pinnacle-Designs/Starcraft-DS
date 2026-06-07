@@ -84,9 +84,38 @@ export function CaptureHotkeySettings({
     if (!api?.onHotkeyRecordingCancelled) return;
     return api.onHotkeyRecordingCancelled(() => {
       setRecording(false);
+      setSaving(false);
       setError(null);
     });
   }, []);
+
+  useEffect(() => {
+    const api = window.starcraftDS;
+    if (!api?.onHotkeyRecorded) return;
+
+    const offRecorded = api.onHotkeyRecorded((payload) => {
+      const saved = normalizeAccelerator(payload.accelerator);
+      setRecording(false);
+      setSaving(false);
+      setError(null);
+      saveCaptureHotkey(saved);
+      setHotkey(saved);
+      setManualValue(formatHotkeyLabel(saved));
+      onHotkeyChange?.(saved);
+      setManualOpen(false);
+    });
+
+    const offFailed = api.onHotkeyRecordFailed?.((payload) => {
+      setRecording(false);
+      setSaving(false);
+      setError(payload.error ?? "Hotkey could not be registered.");
+    });
+
+    return () => {
+      offRecorded();
+      offFailed?.();
+    };
+  }, [onHotkeyChange]);
 
   useEffect(() => {
     onInteractionChange?.(recording || manualOpen);
@@ -162,15 +191,19 @@ export function CaptureHotkeySettings({
 
   const startRecording = useCallback(async () => {
     setError(null);
+    setSaving(false);
     pinMouseEvents();
     if (window.starcraftDS?.beginHotkeyRecording) {
       await window.starcraftDS.beginHotkeyRecording();
+      setRecording(true);
+      return;
     }
     setRecording(true);
   }, [pinMouseEvents]);
 
   useEffect(() => {
     if (!recording) return;
+    if (window.starcraftDS?.beginHotkeyRecording) return;
     const onKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -231,7 +264,8 @@ export function CaptureHotkeySettings({
 
       {recording ? (
         <p className="capture-hotkey-hint capture-hotkey-recording">
-          Press the key combination you want (Esc to cancel). Example: Ctrl+Shift+S
+          Press the key combination you want (Esc to cancel). The overlay stays focused
+          for recording — example: Ctrl+Shift+S
         </p>
       ) : (
         <p className="capture-hotkey-hint">

@@ -49,6 +49,8 @@ export interface StarcraftDSElectron {
   endHotkeyRecording: () => Promise<{ ok: boolean }>;
   cancelHotkeyRecording: () => Promise<{ ok: boolean }>;
   onHotkeyRecordingCancelled: (callback: () => void) => () => void;
+  onHotkeyRecorded: (callback: (payload: { accelerator: string }) => void) => () => void;
+  onHotkeyRecordFailed: (callback: (payload: { error: string }) => void) => () => void;
   onCaptureHotkey: (callback: (payload: CaptureHotkeyPayload) => void) => () => void;
   requestScreenCaptureAccess: () => Promise<ScreenCaptureAccessResult>;
   captureScreenNow: () => Promise<ScreenCaptureNowResult>;
