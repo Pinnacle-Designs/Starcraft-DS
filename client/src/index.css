@@ -1575,6 +1575,12 @@ button:focus-visible {
   border: 1px solid rgba(0, 242, 255, 0.2);
 }
 
+.badge-ocr {
+  background: rgba(120, 220, 120, 0.12);
+  color: #9dff9d;
+  border: 1px solid rgba(120, 220, 120, 0.28);
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.45;

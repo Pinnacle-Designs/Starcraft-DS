@@ -10,7 +10,7 @@ export interface VisionResult {
   detectedUnits: { name: string; confidence: string; notes?: string }[];
   scene?: string;
   mode: "ai" | "heuristic";
-  provider?: "openai" | "ollama";
+  provider?: "openai" | "ollama" | "ocr";
   raw?: unknown;
 }
 

@@ -56,6 +56,17 @@ function pinOverlayAlwaysOnTop(win) {
   }
 }
 
+function showOverlayWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  pinOverlayAlwaysOnTop(win);
+  if (typeof win.showInactive === "function") {
+    win.showInactive();
+  } else {
+    win.show();
+  }
+}
+
+/** Re-pin overlays that are already visible (blur/focus). Does not show hidden windows. */
 function bringOverlayForward(win) {
   if (!win || win.isDestroyed() || !win.isVisible()) return;
   pinOverlayAlwaysOnTop(win);
@@ -72,14 +83,9 @@ function repinAllOverlayWindows() {
   }
 }
 
-function showOverlayWindow(win) {
-  if (!win || win.isDestroyed()) return;
-  bringOverlayForward(win);
-}
-
 function attachOverlayPinHandlers(win) {
   if (!win || win.isDestroyed()) return;
-  win.on("show", () => bringOverlayForward(win));
+  win.on("show", () => pinOverlayAlwaysOnTop(win));
 }
 
 function clearOverlayMouseIgnore(win) {
@@ -371,10 +377,22 @@ function createOverlayPanelWindow(panel) {
     if (!win.isDestroyed()) showOverlayWindow(win);
   });
 
-  void win.loadURL(panelLoadUrl(config));
+  const url = panelLoadUrl(config);
+  void win.loadURL(url).catch((err) => {
+    console.error(`Overlay panel "${panel}" failed to load ${url}:`, err);
+  });
+
+  win.webContents.on("did-fail-load", (_event, code, description) => {
+    console.error(
+      `Overlay panel "${panel}" did-fail-load (${code}): ${description}`
+    );
+  });
 
   win.webContents.on("did-finish-load", () => {
     syncOverlayClickThrough(win);
+    if (!win.isDestroyed() && !win.isVisible()) {
+      showOverlayWindow(win);
+    }
   });
 
   win.on("moved", () => {

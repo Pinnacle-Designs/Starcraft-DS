@@ -225,27 +225,35 @@ export default function App() {
 
   const handleOpenOverlay = useCallback(() => {
     setOverlayHint(null);
-    void openOverlay().then((result) => {
-      if (!result.enemy && !result.team) {
+    void openOverlay()
+      .then((result) => {
+        if (!result.enemy && !result.team) {
+          setOverlayHint(
+            isElectronApp()
+              ? "Could not open overlay panels. Restart the app and try again."
+              : "Popups were blocked. Allow popups for this site, then try again."
+          );
+          return;
+        }
+        if (!result.enemy && result.team) {
+          setOverlayHint(
+            "Could not open the enemy waves panel. Team selection is open — allow popups for this site, then try again."
+          );
+          return;
+        }
+        if (isElectronApp() && result.enemy && result.team) {
+          setOverlayHint(
+            "Overlay panels opened — drag them over your game. Ctrl+Shift+D toggles click-through."
+          );
+        }
+      })
+      .catch(() => {
         setOverlayHint(
           isElectronApp()
-            ? "Could not open overlay panels. Restart the app and try again."
-            : "Popups were blocked. Allow popups for this site, then try again."
+            ? "Overlay failed to open. Run npm run dev, then restart Electron."
+            : "Could not open overlay. Try again or allow popups for this site."
         );
-        return;
-      }
-      if (!result.enemy && result.team) {
-        setOverlayHint(
-          "Could not open the enemy waves panel. Team selection is open — allow popups for this site, then try again."
-        );
-        return;
-      }
-      if (isElectronApp() && result.enemy && result.team) {
-        setOverlayHint(
-          "Overlay panels opened — drag them over your game. Ctrl+Shift+D toggles click-through."
-        );
-      }
-    });
+      });
   }, []);
 
   useEffect(() => {
@@ -430,7 +438,7 @@ export default function App() {
   const handleToggleLive = () => {
     if (!canLive) {
       setLastError(
-        "Live coach needs Ollama (`ollama pull llava`) or OpenAI API key, OR enemy units in the manual builder."
+        "Live coach needs screen capture with OCR, or enemy units in the manual builder."
       );
       return;
     }
@@ -449,9 +457,10 @@ export default function App() {
       return "● Live manual mode — refreshing counters from your army builder.";
     }
     if (!vision) return "";
+    if (vision.active === "ocr") return " Free OCR vision ready (Tesseract).";
     if (vision.active === "ollama") return " Local vision: Ollama ready.";
     if (vision.active === "openai") return " Cloud vision: OpenAI ready.";
-    return " Start Ollama (`ollama pull llava`) or set OPENAI_API_KEY, or tag enemy units + Live coach.";
+    return " Tag enemy units in the wave builder, or set VISION_PROVIDER in server/.env.";
   };
 
   const handleVideoUpload = (file: File) => {

@@ -71,14 +71,15 @@ export interface AnalyzeResponse {
   teamRaces?: TeamWaves;
   waveShift?: WaveShift;
   mode: "ai" | "heuristic";
-  provider?: "openai" | "ollama";
+  provider?: "openai" | "ollama" | "ocr";
   scene?: string;
 }
 
 export interface VisionProviders {
   openai: boolean;
   ollama: boolean;
-  active: "auto" | "openai" | "ollama" | null;
+  ocr: boolean;
+  active: "auto" | "openai" | "ollama" | "ocr" | null;
 }
 
 export interface ReplayPlayerInfo {
@@ -108,7 +109,7 @@ export interface AnalyzeOptions {
 export interface VisionQuickResponse {
   detectedUnits: DetectedUnit[];
   mode: "ai" | "heuristic";
-  provider?: "openai" | "ollama";
+  provider?: "openai" | "ollama" | "ocr";
   scene?: string;
 }
 

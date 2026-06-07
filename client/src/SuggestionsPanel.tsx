@@ -118,9 +118,15 @@ export function SuggestionsPanel({
           {result?.mode === "ai" && !result.provider && (
             <span className="badge badge-ai">AI</span>
           )}
+          {result?.provider === "ocr" && (
+            <span className="badge badge-ocr">OCR</span>
+          )}
           {result?.mode === "heuristic" &&
             result.detectedUnits.length > 0 &&
-            !live && <span className="badge badge-manual">Manual</span>}
+            !live &&
+            result?.provider !== "ocr" && (
+              <span className="badge badge-manual">Manual</span>
+            )}
         </h2>
       )}
 

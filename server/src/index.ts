@@ -23,9 +23,9 @@ import { listReplayPlayers, parseReplayBuffer } from "./replayService.js";
 import { startOllamaForUser } from "./ollamaManager.js";
 import {
   analyzeScreenshot,
-  detectFromText,
   getVisionStatus,
 } from "./vision/index.js";
+import { detectFromText } from "./vision/textDetection.js";
 
 startOllamaForUser();
 
