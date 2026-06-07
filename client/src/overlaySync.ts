@@ -130,17 +130,37 @@ function openOverlayPanelWindow(panel: OverlayPanelId): Window | null {
   return window.open(url, `starcraft-ds-overlay-${panel}`, features);
 }
 
-/** Opens enemy + team as separate always-on-top panel windows. */
+type WebOverlayOpener = () => void;
+let webOverlayOpener: WebOverlayOpener | null = null;
+
+/** Register in-page overlay panels (browser main window). */
+export function registerWebOverlayOpener(opener: WebOverlayOpener): () => void {
+  webOverlayOpener = opener;
+  return () => {
+    if (webOverlayOpener === opener) webOverlayOpener = null;
+  };
+}
+
+function openOverlayPopups(): boolean {
+  const enemy = openOverlayPanelWindow("enemy");
+  const team = openOverlayPanelWindow("team");
+  return Boolean(enemy && team);
+}
+
+/**
+ * Electron: separate always-on-top OS windows.
+ * Browser: in-page floating panels (and popup windows when allowed).
+ */
 export function openOverlay(): void {
   if (window.starcraftDS?.isElectron) {
     void window.starcraftDS.openNativeOverlay();
     return;
   }
-  const enemy = openOverlayPanelWindow("enemy");
-  const team = openOverlayPanelWindow("team");
-  if (!team && enemy) {
-    window.setTimeout(() => openOverlayPanelWindow("team"), 250);
+  if (webOverlayOpener) {
+    webOverlayOpener();
+    return;
   }
+  openOverlayPopups();
 }
 
 export function isElectronApp(): boolean {

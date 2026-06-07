@@ -28,12 +28,20 @@ import {
 } from "./manualArmy";
 import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
 import {
+  isElectronApp,
   MAIN_SYNC_ORIGIN,
   OVERLAY_SYNC_ORIGIN,
   openOverlay,
   publishCoachState,
+  registerWebOverlayOpener,
   subscribeCoachState,
 } from "./overlaySync";
+import {
+  loadWebOverlayVisibility,
+  saveWebOverlayVisibility,
+  type PanelVisibility,
+} from "./overlayStorage";
+import { WebOverlayPanels } from "./WebOverlayPanels";
 import { useLiveCoach } from "./useLiveCoach";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
@@ -59,6 +67,15 @@ export default function App() {
   const [counterRefreshing, setCounterRefreshing] = useState(false);
   const [lastCounterRefreshAt, setLastCounterRefreshAt] = useState<number | null>(
     null
+  );
+  const [webOverlayVisible, setWebOverlayVisible] = useState<PanelVisibility>(
+    () => loadWebOverlayVisibility()
+  );
+  const [webOverlaySession, setWebOverlaySession] = useState(
+    () => {
+      const vis = loadWebOverlayVisibility();
+      return vis.enemy || vis.team;
+    }
   );
 
   const bumpCaptureHistory = useCallback(() => {
@@ -217,6 +234,20 @@ export default function App() {
       void archiveFrame(b64, data.detectedUnits, { throttleLive: true });
     },
   });
+
+  useEffect(() => {
+    return registerWebOverlayOpener(() => {
+      setWebOverlayVisible({ enemy: true, team: true });
+      setWebOverlaySession(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveWebOverlayVisibility(webOverlayVisible);
+    if (webOverlayVisible.enemy || webOverlayVisible.team) {
+      setWebOverlaySession(true);
+    }
+  }, [webOverlayVisible]);
 
   useEffect(() => {
     return subscribeCoachState((incoming) => {
@@ -455,7 +486,7 @@ export default function App() {
               type="button"
               className="btn"
               onClick={() => openOverlay()}
-              title="Open enemy waves and team selection as separate always-on-top panels"
+              title="Open enemy waves and team selection as draggable overlay panels over the page"
             >
               Open game overlay
             </button>
@@ -653,6 +684,22 @@ export default function App() {
         , and{" "}
         <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
       </footer>
+
+      {overlayEnabled && !isElectronApp() ? (
+        <WebOverlayPanels
+          visible={webOverlayVisible}
+          onVisibleChange={setWebOverlayVisible}
+          sessionActive={webOverlaySession}
+          manualWaves={manualWaves}
+          onManualWavesChange={setManualWaves}
+          teamWaves={teamWaves}
+          onTeamWavesChange={handleTeamWavesChange}
+          waveShift={waveShift}
+          onWaveShiftChange={setWaveShift}
+          tierUnlocked={tierUnlocked}
+          onTierUnlockedChange={setTierUnlocked}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1839,3 +1839,65 @@ body.overlay-electron .floating-overlay-panel-body * {
 .floating-overlay-panel-body .manual-army-header:first-child h2 {
   display: none;
 }
+
+/* In-page floating overlay panels (browser) */
+.web-overlay-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9000;
+}
+
+.web-floating-panel {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(520px, calc(100vh - 16px));
+  opacity: 0.8;
+  border-radius: 6px;
+  border: 1px solid rgba(70, 78, 90, 0.65);
+  background: linear-gradient(
+    155deg,
+    rgba(20, 24, 30, 0.92) 0%,
+    rgba(10, 12, 16, 0.94) 100%
+  );
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 242, 255, 0.06) inset;
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 9001;
+}
+
+.web-overlay-dock {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  pointer-events: auto;
+  z-index: 9002;
+}
+
+.web-overlay-dock-btn {
+  padding: 0.4rem 0.65rem;
+  border-radius: 5px;
+  border: 1px solid rgba(70, 78, 90, 0.65);
+  background: rgba(18, 22, 28, 0.92);
+  color: var(--text-silver);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.web-overlay-dock-btn:hover {
+  border-color: rgba(0, 242, 255, 0.35);
+  color: var(--cyan);
+}
