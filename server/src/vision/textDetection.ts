@@ -27,7 +27,16 @@ function parseNearbyCount(snippet: string): number | undefined {
   return undefined;
 }
 
-function detectExact(text: string): VisionResult["detectedUnits"] {
+export interface TextDetectionOptions {
+  /** When false, accept single-word unit names without a nearby stack count. */
+  requireCount?: boolean;
+}
+
+function detectExact(
+  text: string,
+  options: TextDetectionOptions = {}
+): VisionResult["detectedUnits"] {
+  const requireCount = options.requireCount !== false;
   const lower = normalizeOcrText(text);
   const found: VisionResult["detectedUnits"] = [];
   const seen = new Set<string>();
@@ -49,7 +58,7 @@ function detectExact(text: string): VisionResult["detectedUnits"] {
       const end = Math.min(lower.length, index + match[0].length + 48);
       const window = lower.slice(start, end);
 
-      if (!multiWord && !hasCountEvidence(window)) continue;
+      if (requireCount && !multiWord && !hasCountEvidence(window)) continue;
 
       const count = parseNearbyCount(window);
       seen.add(unit);
@@ -78,7 +87,10 @@ function detectExact(text: string): VisionResult["detectedUnits"] {
   return found;
 }
 
-/** Match unit names in OCR text only when backed by a nearby stack count. */
-export function detectFromText(text: string): VisionResult {
-  return { detectedUnits: detectExact(text), mode: "heuristic" };
+/** Match unit names in OCR text (strict by default: nearby count required). */
+export function detectFromText(
+  text: string,
+  options?: TextDetectionOptions
+): VisionResult {
+  return { detectedUnits: detectExact(text, options), mode: "heuristic" };
 }

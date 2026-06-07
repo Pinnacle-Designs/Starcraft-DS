@@ -119,7 +119,8 @@ export function useOverlayScreenCapture({
       });
       if (applied.addedCount === 0) {
         setError(
-          "No enemy units detected on screen — capture while enemies are visible on the map."
+          applied.visionScene ??
+            "No enemy units detected — capture while enemy armies are visible on the main map (not only the minimap). First scan may take up to a minute while Ollama analyzes tiles."
         );
       }
     } catch (e) {

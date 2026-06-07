@@ -74,8 +74,8 @@ async function recognizeWithPsm(
   return text;
 }
 
-function buildResult(text: string): VisionResult {
-  const matched = detectFromText(text);
+function buildResult(text: string, relaxed = false): VisionResult {
+  const matched = detectFromText(text, { requireCount: !relaxed });
   return {
     detectedUnits: matched.detectedUnits,
     scene: text.trim().slice(0, 200) || "OCR found no readable text.",
@@ -87,13 +87,15 @@ function buildResult(text: string): VisionResult {
 
 export async function analyzeWithTesseract(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  options?: { relaxed?: boolean }
 ): Promise<VisionResult> {
+  const relaxed = options?.relaxed === true;
   const worker = await getOcrWorker();
   const dataUrl = `data:${mimeType};base64,${imageBase64}`;
 
   let combined = await recognizeRegion(worker, dataUrl);
-  let result = buildResult(combined);
+  let result = buildResult(combined, relaxed);
   if (result.detectedUnits.length > 0) return result;
 
   const dims = imageDimensionsFromBase64(imageBase64, mimeType);
@@ -108,7 +110,7 @@ export async function analyzeWithTesseract(
     );
     if (tiled.trim()) {
       combined = `${combined}\n${tiled}`;
-      result = buildResult(combined);
+      result = buildResult(combined, relaxed);
       if (result.detectedUnits.length > 0) return result;
     }
   }
@@ -116,7 +118,7 @@ export async function analyzeWithTesseract(
   const sparse = await recognizeWithPsm(worker, dataUrl, "11");
   if (sparse.trim()) {
     combined = `${combined}\n${sparse}`;
-    result = buildResult(combined);
+    result = buildResult(combined, relaxed);
   }
 
   return result;
@@ -124,10 +126,11 @@ export async function analyzeWithTesseract(
 
 export async function analyzeWithTesseractSafe(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  options?: { relaxed?: boolean }
 ): Promise<VisionResult> {
   try {
-    return await analyzeWithTesseract(imageBase64, mimeType);
+    return await analyzeWithTesseract(imageBase64, mimeType, options);
   } catch (err) {
     const message = err instanceof Error ? err.message : "OCR failed";
     return {

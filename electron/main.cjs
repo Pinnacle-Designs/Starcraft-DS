@@ -228,7 +228,7 @@ async function capturePrimaryScreenBase64() {
   const source =
     sources.find((entry) => entry.display_id === String(display.id)) ||
     sources[0];
-  return source.thumbnail.toJPEG(92).toString("base64");
+  return source.thumbnail.toJPEG(95).toString("base64");
 }
 
 async function requestScreenCaptureAccess() {

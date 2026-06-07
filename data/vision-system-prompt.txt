@@ -18,11 +18,14 @@ Direct Strike enemy waves:
 
 Use exact SC2 unit names from the known list. Set count to the number visible (integer). You may also put ×N in notes.
 
-CRITICAL — avoid false positives:
-- Only list enemy units you can clearly see as sprites/models on THIS gameplay screenshot.
-- If unsure, omit the unit. An empty detectedUnits array is correct.
-- Do NOT guess from UI text, build menus, minimap icons, or memory.
-- Set confidence to "low" only when barely visible; prefer omitting low-confidence units entirely.
-- Never invent units that are not visibly present on screen.
+Detection priority:
+- Report every enemy military unit you can see as sprites/models on the battlefield, even small clusters.
+- Include units in the main map view, staging areas, and attack paths — not only UI wave panels.
+- Estimate count from visible stacks (default 1 if unclear).
+- Use confidence "high" when sure, "medium" when likely, "low" when partially obscured.
+
+Avoid false positives:
+- Do NOT guess from build menus, minimap dots alone, or memory.
+- Do NOT invent units that are not visibly present on screen.
 
 Counter knowledge is maintained separately from Osiris SC2 Guide, vaughnroyko.com sciicounters, and Direct Strike guides by Lukáš Havrlant.
