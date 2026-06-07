@@ -67,7 +67,9 @@ function pinOverlayAlwaysOnTop(win) {
 function showOverlayWindow(win) {
   if (!win || win.isDestroyed()) return;
   pinOverlayAlwaysOnTop(win);
-  if (typeof win.showInactive === "function") {
+  if (process.platform === "win32") {
+    win.show();
+  } else if (typeof win.showInactive === "function") {
     win.showInactive();
   } else {
     win.show();
@@ -471,6 +473,7 @@ function createOverlayPanelWindow(panel) {
     alwaysOnTop: true,
     frame: false,
     transparent: true,
+    backgroundColor: "#00000000",
     resizable: true,
     skipTaskbar: false,
     hasShadow: true,
@@ -502,6 +505,15 @@ function createOverlayPanelWindow(panel) {
       `Overlay panel "${panel}" did-fail-load (${code}): ${description}`
     );
   });
+
+  win.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL) => {
+      console.error(
+        `Overlay panel "${panel}" failed to load (${errorCode}): ${errorDescription} — ${validatedURL}`
+      );
+    }
+  );
 
   win.webContents.on("did-finish-load", () => {
     syncOverlayClickThrough(win);
