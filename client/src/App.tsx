@@ -230,9 +230,9 @@ export default function App() {
       );
       return;
     }
-    if (!result.enemy) {
+    if (!result.enemy && result.team) {
       setOverlayHint(
-        "Could not open overlay panels. Allow popups for this site, then try again."
+        "Could not open the enemy waves panel. Team selection is open — allow popups for this site, then try again."
       );
     }
   }, []);
