@@ -35,6 +35,44 @@ let mainWindow = null;
 const overlayWindows = { enemy: null, team: null };
 let overlayClickThrough = false;
 
+const OVERLAY_TOP_LEVEL =
+  process.platform === "darwin" ? "floating" : "screen-saver";
+
+function pinOverlayAlwaysOnTop(win) {
+  if (!win || win.isDestroyed()) return;
+  win.setAlwaysOnTop(true, OVERLAY_TOP_LEVEL);
+  if (process.platform === "darwin") {
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+  if (typeof win.moveTop === "function") {
+    win.moveTop();
+  }
+}
+
+function repinAllOverlayWindows() {
+  for (const panel of Object.keys(overlayWindows)) {
+    pinOverlayAlwaysOnTop(overlayWindows[panel]);
+  }
+}
+
+function showOverlayWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  pinOverlayAlwaysOnTop(win);
+  if (typeof win.showInactive === "function") {
+    win.showInactive();
+  } else {
+    win.show();
+  }
+}
+
+function attachOverlayPinHandlers(win) {
+  if (!win || win.isDestroyed()) return;
+  const repin = () => pinOverlayAlwaysOnTop(win);
+  win.on("blur", repin);
+  win.on("show", repin);
+  win.on("focus", repin);
+}
+
 function applyOverlayClickThrough(enabled) {
   overlayClickThrough = Boolean(enabled);
   for (const panel of Object.keys(overlayWindows)) {
@@ -126,6 +164,10 @@ function createMainWindow() {
     mainWindow.loadFile(path.join(__dirname, "../client/dist/index.html"));
   }
 
+  mainWindow.on("focus", () => {
+    repinAllOverlayWindows();
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
     for (const panel of Object.keys(overlayWindows)) {
@@ -142,8 +184,7 @@ function createOverlayPanelWindow(panel) {
 
   const existing = overlayWindows[panel];
   if (existing && !existing.isDestroyed()) {
-    existing.show();
-    existing.focus();
+    showOverlayWindow(existing);
     syncOverlayClickThrough(existing);
     return existing;
   }
@@ -174,6 +215,8 @@ function createOverlayPanelWindow(panel) {
     hasShadow: true,
     fullscreenable: false,
     show: false,
+    ...(process.platform === "win32" ? { type: "toolbar" } : {}),
+    ...(process.platform === "darwin" ? { type: "panel" } : {}),
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -181,10 +224,11 @@ function createOverlayPanelWindow(panel) {
     },
   });
 
-  win.setAlwaysOnTop(true, "screen-saver");
+  pinOverlayAlwaysOnTop(win);
+  attachOverlayPinHandlers(win);
 
   win.once("ready-to-show", () => {
-    if (!win.isDestroyed()) win.show();
+    if (!win.isDestroyed()) showOverlayWindow(win);
   });
 
   void win.loadURL(panelLoadUrl(config));
@@ -218,6 +262,7 @@ function openAllOverlayPanels() {
   createOverlayPanelWindow("enemy");
   setTimeout(() => {
     createOverlayPanelWindow("team");
+    repinAllOverlayWindows();
   }, 200);
 }
 
@@ -225,6 +270,10 @@ app.whenReady().then(() => {
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);
   registerOverlayShortcuts();
+
+  app.on("browser-window-blur", () => {
+    setTimeout(repinAllOverlayWindows, 50);
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -251,7 +300,12 @@ ipcMain.handle("overlay:close", (event) => {
 
 ipcMain.handle("overlay:setAlwaysOnTop", (event, enabled) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) win.setAlwaysOnTop(Boolean(enabled), "screen-saver");
+  if (!win || win.isDestroyed()) return;
+  if (enabled) {
+    pinOverlayAlwaysOnTop(win);
+  } else {
+    win.setAlwaysOnTop(false);
+  }
 });
 
 ipcMain.handle("overlay:setClickThrough", (_event, enabled) => {

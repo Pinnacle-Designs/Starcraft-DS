@@ -111,7 +111,12 @@ export default function Overlay({ panel }: Props) {
 
   useEffect(() => {
     if (!window.starcraftDS?.isElectron) return;
-    void window.starcraftDS.setAlwaysOnTop(true);
+    const repin = () => {
+      void window.starcraftDS?.setAlwaysOnTop(true);
+    };
+    repin();
+    window.addEventListener("blur", repin);
+    return () => window.removeEventListener("blur", repin);
   }, []);
 
   useEffect(() => {
