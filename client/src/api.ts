@@ -40,10 +40,18 @@ export interface CounterBuildCount {
   platformSlotsPerUnit?: number;
   maxOnPlatform?: number;
   platformLimited?: boolean;
+  unitMinerals?: number;
+  unitGas?: number;
+  stackMinerals?: number;
+  stackGas?: number;
+  stackCost?: number;
 }
 
 export interface CounterSuggestion {
   enemyUnit: string;
+  enemyStackMinerals?: number;
+  enemyStackGas?: number;
+  enemyStackCost?: number;
   build: string[];
   buildCounts?: CounterBuildCount[];
   enemyCount?: number;
@@ -63,6 +71,10 @@ export interface CounterSuggestion {
   enemyPlatformLane?: "ground" | "air";
   enemyPlatformSlots?: number;
   platformCapacity?: { ground: number; air: number };
+  maxTierUnlocked?: UnitTier;
+  lockedCounters?: CounterBuildCount[];
+  /** Strongest counter for this matchup (may require higher tech). */
+  bestOverallCounter?: CounterBuildCount;
 }
 
 export interface AnalyzeResponse {

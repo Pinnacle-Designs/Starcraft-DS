@@ -104,8 +104,8 @@ export function TeamSelection({
         <span className="panel-heading panel-heading-inline">Team selection</span>
       </h2>
       <p className="status team-selection-hint">
-        Pick up to 3 races in wave order. Wave 2–3 are optional — counters fall
-        back to earlier waves.
+        Pick up to 3 races in wave order. Set Tech (T1–T3) per wave — counter
+        suggestions only use units at or below that tier.
       </p>
       {collapsibleWaves ? (
         <div className="wave-collapsible-list">

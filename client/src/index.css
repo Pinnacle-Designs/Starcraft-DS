@@ -866,6 +866,55 @@ button:focus-visible {
   color: var(--muted);
 }
 
+.stack-cost {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stack-cost-enemy {
+  color: #e8a060;
+}
+
+.stack-cost-build {
+  display: inline-block;
+  margin-left: 0.35rem;
+  color: #7ec8a0;
+}
+
+.suggestion-tech-tier {
+  margin-left: 0.35rem;
+  color: #8eb4ff;
+}
+
+.build-best-overall {
+  margin-top: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.build-best-overall .build-alt-label {
+  color: #d4b87a;
+}
+
+.best-overall-tier {
+  color: #d4b87a;
+}
+
+.stack-cost-best {
+  color: #d4b87a;
+}
+
+.build-locked-tier {
+  margin-top: 0.35rem;
+  opacity: 0.82;
+}
+
+.build-locked-option {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+
 .counter-paths {
   margin-top: 0.35rem;
 }
