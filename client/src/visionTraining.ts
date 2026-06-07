@@ -12,6 +12,7 @@ export interface TrainingStats {
   confirmed: number;
   lastSavedAt: number | null;
   examplesInPrompt: number;
+  retentionDays: number;
 }
 
 export interface PendingVisionCapture {

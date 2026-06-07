@@ -138,7 +138,8 @@ npm run export-training
 |----------|---------|-------------|
 | `VISION_USE_TRAINING_EXAMPLES` | `true` | Inject saved corrections into Ollama prompts |
 | `VISION_TRAINING_EXAMPLES_MAX` | `5` | How many examples to include per scan |
-| `TRAINING_MAX_SAMPLES` | `500` | Max stored screenshots (oldest removed) |
+| `TRAINING_RETENTION_DAYS` | `10` | Delete training images older than this (local `data/training/`) |
+| `TRAINING_MAX_SAMPLES` | `500` | Max stored screenshots (oldest removed after retention) |
 
 To improve accuracy manually, extend `counters.json`, refine `vision-system-prompt.txt`, or fine-tune a vision model using exported JSONL.
 

@@ -21,6 +21,42 @@ const trainingDir = join(__dirname, "../../../data/training");
 const samplesDir = join(trainingDir, "samples");
 const indexPath = join(trainingDir, "index.json");
 const MAX_SAMPLES = Number(process.env.TRAINING_MAX_SAMPLES || 500);
+const TRAINING_RETENTION_DAYS = Number(process.env.TRAINING_RETENTION_DAYS || 10);
+export const TRAINING_RETENTION_MS =
+  TRAINING_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+function deleteSampleImage(sample: TrainingSample) {
+  const imagePath = join(trainingDir, sample.imageFile);
+  try {
+    if (existsSync(imagePath)) unlinkSync(imagePath);
+  } catch {
+    /* ignore */
+  }
+}
+
+function pruneExpiredSamples(index: TrainingIndex): TrainingIndex {
+  const cutoff = Date.now() - TRAINING_RETENTION_MS;
+  const kept: TrainingSample[] = [];
+  for (const sample of index.samples) {
+    if (sample.createdAt >= cutoff) kept.push(sample);
+    else deleteSampleImage(sample);
+  }
+  if (kept.length !== index.samples.length) {
+    index.samples = kept;
+    writeIndex(index);
+  }
+  return index;
+}
+
+function enforceSampleLimit(index: TrainingIndex): TrainingIndex {
+  const before = index.samples.length;
+  while (index.samples.length > MAX_SAMPLES) {
+    const removed = index.samples.shift();
+    if (removed) deleteSampleImage(removed);
+  }
+  if (index.samples.length !== before) writeIndex(index);
+  return index;
+}
 
 function ensureDirs() {
   if (!existsSync(trainingDir)) mkdirSync(trainingDir, { recursive: true });
@@ -34,7 +70,9 @@ function readIndex(): TrainingIndex {
   }
   try {
     const parsed = JSON.parse(readFileSync(indexPath, "utf8")) as TrainingIndex;
-    if (parsed?.version === 1 && Array.isArray(parsed.samples)) return parsed;
+    if (parsed?.version === 1 && Array.isArray(parsed.samples)) {
+      return enforceSampleLimit(pruneExpiredSamples(parsed));
+    }
   } catch {
     /* rebuild */
   }
@@ -97,6 +135,7 @@ export function getTrainingStats(): TrainingStats {
     confirmed,
     lastSavedAt: last?.createdAt ?? null,
     examplesInPrompt: Number(process.env.VISION_TRAINING_EXAMPLES_MAX || 5),
+    retentionDays: TRAINING_RETENTION_DAYS,
   };
 }
 
@@ -187,18 +226,8 @@ export function saveTrainingCorrection(
   };
 
   index.samples.push(sample);
-  while (index.samples.length > MAX_SAMPLES) {
-    const removed = index.samples.shift();
-    if (removed) {
-      const oldPath = join(trainingDir, removed.imageFile);
-      try {
-        if (existsSync(oldPath)) unlinkSync(oldPath);
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-
+  pruneExpiredSamples(index);
+  enforceSampleLimit(index);
   writeIndex(index);
   return { saved: true, sample };
 }

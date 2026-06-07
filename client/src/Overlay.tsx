@@ -145,13 +145,14 @@ export default function Overlay({ panel }: Props) {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
+      if (!trainingPending) return;
       const units = manualArmyEntries(manualWaves);
       if (units.length > 0) {
         void submitTrainingCorrectionRef.current(units);
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [manualUnitsKey, manualWaves]);
+  }, [manualUnitsKey, manualWaves, trainingPending]);
 
   useEffect(() => {
     setCaptureError(captureScanError);

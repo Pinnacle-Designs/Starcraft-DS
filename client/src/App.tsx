@@ -454,7 +454,9 @@ export default function App() {
       const units = manualArmyEntries(manualWavesRef.current);
       if (units.length > 0) {
         void refreshCountersRef.current();
-        void submitTrainingCorrectionRef.current(units);
+        if (trainingPending) {
+          void submitTrainingCorrectionRef.current(units);
+        }
         return;
       }
 
@@ -470,7 +472,14 @@ export default function App() {
       }
     }, 450);
     return () => clearTimeout(id);
-  }, [manualUnitsKey, friendlyUnitsKey, tierUnlockedKey, teamWavesKey, waveShift]);
+  }, [
+    manualUnitsKey,
+    friendlyUnitsKey,
+    tierUnlockedKey,
+    teamWavesKey,
+    waveShift,
+    trainingPending,
+  ]);
 
   const handleStartCapture = async () => {
     setCapturePanelOpen(true);
@@ -713,10 +722,13 @@ export default function App() {
                   {trainingLastSavedAt
                     ? " — latest labels applied to future scans"
                     : ""}
+                  {" "}
+                  (kept locally {trainingStats.retentionDays} days)
                 </p>
               ) : (
                 <p className="status training-status">
-                  Fix unit tags after a capture to teach vision from your screenshots.
+                  Fix unit tags after a capture to teach vision — images kept locally
+                  for {trainingStats?.retentionDays ?? 10} days.
                 </p>
               )}
               {trainingSaveError ? (
