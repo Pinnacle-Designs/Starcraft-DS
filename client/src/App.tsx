@@ -341,7 +341,7 @@ export default function App() {
         if (data.detectedUnits.length === 0) {
           setLastError(
             data.scene?.slice(0, 140) ||
-              "No units detected. Use the manual army builder or check Ollama/OpenAI vision."
+              "No units detected. Use the manual army builder or ensure unit names are visible on screen for OCR."
           );
         }
       } catch (e) {
@@ -464,7 +464,8 @@ export default function App() {
     if (!vision) return "";
     if (vision.active === "ocr") return " Free OCR vision ready (Tesseract).";
     if (vision.active === "ollama") return " Local vision: Ollama ready.";
-    if (vision.active === "openai") return " Cloud vision: OpenAI ready.";
+    if (vision.active === "openai")
+      return " Cloud vision: OpenAI (quota issues fall back to free OCR).";
     return " Tag enemy units in the wave builder, or set VISION_PROVIDER in server/.env.";
   };
 

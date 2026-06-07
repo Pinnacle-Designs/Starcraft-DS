@@ -1,5 +1,9 @@
 import { analyzeWithOllamaSafe, checkOllamaAvailable } from "./ollamaVision.js";
-import { analyzeWithOpenAi, isOpenAiConfigured } from "./openaiVision.js";
+import {
+  analyzeWithOpenAi,
+  isOpenAiConfigured,
+  isOpenAiQuotaError,
+} from "./openaiVision.js";
 import { detectFromText } from "./textDetection.js";
 import { analyzeWithTesseractSafe } from "./tesseractOcr.js";
 import type { VisionResult } from "./shared.js";
@@ -66,7 +70,20 @@ export async function analyzeScreenshot(
 
   if (pref === "openai") {
     if (isOpenAiConfigured()) {
-      return analyzeWithOpenAi(imageBase64, mimeType);
+      try {
+        return await analyzeWithOpenAi(imageBase64, mimeType);
+      } catch (err) {
+        if (isOpenAiQuotaError(err)) {
+          const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
+          return {
+            ...ocr,
+            scene:
+              "OpenAI quota exceeded — fell back to free OCR. " +
+              (ocr.scene ?? ""),
+          };
+        }
+        throw err;
+      }
     }
     return {
       detectedUnits: [],

@@ -59,3 +59,11 @@ export async function analyzeWithOpenAi(
     raw: content,
   };
 }
+
+export function isOpenAiQuotaError(err: unknown): boolean {
+  if (err instanceof OpenAI.APIError) {
+    return err.status === 429 || err.status === 402;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  return /quota|billing|rate limit|429/i.test(message);
+}
