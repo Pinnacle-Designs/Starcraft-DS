@@ -49,6 +49,7 @@ let captureHotkeyAccelerator = DEFAULT_CAPTURE_HOTKEY;
 let hotkeyRecording = false;
 let hotkeyRecordingBlurHandler = null;
 let hotkeyRecordingInputHandlers = null;
+let hotkeyRecorderWindow = null;
 let clickThroughBeforeRecording = false;
 const HOTKEY_RECORDING_TIMEOUT_MS = 60_000;
 let hotkeyRecordingTimeout = null;
@@ -255,8 +256,7 @@ async function requestScreenCaptureAccess() {
   }
 }
 
-function broadcastCaptureScreen(base64) {
-  const payload = { base64, at: Date.now() };
+function broadcastCaptureScreen(payload) {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
       win.webContents.send("overlay:captureScreen", payload);
@@ -265,11 +265,26 @@ function broadcastCaptureScreen(base64) {
 }
 
 async function triggerScreenCapture() {
+  const at = Date.now();
   try {
+    if (!screenCaptureAccessGranted) {
+      const access = await requestScreenCaptureAccess();
+      if (!access.ok) {
+        broadcastCaptureScreen({
+          base64: "",
+          at,
+          error: access.error ?? "Screen capture not available",
+        });
+        return;
+      }
+    }
     const base64 = await capturePrimaryScreenBase64();
-    broadcastCaptureScreen(base64);
+    screenCaptureAccessGranted = true;
+    broadcastCaptureScreen({ base64, at });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Screen capture failed";
     console.error("Screen capture failed:", err);
+    broadcastCaptureScreen({ base64: "", at, error: message });
   }
 }
 
@@ -428,8 +443,58 @@ function setupHotkeyRecordingFocusGuard(win) {
   hotkeyRecordingBlurHandler = { win, handler };
 }
 
+function closeHotkeyRecorderWindow() {
+  if (!hotkeyRecorderWindow || hotkeyRecorderWindow.isDestroyed()) {
+    hotkeyRecorderWindow = null;
+    return;
+  }
+  hotkeyRecorderWindow.close();
+  hotkeyRecorderWindow = null;
+}
+
+function openHotkeyRecorderWindow() {
+  closeHotkeyRecorderWindow();
+  hotkeyRecorderWindow = new BrowserWindow({
+    width: 440,
+    height: 200,
+    show: false,
+    alwaysOnTop: true,
+    center: true,
+    frame: true,
+    title: "Record screen capture hotkey",
+    backgroundColor: "#14181f",
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  pinOverlayAlwaysOnTop(hotkeyRecorderWindow);
+  void hotkeyRecorderWindow.loadFile(
+    path.join(__dirname, "hotkey-recorder.html")
+  );
+  hotkeyRecorderWindow.once("ready-to-show", () => {
+    if (!hotkeyRecorderWindow || hotkeyRecorderWindow.isDestroyed()) return;
+    hotkeyRecorderWindow.show();
+    hotkeyRecorderWindow.focus();
+    hotkeyRecorderWindow.webContents.focus();
+  });
+  hotkeyRecorderWindow.on("closed", () => {
+    hotkeyRecorderWindow = null;
+    if (hotkeyRecording) {
+      cancelHotkeyRecording(true);
+    }
+  });
+}
+
 function clearHotkeyRecordingSession() {
   hotkeyRecording = false;
+  closeHotkeyRecorderWindow();
   stopHotkeyRecordingInputCapture();
   if (hotkeyRecordingTimeout) {
     clearTimeout(hotkeyRecordingTimeout);
@@ -829,14 +894,14 @@ ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
     applyOverlayClickThrough(false);
   }
 
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win && !win.isDestroyed()) {
-    pinOverlayAlwaysOnTop(win);
-    win.show();
-    win.focus();
-    win.webContents.focus();
-    clearOverlayMouseIgnore(win);
-    setupHotkeyRecordingFocusGuard(win);
+  const senderWin = BrowserWindow.fromWebContents(event.sender);
+  if (senderWin && !senderWin.isDestroyed()) {
+    pinOverlayAlwaysOnTop(senderWin);
+    senderWin.show();
+    senderWin.focus();
+    senderWin.webContents.focus();
+    clearOverlayMouseIgnore(senderWin);
+    setupHotkeyRecordingFocusGuard(senderWin);
   }
   for (const panel of Object.keys(overlayWindows)) {
     clearOverlayMouseIgnore(overlayWindows[panel]);
@@ -850,6 +915,27 @@ ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
   }, HOTKEY_RECORDING_TIMEOUT_MS);
 
   return { ok: true };
+});
+
+ipcMain.handle("overlay:submitRecordedHotkey", (_event, accelerator) => {
+  if (!hotkeyRecording) {
+    return { ok: false, error: "Hotkey recording is not active." };
+  }
+  if (typeof accelerator !== "string" || !accelerator.trim()) {
+    return { ok: false, error: "Invalid shortcut." };
+  }
+
+  const result = applyCaptureHotkey(accelerator);
+  closeHotkeyRecorderWindow();
+  if (result.ok) {
+    broadcastHotkeyRecorded(result.accelerator ?? accelerator);
+  } else {
+    registerOverlayHotkeys();
+    broadcastHotkeyRecordFailed(
+      result.error ?? "Hotkey could not be registered."
+    );
+  }
+  return result;
 });
 
 ipcMain.handle("overlay:endHotkeyRecording", () => {
@@ -867,6 +953,8 @@ ipcMain.handle("overlay:setCaptureHotkey", (_event, accelerator) => {
   const result = applyCaptureHotkey(accelerator);
   if (!result.ok) {
     registerOverlayHotkeys();
+  } else {
+    broadcastHotkeyRecorded(result.accelerator ?? accelerator);
   }
   return result;
 });

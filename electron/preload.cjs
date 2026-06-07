@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const hotkeyRecorderApi = {
+  submit: (accelerator) =>
+    ipcRenderer.invoke("overlay:submitRecordedHotkey", accelerator),
+  cancel: () => ipcRenderer.invoke("overlay:cancelHotkeyRecording"),
+};
+
+contextBridge.exposeInMainWorld("hotkeyRecorder", hotkeyRecorderApi);
+
 contextBridge.exposeInMainWorld("starcraftDS", {
   isElectron: true,
   openNativeOverlay: () => ipcRenderer.invoke("overlay:open"),
@@ -64,4 +72,5 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.invoke("screenCapture:requestAccess"),
   captureScreenNow: () => ipcRenderer.invoke("screenCapture:captureNow"),
   getScreenCaptureStatus: () => ipcRenderer.invoke("screenCapture:getStatus"),
+  hotkeyRecorder: hotkeyRecorderApi,
 });

@@ -47,33 +47,41 @@ export function CaptureHotkeySettings({
     }
   }, []);
 
-  useEffect(() => {
+  const syncHotkeyFromElectron = useCallback(async () => {
     const api = window.starcraftDS;
     if (!api?.getCaptureHotkey) return;
-    void (async () => {
-      const accel = await api.getCaptureHotkey();
-      if (accel) {
-        const normalized = normalizeAccelerator(accel);
-        setHotkey(normalized);
-        saveCaptureHotkey(normalized);
-        setManualValue(formatHotkeyLabel(normalized));
-      }
-      if (api.getCaptureHotkeyStatus) {
-        const status = await api.getCaptureHotkeyStatus();
-        if (!status.registered) {
-          setError(
-            `${formatHotkeyLabel(status.saved)} is not available on this PC. Choose another shortcut.`
-          );
-        } else if (status.active !== status.saved) {
-          setError(
-            `${formatHotkeyLabel(status.saved)} is in use by another app. Active shortcut: ${formatHotkeyLabel(status.active)}.`
-          );
-          setHotkey(normalizeAccelerator(status.active));
-          setManualValue(formatHotkeyLabel(status.active));
-        }
-      }
-    })();
+    const accel = await api.getCaptureHotkey();
+    const status = api.getCaptureHotkeyStatus
+      ? await api.getCaptureHotkeyStatus()
+      : null;
+    const active = normalizeAccelerator(
+      status?.active?.trim() || accel || DEFAULT_CAPTURE_HOTKEY
+    );
+    setHotkey(active);
+    saveCaptureHotkey(active);
+    setManualValue(formatHotkeyLabel(active));
+    if (!status) {
+      setError(null);
+      return;
+    }
+    if (!status.registered) {
+      setError(
+        `${formatHotkeyLabel(status.saved)} is not available on this PC. Choose another shortcut.`
+      );
+      return;
+    }
+    if (status.active !== status.saved) {
+      setError(
+        `${formatHotkeyLabel(status.saved)} is in use by another app. Using ${formatHotkeyLabel(status.active)} instead.`
+      );
+      return;
+    }
+    setError(null);
   }, []);
+
+  useEffect(() => {
+    void syncHotkeyFromElectron();
+  }, [syncHotkeyFromElectron]);
 
   useEffect(() => {
     recordingRef.current = recording;
@@ -103,6 +111,7 @@ export function CaptureHotkeySettings({
       setManualValue(formatHotkeyLabel(saved));
       onHotkeyChange?.(saved);
       setManualOpen(false);
+      void syncHotkeyFromElectron();
     });
 
     const offFailed = api.onHotkeyRecordFailed?.((payload) => {
@@ -115,7 +124,7 @@ export function CaptureHotkeySettings({
       offRecorded();
       offFailed?.();
     };
-  }, [onHotkeyChange]);
+  }, [onHotkeyChange, syncHotkeyFromElectron]);
 
   useEffect(() => {
     onInteractionChange?.(recording || manualOpen);
@@ -142,7 +151,7 @@ export function CaptureHotkeySettings({
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
-        void window.starcraftDS?.endHotkeyRecording?.();
+        void window.starcraftDS?.cancelHotkeyRecording?.();
       }
     };
   }, []);
@@ -173,6 +182,7 @@ export function CaptureHotkeySettings({
           setHotkey(saved);
           setManualValue(formatHotkeyLabel(saved));
           onHotkeyChange?.(saved);
+          void syncHotkeyFromElectron();
           return true;
         }
 
@@ -186,7 +196,7 @@ export function CaptureHotkeySettings({
         await endRecordingMode();
       }
     },
-    [endRecordingMode, onHotkeyChange]
+    [endRecordingMode, onHotkeyChange, syncHotkeyFromElectron]
   );
 
   const startRecording = useCallback(async () => {
@@ -226,7 +236,7 @@ export function CaptureHotkeySettings({
   };
 
   const applyManual = () => {
-    void persistHotkey(manualValue).then((ok) => {
+    void persistHotkey(manualValue.replace(/\s*\+\s*/g, "+")).then((ok) => {
       if (ok) setManualOpen(false);
     });
   };
@@ -264,8 +274,8 @@ export function CaptureHotkeySettings({
 
       {recording ? (
         <p className="capture-hotkey-hint capture-hotkey-recording">
-          Press the key combination you want (Esc to cancel). The overlay stays focused
-          for recording — example: Ctrl+Shift+S
+          Press the key combination you want here (Esc to cancel). Keep this window
+          focused — example: Ctrl+Alt+C
         </p>
       ) : (
         <p className="capture-hotkey-hint">

@@ -1,6 +1,7 @@
 export interface CaptureHotkeyPayload {
   base64: string;
   at: number;
+  error?: string;
 }
 
 export interface ScreenCaptureAccessResult {
@@ -57,9 +58,15 @@ export interface StarcraftDSElectron {
   getScreenCaptureStatus: () => Promise<{ granted: boolean }>;
 }
 
+export interface HotkeyRecorderApi {
+  submit: (accelerator: string) => Promise<SetCaptureHotkeyResult>;
+  cancel: () => Promise<{ ok: boolean }>;
+}
+
 declare global {
   interface Window {
-    starcraftDS?: StarcraftDSElectron;
+    starcraftDS?: StarcraftDSElectron & { hotkeyRecorder?: HotkeyRecorderApi };
+    hotkeyRecorder?: HotkeyRecorderApi;
   }
 }
 

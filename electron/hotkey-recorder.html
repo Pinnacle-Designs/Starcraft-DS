@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Record capture hotkey</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 1.25rem 1.35rem;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #14181f;
+        color: #e8ecf2;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0.35rem 0;
+        font-size: 0.9rem;
+        color: #a8b0be;
+        line-height: 1.45;
+      }
+      kbd {
+        display: inline-block;
+        margin-top: 0.65rem;
+        padding: 0.35rem 0.55rem;
+        border-radius: 4px;
+        background: #222833;
+        border: 1px solid #3a4454;
+        font-size: 0.95rem;
+        color: #00f2ff;
+      }
+      .status {
+        margin-top: 0.75rem;
+        min-height: 1.2rem;
+        font-size: 0.85rem;
+        color: #ffb347;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Record screen capture hotkey</h1>
+    <p>Press the key combination you want to use during games.</p>
+    <p>Esc cancels. Example: <strong>Ctrl+Shift+S</strong></p>
+    <kbd id="preview">Waiting for keys…</kbd>
+    <p class="status" id="status"></p>
+    <script>
+      const MODIFIERS = new Set([
+        "Control",
+        "Shift",
+        "Alt",
+        "Meta",
+        "OS",
+        "Command",
+      ]);
+
+      const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
+
+      function formatLabel(accelerator) {
+        return accelerator
+          .replace(/CommandOrControl/g, "Ctrl")
+          .replace(/Control/g, "Ctrl")
+          .replace(/Command/g, "Cmd")
+          .replace(/\+/g, " + ");
+      }
+
+      function keyEventToAccelerator(event) {
+        if (MODIFIERS.has(event.key)) return null;
+        const parts = [];
+        if (event.ctrlKey || event.metaKey) parts.push("Control");
+        if (event.altKey) parts.push("Alt");
+        if (event.shiftKey) parts.push("Shift");
+        if (!parts.length) return null;
+
+        let key = event.key;
+        if (key.length === 1) key = key.toUpperCase();
+        else if (key === " ") key = "Space";
+        else if (key === "ArrowUp") key = "Up";
+        else if (key === "ArrowDown") key = "Down";
+        else if (key === "ArrowLeft") key = "Left";
+        else if (key === "ArrowRight") key = "Right";
+        else if (/^f\d+$/i.test(key)) key = key.toUpperCase();
+
+        parts.push(key);
+        return parts.join("+");
+      }
+
+      async function submitAccelerator(accelerator) {
+        status.textContent = "Saving…";
+        preview.textContent = formatLabel(accelerator);
+        const api =
+          window.hotkeyRecorder ?? window.starcraftDS?.hotkeyRecorder;
+        if (!api?.submit) {
+          status.textContent = "Recorder API unavailable. Restart the app.";
+          return;
+        }
+        const result = await api.submit(accelerator);
+        if (!result?.ok) {
+          status.textContent = result?.error ?? "Could not register that shortcut.";
+        }
+      }
+
+      window.addEventListener(
+        "keydown",
+        (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.key === "Escape") {
+            void (
+              window.hotkeyRecorder ?? window.starcraftDS?.hotkeyRecorder
+            )?.cancel?.();
+            return;
+          }
+          const accelerator = keyEventToAccelerator(event);
+          if (!accelerator) return;
+          preview.textContent = formatLabel(accelerator);
+          void submitAccelerator(accelerator);
+        },
+        true
+      );
+
+      window.addEventListener("focus", () => {
+        status.textContent = "";
+      });
+
+      window.focus();
+    </script>
+  </body>
+</html>
