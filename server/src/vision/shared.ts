@@ -48,7 +48,7 @@ function parseCountFromNotes(notes?: string, count?: unknown): number {
   if (!notes) return 1;
   const mult = notes.match(/[×xX]\s*(\d+)/) ?? notes.match(/(\d+)\s*[×xX]/);
   if (mult) return Math.max(1, parseInt(mult[1], 10));
-  const total = notes.match(/\b(\d{1,3})\s*(?:units?|marines?|lings?)?\b/i);
+  const total = notes.match(/\b(\d+)\s*(?:units?|marines?|lings?)?\b/i);
   if (total) return Math.max(1, parseInt(total[1], 10));
   return 1;
 }

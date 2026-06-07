@@ -8,7 +8,7 @@ function parseDetectedCount(u: DetectedUnit): number {
   const notes = u.notes ?? "";
   const mult = notes.match(/[×xX]\s*(\d+)/) ?? notes.match(/(\d+)\s*[×xX]/);
   if (mult) return Math.max(1, parseInt(mult[1], 10));
-  const total = notes.match(/\b(\d{1,3})\b/);
+  const total = notes.match(/\b(\d+)\b/);
   if (total) return Math.max(1, parseInt(total[1], 10));
   return 1;
 }
