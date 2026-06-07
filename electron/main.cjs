@@ -1,6 +1,7 @@
 const {
   app,
   BrowserWindow,
+  globalShortcut,
   ipcMain,
   screen,
   shell,
@@ -32,6 +33,37 @@ const OVERLAY_PANELS = {
 
 let mainWindow = null;
 const overlayWindows = { enemy: null, team: null };
+let overlayClickThrough = false;
+
+function applyOverlayClickThrough(enabled) {
+  overlayClickThrough = Boolean(enabled);
+  for (const panel of Object.keys(overlayWindows)) {
+    const win = overlayWindows[panel];
+    if (!win || win.isDestroyed()) continue;
+    if (overlayClickThrough) {
+      win.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+      win.setIgnoreMouseEvents(false);
+    }
+    win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+  }
+}
+
+function syncOverlayClickThrough(win) {
+  if (!win || win.isDestroyed()) return;
+  if (overlayClickThrough) {
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setIgnoreMouseEvents(false);
+  }
+  win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+}
+
+function registerOverlayShortcuts() {
+  globalShortcut.register("Control+Shift+D", () => {
+    applyOverlayClickThrough(!overlayClickThrough);
+  });
+}
 
 function positionsFile() {
   return path.join(app.getPath("userData"), "overlay-panel-positions.json");
@@ -112,6 +144,7 @@ function createOverlayPanelWindow(panel) {
   if (existing && !existing.isDestroyed()) {
     existing.show();
     existing.focus();
+    syncOverlayClickThrough(existing);
     return existing;
   }
 
@@ -156,6 +189,10 @@ function createOverlayPanelWindow(panel) {
 
   void win.loadURL(panelLoadUrl(config));
 
+  win.webContents.on("did-finish-load", () => {
+    syncOverlayClickThrough(win);
+  });
+
   win.on("moved", () => {
     if (win.isDestroyed()) return;
     const [px, py] = win.getPosition();
@@ -187,6 +224,7 @@ function openAllOverlayPanels() {
 app.whenReady().then(() => {
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);
+  registerOverlayShortcuts();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -194,7 +232,12 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  globalShortcut.unregisterAll();
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
 
 ipcMain.handle("overlay:open", () => {
@@ -211,14 +254,8 @@ ipcMain.handle("overlay:setAlwaysOnTop", (event, enabled) => {
   if (win) win.setAlwaysOnTop(Boolean(enabled), "screen-saver");
 });
 
-ipcMain.handle("overlay:setClickThrough", (event, enabled) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (!win) return;
-  if (enabled) {
-    win.setIgnoreMouseEvents(true, { forward: true });
-  } else {
-    win.setIgnoreMouseEvents(false);
-  }
+ipcMain.handle("overlay:setClickThrough", (_event, enabled) => {
+  applyOverlayClickThrough(enabled);
 });
 
 ipcMain.on("shell:openExternal", (_e, url) => {

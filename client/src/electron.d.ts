@@ -5,6 +5,7 @@ export interface StarcraftDSElectron {
   setAlwaysOnTop: (enabled: boolean) => Promise<void>;
   setClickThrough: (enabled: boolean) => Promise<void>;
   onClickThroughHotkey: (callback: () => void) => () => void;
+  onClickThroughStateChange: (callback: (enabled: boolean) => void) => () => void;
 }
 
 declare global {

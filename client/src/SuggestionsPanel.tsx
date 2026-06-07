@@ -25,6 +25,8 @@ interface Props {
   scanning?: boolean;
   lastScanAt?: number | null;
   counterRefreshing?: boolean;
+  /** Overlay team panel scrolls the whole window, not an inner list. */
+  overlayMode?: boolean;
 }
 
 function coverageBadgeClass(status: string | undefined): string {
@@ -54,13 +56,14 @@ export function SuggestionsPanel({
   scanning,
   lastScanAt,
   counterRefreshing,
+  overlayMode,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const showUpdatedBadge =
     !live && !scanning && !counterRefreshing && Boolean(lastScanAt);
 
   useEffect(() => {
-    if (compact) return;
+    if (compact || overlayMode) return;
     const el = scrollRef.current;
     if (!el) return;
 
@@ -80,7 +83,7 @@ export function SuggestionsPanel({
 
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [compact, result?.suggestions?.length]);
+  }, [compact, overlayMode, result?.suggestions?.length]);
 
   return (
     <div className={`panel-section suggestions${compact ? " suggestions-compact" : ""}`}>

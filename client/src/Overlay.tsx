@@ -50,6 +50,7 @@ export default function Overlay({ panel }: Props) {
   const [scanning, setScanning] = useState(false);
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
   const [counterRefreshing, setCounterRefreshing] = useState(false);
+  const [clickThrough, setClickThrough] = useState(false);
 
   const applyRemoteState = useCallback((incoming: CoachState) => {
     if (incoming.origin === OVERLAY_SYNC_ORIGIN) return;
@@ -88,6 +89,9 @@ export default function Overlay({ panel }: Props) {
 
   useEffect(() => {
     document.body.classList.add("overlay-mode", "overlay-panel-window");
+    if (panel === "team") {
+      document.body.classList.add("overlay-team-panel");
+    }
     if (window.starcraftDS?.isElectron) {
       document.body.classList.add("overlay-electron");
     }
@@ -97,16 +101,27 @@ export default function Overlay({ panel }: Props) {
       document.body.classList.remove(
         "overlay-mode",
         "overlay-panel-window",
+        "overlay-team-panel",
         "overlay-electron"
       );
     };
-  }, [applyRemoteState]);
+  }, [applyRemoteState, panel]);
 
   useEffect(() => subscribeCoachState(applyRemoteState), [applyRemoteState]);
 
   useEffect(() => {
     if (!window.starcraftDS?.isElectron) return;
     void window.starcraftDS.setAlwaysOnTop(true);
+  }, []);
+
+  useEffect(() => {
+    if (!window.starcraftDS?.onClickThroughStateChange) return;
+    return window.starcraftDS.onClickThroughStateChange(setClickThrough);
+  }, []);
+
+  const handleClickThroughChange = useCallback((enabled: boolean) => {
+    if (!window.starcraftDS?.setClickThrough) return;
+    void window.starcraftDS.setClickThrough(enabled);
   }, []);
 
   // Chrome blocks two popups from one click — open team from the enemy popup instead.
@@ -119,7 +134,15 @@ export default function Overlay({ panel }: Props) {
   }, [panel]);
 
   return (
-    <OverlayPanelShell title={spec.title} onClose={closeOverlayWindow}>
+    <OverlayPanelShell
+      title={spec.title}
+      panelId={panel}
+      onClose={closeOverlayWindow}
+      clickThrough={clickThrough}
+      onClickThroughChange={
+        window.starcraftDS?.isElectron ? handleClickThroughChange : undefined
+      }
+    >
       {panel === "enemy" ? (
         <ManualArmyBuilder
           waves={manualWaves}
@@ -154,6 +177,7 @@ export default function Overlay({ panel }: Props) {
             scanning={scanning}
             lastScanAt={lastScanAt}
             counterRefreshing={counterRefreshing}
+            overlayMode
           />
         </div>
       )}

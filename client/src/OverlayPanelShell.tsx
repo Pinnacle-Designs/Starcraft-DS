@@ -1,16 +1,33 @@
 import { isElectronApp } from "./overlaySync";
+import type { OverlayPanelId } from "./overlayStorage";
 
 interface Props {
   title: string;
+  panelId: OverlayPanelId;
   onClose: () => void;
+  clickThrough?: boolean;
+  onClickThroughChange?: (enabled: boolean) => void;
   children: React.ReactNode;
 }
 
-export function OverlayPanelShell({ title, onClose, children }: Props) {
+export function OverlayPanelShell({
+  title,
+  panelId,
+  onClose,
+  clickThrough = false,
+  onClickThroughChange,
+  children,
+}: Props) {
   const electron = isElectronApp();
 
   return (
-    <div className="overlay-panel-window-root" role="dialog" aria-label={title}>
+    <div
+      className={`overlay-panel-window-root${
+        panelId === "team" ? " overlay-panel-team" : ""
+      }${clickThrough ? " overlay-click-through-active" : ""}`}
+      role="dialog"
+      aria-label={title}
+    >
       <header
         className={`floating-overlay-panel-header${
           electron ? " overlay-window-drag" : ""
@@ -27,7 +44,28 @@ export function OverlayPanelShell({ title, onClose, children }: Props) {
           ×
         </button>
       </header>
-      <div className="floating-overlay-panel-body">{children}</div>
+      <div
+        className={
+          clickThrough
+            ? "floating-overlay-panel-body passthrough"
+            : "floating-overlay-panel-body"
+        }
+      >
+        {children}
+      </div>
+      {electron && onClickThroughChange ? (
+        <footer className="floating-overlay-panel-footer">
+          <label className="overlay-toggle">
+            <input
+              type="checkbox"
+              checked={clickThrough}
+              onChange={(e) => onClickThroughChange(e.target.checked)}
+            />
+            Click-through (game receives clicks)
+          </label>
+          <span className="overlay-hotkey-hint">Ctrl+Shift+D to toggle</span>
+        </footer>
+      ) : null}
     </div>
   );
 }

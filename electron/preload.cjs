@@ -13,4 +13,10 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.on("overlay:toggleClickThrough", handler);
     return () => ipcRenderer.removeListener("overlay:toggleClickThrough", handler);
   },
+  onClickThroughStateChange: (callback) => {
+    const handler = (_event, enabled) => callback(Boolean(enabled));
+    ipcRenderer.on("overlay:clickThroughState", handler);
+    return () =>
+      ipcRenderer.removeListener("overlay:clickThroughState", handler);
+  },
 });
