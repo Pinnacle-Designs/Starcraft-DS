@@ -90,6 +90,30 @@ function parseManualUnits(
   return out;
 }
 
+app.post("/api/vision", async (req, res) => {
+  try {
+    const { imageBase64, mimeType = "image/jpeg" } = req.body as {
+      imageBase64?: string;
+      mimeType?: string;
+    };
+    if (!imageBase64) {
+      res.status(400).json({ error: "imageBase64 required" });
+      return;
+    }
+    const vision = await analyzeScreenshot(imageBase64, mimeType);
+    res.json({
+      detectedUnits: vision.detectedUnits,
+      mode: vision.mode,
+      provider: vision.provider,
+      scene: vision.scene,
+    });
+  } catch (e) {
+    res.status(500).json({
+      error: e instanceof Error ? e.message : "Vision failed",
+    });
+  }
+});
+
 app.post("/api/analyze", async (req, res) => {
   try {
     const {

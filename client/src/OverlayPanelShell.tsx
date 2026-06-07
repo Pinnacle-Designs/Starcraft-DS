@@ -64,8 +64,8 @@ export function OverlayPanelShell({
             Click-through (game receives clicks)
           </label>
           <span className="overlay-hotkey-hint">
-            Ctrl+Shift+D to toggle. Drag the header to move; footer stays
-            clickable.
+            Ctrl+Shift+D click-through. Set screen-capture hotkey on the enemy
+            panel. Drag the header to move.
           </span>
         </footer>
       ) : null}

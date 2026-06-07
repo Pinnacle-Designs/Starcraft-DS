@@ -9,6 +9,7 @@ import {
 } from "./api";
 import { CaptureHistoryPanel } from "./CaptureHistoryPanel";
 import { saveCaptureFromAnalysis, saveCaptureFromBase64 } from "./captureHistory";
+import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { VideoUpload } from "./VideoUpload";
 import { SuggestionsPanel } from "./SuggestionsPanel";
@@ -35,7 +36,9 @@ import {
   publishCoachState,
   subscribeCoachState,
 } from "./overlaySync";
+import { detectedToManual } from "./detectedUnits";
 import { useLiveCoach } from "./useLiveCoach";
+import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 
@@ -154,18 +157,6 @@ export default function App() {
   const resultRef = useRef(result);
   resultRef.current = result;
 
-  const detectedToManual = useCallback(
-    (units: AnalyzeResponse["detectedUnits"]): ManualUnitInput[] =>
-      units.map((u) => ({
-        name: u.name,
-        count: u.notes?.startsWith("×")
-          ? Math.max(1, parseInt(u.notes.slice(1), 10) || 1)
-          : 1,
-        wave: u.wave,
-      })),
-    []
-  );
-
   const refreshCounters = useCallback(async () => {
     const units = manualArmyEntries(manualWavesRef.current);
     const teams = teamWavesRef.current;
@@ -201,7 +192,19 @@ export default function App() {
     } finally {
       setCounterRefreshing(false);
     }
-  }, [applyResult, detectedToManual]);
+  }, [applyResult]);
+
+  useOverlayScreenCapture({
+    enabled: isElectronApp(),
+    manualWaves,
+    teamWaves,
+    waveShift,
+    analyzeOptions,
+    onWavesChange: setManualWaves,
+    onCaptureComplete: (patch) => {
+      if (patch.result) applyResult(patch.result);
+    },
+  });
 
   const { scanning, lastScanAt, canLive } = useLiveCoach({
     live,
@@ -222,19 +225,27 @@ export default function App() {
 
   const handleOpenOverlay = useCallback(() => {
     setOverlayHint(null);
-    const result = openOverlay();
-    if (!result) return;
-    if (!result.enemy && !result.team) {
-      setOverlayHint(
-        "Popups were blocked. Allow popups for this site, then try again."
-      );
-      return;
-    }
-    if (!result.enemy && result.team) {
-      setOverlayHint(
-        "Could not open the enemy waves panel. Team selection is open — allow popups for this site, then try again."
-      );
-    }
+    void openOverlay().then((result) => {
+      if (!result.enemy && !result.team) {
+        setOverlayHint(
+          isElectronApp()
+            ? "Could not open overlay panels. Restart the app and try again."
+            : "Popups were blocked. Allow popups for this site, then try again."
+        );
+        return;
+      }
+      if (!result.enemy && result.team) {
+        setOverlayHint(
+          "Could not open the enemy waves panel. Team selection is open — allow popups for this site, then try again."
+        );
+        return;
+      }
+      if (isElectronApp() && result.enemy && result.team) {
+        setOverlayHint(
+          "Overlay panels opened — drag them over your game. Ctrl+Shift+D toggles click-through."
+        );
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -249,6 +260,10 @@ export default function App() {
       }
       if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
       if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
+      if (incoming.result) {
+        setResult(incoming.result);
+        setLastCounterRefreshAt(Date.now());
+      }
     });
   }, []);
 
@@ -485,6 +500,9 @@ export default function App() {
                 ? "Opens always-on-top enemy and team panels you can drag over your game."
                 : "Opens two separate windows you can place over your game. Allow popups for this site — team selection opens automatically after enemy waves."}
             </p>
+            {isElectronApp() ? (
+              <CaptureHotkeySettings compact />
+            ) : null}
           </div>
         )}
       </header>

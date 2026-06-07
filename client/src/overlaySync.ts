@@ -47,6 +47,9 @@ export function publishCoachState(state: CoachState): void {
   } catch {
     /* unsupported */
   }
+  if (window.starcraftDS?.broadcastCoachState) {
+    void window.starcraftDS.broadcastCoachState(state);
+  }
 }
 
 export function loadCoachState(): CoachState | null {
@@ -85,10 +88,15 @@ export function subscribeCoachState(
     if (s) onState(s);
   }, 1500);
 
+  const ipcUnsub = window.starcraftDS?.onCoachState?.((state) => {
+    onState(state as CoachState);
+  });
+
   return () => {
     window.removeEventListener("storage", onStorage);
     channel?.close();
     clearInterval(poll);
+    ipcUnsub?.();
   };
 }
 
@@ -166,10 +174,9 @@ function openOverlayPopups(): OverlayOpenResult {
  * Electron: separate always-on-top OS windows.
  * Browser: separate popup windows that can be placed anywhere on screen.
  */
-export function openOverlay(): OverlayOpenResult | void {
+export async function openOverlay(): Promise<OverlayOpenResult> {
   if (window.starcraftDS?.isElectron) {
-    void window.starcraftDS.openNativeOverlay();
-    return;
+    return window.starcraftDS.openNativeOverlay();
   }
   return openOverlayPopups();
 }

@@ -116,6 +116,25 @@ export function setEnemyRace(
   return { enemyRace, counts: {} };
 }
 
+/** Add vision-detected units into the active enemy wave (sums counts). */
+export function mergeDetectedIntoActiveWave(
+  state: ManualWavesState,
+  detected: ManualUnitInput[],
+  enemyRace?: PlayerRace
+): ManualWavesState {
+  if (detected.length === 0) return state;
+  const army = state.waves[state.activeWave];
+  let nextArmy: ManualArmyState = { ...army, counts: { ...army.counts } };
+  for (const unit of detected) {
+    const existing = nextArmy.counts[unit.name] ?? 0;
+    nextArmy = setUnitCount(nextArmy, unit.name, existing + unit.count);
+  }
+  if (enemyRace) {
+    nextArmy = { ...nextArmy, enemyRace };
+  }
+  return updateActiveWave(state, nextArmy);
+}
+
 /** Sync friendly wave race labels from team selection (keeps counts). */
 export function syncFriendlyWaveRaces(
   state: ManualWavesState,

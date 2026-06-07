@@ -105,6 +105,31 @@ export interface AnalyzeOptions {
   tierUnlocked?: TierUnlocked;
 }
 
+export interface VisionQuickResponse {
+  detectedUnits: DetectedUnit[];
+  mode: "ai" | "heuristic";
+  provider?: "openai" | "ollama";
+  scene?: string;
+}
+
+export async function analyzeVisionQuick(
+  imageBase64: string
+): Promise<VisionQuickResponse> {
+  const res = await fetch("/api/vision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      imageBase64,
+      mimeType: "image/jpeg",
+    }),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `Vision failed (${res.status})`);
+  }
+  return res.json() as Promise<VisionQuickResponse>;
+}
+
 export async function analyzeFrame(
   imageBase64: string,
   teamRaces: TeamWaves,

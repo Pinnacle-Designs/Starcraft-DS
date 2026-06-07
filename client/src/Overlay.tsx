@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AnalyzeResponse, WaveShift } from "./api";
+import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { SuggestionsPanel } from "./SuggestionsPanel";
 import { TeamSelection } from "./TeamSelection";
@@ -24,6 +25,7 @@ import {
   type OverlayPanelId,
   OVERLAY_PANELS,
 } from "./overlayStorage";
+import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 
 interface Props {
   panel: OverlayPanelId;
@@ -51,6 +53,12 @@ export default function Overlay({ panel }: Props) {
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
   const [counterRefreshing, setCounterRefreshing] = useState(false);
   const [clickThrough, setClickThrough] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+
+  const analyzeOptions = useMemo(
+    () => ({ tierUnlocked }),
+    [tierUnlocked]
+  );
 
   const applyRemoteState = useCallback((incoming: CoachState) => {
     if (incoming.origin === OVERLAY_SYNC_ORIGIN) return;
@@ -76,16 +84,43 @@ export default function Overlay({ panel }: Props) {
         waveShift: patch.waveShift ?? waveShift,
         tierUnlocked: patch.tierUnlocked ?? tierUnlocked,
         manualWaves: patch.manualWaves ?? manualWaves,
-        result: base?.result ?? null,
-        live: base?.live ?? false,
-        scanning: base?.scanning,
-        lastScanAt: base?.lastScanAt,
+        result: patch.result ?? base?.result ?? null,
+        live: patch.live ?? base?.live ?? false,
+        scanning: patch.scanning ?? base?.scanning,
+        lastScanAt:
+          patch.lastScanAt !== undefined
+            ? patch.lastScanAt
+            : base?.lastScanAt,
+        counterRefreshing:
+          patch.counterRefreshing ?? base?.counterRefreshing,
         origin: OVERLAY_SYNC_ORIGIN,
         updatedAt: Date.now(),
       });
     },
     [teamWaves, waveShift, tierUnlocked, manualWaves]
   );
+
+  const {
+    scanning: captureScanning,
+    lastCaptureAt,
+    lastCaptureSummary,
+    error: captureScanError,
+  } = useOverlayScreenCapture({
+    enabled: panel === "enemy" && isElectronApp(),
+    manualWaves,
+    teamWaves,
+    waveShift,
+    analyzeOptions,
+    onWavesChange: setManualWaves,
+    onCaptureComplete: (patch) => {
+      publishOverlayState(patch);
+      setCaptureError(null);
+    },
+  });
+
+  useEffect(() => {
+    setCaptureError(captureScanError);
+  }, [captureScanError]);
 
   useEffect(() => {
     document.body.classList.add("overlay-mode", "overlay-panel-window");
@@ -119,7 +154,7 @@ export default function Overlay({ panel }: Props) {
     if (!api?.setIgnoreMouseEvents) return;
 
     const INTERACTIVE =
-      ".floating-overlay-panel-header, .floating-overlay-panel-footer";
+      ".floating-overlay-panel-header, .floating-overlay-panel-footer, .capture-hotkey-interactive";
     let ignoring = false;
 
     const applyIgnore = (ignore: boolean) => {
@@ -182,14 +217,28 @@ export default function Overlay({ panel }: Props) {
       }
     >
       {panel === "enemy" ? (
-        <ManualArmyBuilder
-          waves={manualWaves}
-          collapsibleWaves
-          onChange={(waves) => {
-            setManualWaves(waves);
-            publishOverlayState({ manualWaves: waves });
-          }}
-        />
+        <>
+          <ManualArmyBuilder
+            waves={manualWaves}
+            collapsibleWaves
+            onChange={(waves) => {
+              setManualWaves(waves);
+              publishOverlayState({ manualWaves: waves });
+            }}
+          />
+          {isElectronApp() ? (
+            <CaptureHotkeySettings
+              scanning={captureScanning}
+              lastCaptureAt={lastCaptureAt}
+              lastCaptureSummary={lastCaptureSummary}
+            />
+          ) : null}
+          {captureError ? (
+            <p className="capture-hotkey-error overlay-capture-error">
+              {captureError}
+            </p>
+          ) : null}
+        </>
       ) : (
         <div className="overlay-team-stack">
           <TeamSelection
