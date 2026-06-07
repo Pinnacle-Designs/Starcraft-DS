@@ -288,7 +288,7 @@ const httpServer = app.listen(PORT, async () => {
     console.log(`Vision: ${vision.active}`);
   } else {
     console.warn(
-      "Vision off — start Ollama (ollama pull llava) or set OPENAI_API_KEY"
+      "Vision off — set VISION_PROVIDER=ocr (default), ollama, or openai in server/.env"
     );
   }
 });
