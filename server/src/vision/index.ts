@@ -1,25 +1,75 @@
-import { analyzeWithOllamaSafe, checkOllamaAvailable } from "./ollamaVision.js";
 import {
-  analyzeWithOpenAi,
+  analyzeWithOllamaSafe,
+  checkOllamaAvailable,
+  waitForOllamaVision,
+} from "./ollamaVision.js";
+import {
+  analyzeWithOpenAiResilient,
   isOpenAiConfigured,
-  isOpenAiQuotaError,
+  isOpenAiInsufficientQuotaError,
 } from "./openaiVision.js";
 import { detectFromText } from "./textDetection.js";
 import { analyzeWithTesseractSafe } from "./tesseractOcr.js";
 import type { VisionResult } from "./shared.js";
 
 export type { VisionResult } from "./shared.js";
-export { checkOllamaAvailable, isOpenAiConfigured };
+export { checkOllamaAvailable, isOpenAiConfigured, waitForOllamaVision };
 export { detectFromText };
 
 export type VisionProvider = "auto" | "openai" | "ollama" | "ocr" | "tesseract";
 
 function resolveProvider(): VisionProvider {
-  const env = (process.env.VISION_PROVIDER ?? "ocr").toLowerCase();
+  const env = (process.env.VISION_PROVIDER ?? "auto").toLowerCase();
   if (env === "openai" || env === "ollama" || env === "ocr" || env === "tesseract") {
     return env === "tesseract" ? "ocr" : env;
   }
   return "auto";
+}
+
+async function resolveOllamaReady(): Promise<boolean> {
+  if (await checkOllamaAvailable()) return true;
+  if (process.env.AUTO_START_OLLAMA === "false") return false;
+  return waitForOllamaVision();
+}
+
+/** Ollama spots unit models on screen; OCR only backs up when visual finds nothing. */
+async function analyzeVisualFirst(
+  imageBase64: string,
+  mimeType: string,
+  ollamaUp: boolean
+): Promise<VisionResult> {
+  let visual: VisionResult | null = null;
+
+  if (ollamaUp) {
+    visual = await analyzeWithOllamaSafe(imageBase64, mimeType);
+    if (visual.detectedUnits.length > 0) return visual;
+  }
+
+  const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
+  if (ocr.detectedUnits.length > 0) {
+    return {
+      ...ocr,
+      scene: visual
+        ? `Visual AI found no units; OCR read names on screen. ${ocr.scene ?? ""}`
+        : ocr.scene,
+    };
+  }
+
+  if (visual) {
+    return {
+      ...visual,
+      scene:
+        visual.scene ??
+        "No enemy units detected on screen. Install Ollama + llava for visual detection without unit names.",
+    };
+  }
+
+  return {
+    ...ocr,
+    scene:
+      ocr.scene ??
+      "No units detected. Install Ollama (ollama pull llava) for visual detection anywhere on the map.",
+  };
 }
 
 export async function getVisionStatus(): Promise<{
@@ -34,10 +84,10 @@ export async function getVisionStatus(): Promise<{
   let active: VisionProvider | null = null;
 
   if (pref === "ocr") active = "ocr";
-  else if (pref === "ollama" && ollama) active = "ollama";
+  else if (pref === "ollama") active = ollama ? "ollama" : "ocr";
   else if (pref === "openai" && openai) active = "openai";
   else if (pref === "auto") {
-    active = "ocr";
+    active = ollama ? "ollama" : "ocr";
   }
 
   return { openai, ollama, ocr: true, active };
@@ -48,50 +98,31 @@ export async function analyzeScreenshot(
   mimeType: string
 ): Promise<VisionResult> {
   const pref = resolveProvider();
-  const ollamaUp = await checkOllamaAvailable();
+  const ollamaUp = await resolveOllamaReady();
+
+  if (pref === "auto" || pref === "ollama") {
+    return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
+  }
 
   if (pref === "ocr") {
-    return analyzeWithTesseractSafe(imageBase64, mimeType);
-  }
-
-  if (pref === "auto") {
-    return analyzeWithTesseractSafe(imageBase64, mimeType);
-  }
-
-  if (pref === "ollama") {
-    if (ollamaUp) return analyzeWithOllamaSafe(imageBase64, mimeType);
-    return {
-      detectedUnits: [],
-      scene: "Ollama not reachable at OLLAMA_BASE_URL.",
-      mode: "heuristic",
-      provider: "ollama",
-    };
+    const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
+    if (ocr.detectedUnits.length > 0 || !ollamaUp) return ocr;
+    return analyzeVisualFirst(imageBase64, mimeType, true);
   }
 
   if (pref === "openai") {
     if (isOpenAiConfigured()) {
       try {
-        return await analyzeWithOpenAi(imageBase64, mimeType);
+        return await analyzeWithOpenAiResilient(imageBase64, mimeType);
       } catch (err) {
-        if (isOpenAiQuotaError(err)) {
-          const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
-          return {
-            ...ocr,
-            scene:
-              "OpenAI quota exceeded — fell back to free OCR. " +
-              (ocr.scene ?? ""),
-          };
+        if (isOpenAiInsufficientQuotaError(err)) {
+          return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
         }
         throw err;
       }
     }
-    return {
-      detectedUnits: [],
-      scene: "OPENAI_API_KEY missing — set it in server/.env or use VISION_PROVIDER=ocr.",
-      mode: "heuristic",
-      provider: "openai",
-    };
+    return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
   }
 
-  return analyzeWithTesseractSafe(imageBase64, mimeType);
+  return analyzeVisualFirst(imageBase64, mimeType, ollamaUp);
 }

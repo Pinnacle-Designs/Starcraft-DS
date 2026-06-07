@@ -197,7 +197,7 @@ export function CaptureHotkeySettings({
         <p className="capture-hotkey-hint">
           {scanning
             ? "Reading screen…"
-            : `During a game, press ${formatHotkeyLabel(hotkey)} to OCR enemy units into the active wave.`}
+            : `During a game, press ${formatHotkeyLabel(hotkey)} to capture the screen and detect enemy units anywhere on the map (Ollama visual AI).`}
         </p>
       )}
 

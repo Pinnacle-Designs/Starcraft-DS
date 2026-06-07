@@ -11,6 +11,7 @@ export interface DetectedUnit {
   confidence: string;
   notes?: string;
   wave?: 1 | 2 | 3;
+  count?: number;
 }
 
 export type UnitsByRace = Record<PlayerRace, string[]>;

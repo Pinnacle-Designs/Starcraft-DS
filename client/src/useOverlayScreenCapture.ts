@@ -72,10 +72,15 @@ export function useOverlayScreenCapture({
       });
 
       onWavesChange(applied.waves);
-      const names = applied.detectedNames;
+      const waveBits = applied.detectedUnits
+        .slice(0, 6)
+        .map(
+          (u) =>
+            `${u.name}${u.wave ? ` W${u.wave}` : ""}${u.count > 1 ? ` ×${u.count}` : ""}`
+        );
       const summary =
         applied.addedCount > 0
-          ? `+${applied.addedCount} unit${applied.addedCount === 1 ? "" : "s"} (${names.slice(0, 4).join(", ")}${names.length > 4 ? "…" : ""})`
+          ? `+${applied.addedCount} unit${applied.addedCount === 1 ? "" : "s"} (${waveBits.join(", ")}${applied.detectedUnits.length > 6 ? "…" : ""})`
           : "No units detected";
       setLastCaptureAt(Date.now());
       setLastCaptureSummary(summary);
@@ -86,7 +91,9 @@ export function useOverlayScreenCapture({
         lastScanAt: Date.now(),
       });
       if (applied.addedCount === 0) {
-        setError("No enemy units detected — aim at the enemy staging area.");
+        setError(
+          "No enemy units detected on screen — capture while enemies are visible on the map."
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Screen capture failed");

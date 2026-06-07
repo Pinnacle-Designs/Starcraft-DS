@@ -24,7 +24,37 @@ function warn(...args) {
   console.warn("[ollama]", ...args);
 }
 
+function resolveOllamaCommand() {
+  if (process.env.OLLAMA_BIN?.trim()) {
+    return process.env.OLLAMA_BIN.trim();
+  }
+  try {
+    const cmd = process.platform === "win32" ? "where ollama" : "which ollama";
+    const result = spawnSync(cmd, { shell: true, encoding: "utf8" });
+    if (result.status === 0 && result.stdout?.trim()) {
+      return result.stdout.trim().split(/\r?\n/)[0].trim();
+    }
+  } catch {
+    /* fall through */
+  }
+  if (process.platform === "win32") {
+    const fs = require("fs");
+    const path = require("path");
+    const candidates = [
+      path.join(process.env.LOCALAPPDATA || "", "Programs", "Ollama", "ollama.exe"),
+      path.join(process.env.ProgramFiles || "", "Ollama", "ollama.exe"),
+      path.join(process.env["ProgramFiles(x86)"] || "", "Ollama", "ollama.exe"),
+    ];
+    for (const candidate of candidates) {
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return "ollama";
+}
+
 function ollamaInstalled() {
+  const bin = resolveOllamaCommand();
+  if (bin !== "ollama") return true;
   try {
     const cmd = process.platform === "win32" ? "where ollama" : "which ollama";
     const result = spawnSync(cmd, { shell: true, encoding: "utf8" });
@@ -43,11 +73,12 @@ async function fetchTags() {
 }
 
 function startOllamaServe() {
+  const bin = resolveOllamaCommand();
   log("Starting local Ollama (ollama serve)…");
-  const child = spawn("ollama", ["serve"], {
+  const child = spawn(bin, ["serve"], {
     detached: true,
     stdio: "ignore",
-    shell: process.platform === "win32",
+    shell: process.platform === "win32" && bin === "ollama",
   });
   child.unref();
 }
@@ -65,9 +96,10 @@ function pullModel(model) {
   log(
     `Downloading vision model "${model}" for this machine (first time only; can take a few minutes)…`
   );
-  const result = spawnSync("ollama", ["pull", model], {
+  const bin = resolveOllamaCommand();
+  const result = spawnSync(bin, ["pull", model], {
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: process.platform === "win32" && bin === "ollama",
   });
   return result.status === 0;
 }

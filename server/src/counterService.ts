@@ -108,6 +108,45 @@ export function normalizeUnitName(raw: string): string | null {
   return null;
 }
 
+function unitNameDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 0; i < a.length; i++) {
+    let prev = i + 1;
+    for (let j = 0; j < b.length; j++) {
+      const next =
+        a[i] === b[j]
+          ? row[j]
+          : Math.min(row[j] + 1, row[j + 1] + 1, prev + 1);
+      row[j] = prev;
+      prev = next;
+    }
+    row[b.length] = prev;
+  }
+  return row[b.length];
+}
+
+/** Fuzzy match for vision model typos (e.g. "Marauder" vs "Marauders"). */
+export function normalizeUnitNameFuzzy(raw: string): string | null {
+  const exact = normalizeUnitName(raw);
+  if (exact) return exact;
+  const key = raw.toLowerCase().replace(/[^a-z]/g, "");
+  if (key.length < 3) return null;
+
+  let best: { name: string; dist: number } | null = null;
+  for (const name of getAllUnitNames()) {
+    const nkey = name.toLowerCase().replace(/[^a-z]/g, "");
+    const dist = unitNameDistance(key, nkey);
+    const maxDist = Math.max(1, Math.floor(nkey.length * 0.28));
+    if (dist <= maxDist && (!best || dist < best.dist)) {
+      best = { name, dist };
+    }
+  }
+  return best?.name ?? null;
+}
+
 /** Keep only buildable army units for the countering player's race. */
 function filterBuildForRace(
   build: string[],

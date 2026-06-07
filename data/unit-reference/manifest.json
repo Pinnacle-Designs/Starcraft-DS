@@ -1,0 +1,244 @@
+{
+  "generatedAt": "2026-06-07T18:28:11.388Z",
+  "cdn": "https://dist.sc2arcade.com/star-assets",
+  "units": {
+    "Adept": {
+      "portrait": "adeptportrait_static",
+      "url": "portraits-png/adeptportrait_static.png",
+      "file": "portraits/Adept.png"
+    },
+    "Archon": {
+      "portrait": "archonportrait_static",
+      "url": "portraits-png/archonportrait_static.png",
+      "file": "portraits/Archon.png"
+    },
+    "Baneling": {
+      "portrait": "banelingportrait_static",
+      "url": "portraits-png/banelingportrait_static.png",
+      "file": "portraits/Baneling.png"
+    },
+    "Banshee": {
+      "portrait": "bansheeportrait_static",
+      "url": "portraits-png/bansheeportrait_static.png",
+      "file": "portraits/Banshee.png"
+    },
+    "Battlecruiser": {
+      "portrait": "battlecruiserportrait_static",
+      "url": "portraits-png/battlecruiserportrait_static.png",
+      "file": "portraits/Battlecruiser.png"
+    },
+    "Brood Lord": {
+      "portrait": "broodlordportrait_static",
+      "url": "portraits-png/broodlordportrait_static.png",
+      "file": "portraits/Brood_Lord.png"
+    },
+    "Carrier": {
+      "portrait": "carrierportrait_static",
+      "url": "portraits-png/carrierportrait_static.png",
+      "file": "portraits/Carrier.png"
+    },
+    "Colossus": {
+      "portrait": "colossusportrait_static",
+      "url": "portraits-png/colossusportrait_static.png",
+      "file": "portraits/Colossus.png"
+    },
+    "Corruptor": {
+      "portrait": "corruptorportrait_static",
+      "url": "portraits-png/corruptorportrait_static.png",
+      "file": "portraits/Corruptor.png"
+    },
+    "Cyclone": {
+      "portrait": "cycloneportrait_static",
+      "url": "portraits-png/cycloneportrait_static.png",
+      "file": "portraits/Cyclone.png"
+    },
+    "Dark Templar": {
+      "portrait": "darktemplarportrait_static",
+      "url": "portraits-png/darktemplarportrait_static.png",
+      "file": "portraits/Dark_Templar.png"
+    },
+    "Disruptor": {
+      "portrait": "disruptorportrait_static",
+      "url": "portraits-png/disruptorportrait_static.png",
+      "file": "portraits/Disruptor.png"
+    },
+    "Ghost": {
+      "portrait": "ghostportrait_static",
+      "url": "portraits-png/ghostportrait_static.png",
+      "file": "portraits/Ghost.png"
+    },
+    "Hellbat": {
+      "portrait": "hellbatblackopsportrait_static",
+      "url": "portraits-png/hellbatblackopsportrait_static.png",
+      "file": "portraits/Hellbat.png"
+    },
+    "Hellion": {
+      "portrait": "hellionportrait_static",
+      "url": "portraits-png/hellionportrait_static.png",
+      "file": "portraits/Hellion.png"
+    },
+    "High Templar": {
+      "portrait": "hightemplarportrait_static",
+      "url": "portraits-png/hightemplarportrait_static.png",
+      "file": "portraits/High_Templar.png"
+    },
+    "Hydralisk": {
+      "portrait": "hydraliskportrait_static",
+      "url": "portraits-png/hydraliskportrait_static.png",
+      "file": "portraits/Hydralisk.png"
+    },
+    "Immortal": {
+      "portrait": "immortalportrait_static",
+      "url": "portraits-png/immortalportrait_static.png",
+      "file": "portraits/Immortal.png"
+    },
+    "Infestor": {
+      "portrait": "infestorportrait_static",
+      "url": "portraits-png/infestorportrait_static.png",
+      "file": "portraits/Infestor.png"
+    },
+    "Liberator": {
+      "portrait": "liberatorportrait_static",
+      "url": "portraits-png/liberatorportrait_static.png",
+      "file": "portraits/Liberator.png"
+    },
+    "Lurker": {
+      "portrait": "lurkerportrait_static",
+      "url": "portraits-png/lurkerportrait_static.png",
+      "file": "portraits/Lurker.png"
+    },
+    "Marauder": {
+      "portrait": "marauderportrait_static",
+      "url": "portraits-png/marauderportrait_static.png",
+      "file": "portraits/Marauder.png"
+    },
+    "Marine": {
+      "portrait": "marineportrait_static",
+      "url": "portraits-png/marineportrait_static.png",
+      "file": "portraits/Marine.png"
+    },
+    "Medivac": {
+      "portrait": "medivacportrait_static",
+      "url": "portraits-png/medivacportrait_static.png",
+      "file": "portraits/Medivac.png"
+    },
+    "Mutalisk": {
+      "portrait": "mutaliskportrait_static",
+      "url": "portraits-png/mutaliskportrait_static.png",
+      "file": "portraits/Mutalisk.png"
+    },
+    "Observer": {
+      "portrait": "observerportrait_static",
+      "url": "portraits-png/observerportrait_static.png",
+      "file": "portraits/Observer.png"
+    },
+    "Oracle": {
+      "portrait": "oracleportrait_static",
+      "url": "portraits-png/oracleportrait_static.png",
+      "file": "portraits/Oracle.png"
+    },
+    "Overseer": {
+      "portrait": "overseerportrait_static",
+      "url": "portraits-png/overseerportrait_static.png",
+      "file": "portraits/Overseer.png"
+    },
+    "Phoenix": {
+      "portrait": "phoenixportrait_static",
+      "url": "portraits-png/phoenixportrait_static.png",
+      "file": "portraits/Phoenix.png"
+    },
+    "Queen": {
+      "portrait": "queenportrait_static",
+      "url": "portraits-png/queenportrait_static.png",
+      "file": "portraits/Queen.png"
+    },
+    "Ravager": {
+      "portrait": "ravagerportrait_static",
+      "url": "portraits-png/ravagerportrait_static.png",
+      "file": "portraits/Ravager.png"
+    },
+    "Raven": {
+      "portrait": "ravenportrait_static",
+      "url": "portraits-png/ravenportrait_static.png",
+      "file": "portraits/Raven.png"
+    },
+    "Reaper": {
+      "portrait": "reaperportrait_static",
+      "url": "portraits-png/reaperportrait_static.png",
+      "file": "portraits/Reaper.png"
+    },
+    "Roach": {
+      "portrait": "roachportrait_static",
+      "url": "portraits-png/roachportrait_static.png",
+      "file": "portraits/Roach.png"
+    },
+    "Sentry": {
+      "portrait": "sentryportrait_static",
+      "url": "portraits-png/sentryportrait_static.png",
+      "file": "portraits/Sentry.png"
+    },
+    "Siege Tank": {
+      "portrait": "siegetankportrait_static",
+      "url": "portraits-png/siegetankportrait_static.png",
+      "file": "portraits/Siege_Tank.png"
+    },
+    "Stalker": {
+      "portrait": "stalkerportrait_static",
+      "url": "portraits-png/stalkerportrait_static.png",
+      "file": "portraits/Stalker.png"
+    },
+    "Swarm Host": {
+      "portrait": "swarmhostportrait_static",
+      "url": "portraits-png/swarmhostportrait_static.png",
+      "file": "portraits/Swarm_Host.png"
+    },
+    "Tempest": {
+      "portrait": "tempestportrait_static",
+      "url": "portraits-png/tempestportrait_static.png",
+      "file": "portraits/Tempest.png"
+    },
+    "Thor": {
+      "portrait": "thorportrait_static",
+      "url": "portraits-png/thorportrait_static.png",
+      "file": "portraits/Thor.png"
+    },
+    "Ultralisk": {
+      "portrait": "ultraliskportrait_static",
+      "url": "portraits-png/ultraliskportrait_static.png",
+      "file": "portraits/Ultralisk.png"
+    },
+    "Viking": {
+      "portrait": "vikingfighterportrait_static",
+      "url": "portraits-png/vikingfighterportrait_static.png",
+      "file": "portraits/Viking.png"
+    },
+    "Viper": {
+      "portrait": "viperportrait_static",
+      "url": "portraits-png/viperportrait_static.png",
+      "file": "portraits/Viper.png"
+    },
+    "Void Ray": {
+      "portrait": "voidrayportrait_static",
+      "url": "portraits-png/voidrayportrait_static.png",
+      "file": "portraits/Void_Ray.png"
+    },
+    "Widow Mine": {
+      "portrait": "widowmineportrait_static",
+      "url": "portraits-png/widowmineportrait_static.png",
+      "file": "portraits/Widow_Mine.png"
+    },
+    "Zealot": {
+      "portrait": "zealotportrait_static",
+      "url": "portraits-png/zealotportrait_static.png",
+      "file": "portraits/Zealot.png"
+    },
+    "Zergling": {
+      "portrait": "zerglingportrait_static",
+      "url": "portraits-png/zerglingportrait_static.png",
+      "file": "portraits/Zergling.png"
+    }
+  },
+  "collage": "collage.jpg",
+  "downloaded": 47,
+  "total": 47
+}

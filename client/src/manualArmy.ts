@@ -116,23 +116,54 @@ export function setEnemyRace(
   return { enemyRace, counts: {} };
 }
 
+function patchWaveArmy(
+  state: ManualWavesState,
+  waveIndex: WaveIndex,
+  patch: (army: ManualArmyState) => ManualArmyState
+): ManualWavesState {
+  const waves = [...state.waves] as ManualWavesState["waves"];
+  waves[waveIndex] = patch(waves[waveIndex]);
+  return { ...state, waves };
+}
+
 /** Add vision-detected units into the active enemy wave (sums counts). */
 export function mergeDetectedIntoActiveWave(
   state: ManualWavesState,
   detected: ManualUnitInput[],
   enemyRace?: PlayerRace
 ): ManualWavesState {
+  const defaultWave = (state.activeWave + 1) as 1 | 2 | 3;
+  const withWave = detected.map((unit) => ({
+    ...unit,
+    wave: unit.wave ?? defaultWave,
+  }));
+  return mergeDetectedIntoWaves(state, withWave, enemyRace);
+}
+
+/** Route each detected unit to wave 1/2/3 (or active wave when wave omitted). */
+export function mergeDetectedIntoWaves(
+  state: ManualWavesState,
+  detected: ManualUnitInput[],
+  enemyRace?: PlayerRace
+): ManualWavesState {
   if (detected.length === 0) return state;
-  const army = state.waves[state.activeWave];
-  let nextArmy: ManualArmyState = { ...army, counts: { ...army.counts } };
+
+  const defaultWave = (state.activeWave + 1) as 1 | 2 | 3;
+  let next = state;
+
   for (const unit of detected) {
-    const existing = nextArmy.counts[unit.name] ?? 0;
-    nextArmy = setUnitCount(nextArmy, unit.name, existing + unit.count);
+    const waveNum = unit.wave ?? defaultWave;
+    const waveIndex = (Math.min(3, Math.max(1, waveNum)) - 1) as WaveIndex;
+    next = patchWaveArmy(next, waveIndex, (army) => {
+      let nextArmy: ManualArmyState = { ...army, counts: { ...army.counts } };
+      const existing = nextArmy.counts[unit.name] ?? 0;
+      nextArmy = setUnitCount(nextArmy, unit.name, existing + unit.count);
+      if (enemyRace) nextArmy = { ...nextArmy, enemyRace };
+      return nextArmy;
+    });
   }
-  if (enemyRace) {
-    nextArmy = { ...nextArmy, enemyRace };
-  }
-  return updateActiveWave(state, nextArmy);
+
+  return next;
 }
 
 /** Sync friendly wave race labels from team selection (keeps counts). */

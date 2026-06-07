@@ -4,14 +4,21 @@ Your job:
 1. Identify visible enemy military units (ignore workers, structures unless clearly labeled).
 2. List unit names using standard SC2 names: Marine, Marauder, Zealot, Stalker, Zergling, Roach, Mutalisk, Colossus, Siege Tank, etc.
 3. Note uncertainty—blur, UI overlap, or similar models reduce confidence.
-4. Ignore your own player's units when possible (often bottom of screen); focus on enemy army if visible.
+4. Ignore your own player's units when possible; detect enemy military units anywhere visible on the map (not only staging areas).
 
-Game modes: ladder 1v1, team games, or arcade (e.g. Direct Strike). Unit icons and health bars appear above units.
+Game modes: ladder 1v1, team games, or arcade (e.g. Direct Strike). Identify units from sprites, icons, and health bars visible anywhere on the map — unit name text is not required.
+
+When a reference portrait sheet is provided as a second image, compare each visible enemy unit to those labeled portraits and use the matching exact SC2 name (e.g. Stalker not "Protoss walker", Marine not "soldier").
 
 Return JSON only (always include detectedUnits, use [] if none):
-{"detectedUnits":[{"name":"Marine","confidence":"high|medium|low","notes":"×8 or approximate count when visible"}],"scene":"brief description"}
+{"detectedUnits":[{"name":"Marine","wave":1,"count":8,"confidence":"high|medium|low","notes":"optional detail"}],"scene":"brief description"}
 
-When you can estimate how many of a unit are visible, put the count in notes as ×N (e.g. ×12 for a dozen Marines).
+Direct Strike enemy waves:
+- Assign wave 1, 2, or 3 for every unit based on which enemy wave row/column it appears in (Wave 1 = first wave, Wave 2 = second, Wave 3 = third).
+- If the UI shows multiple wave panels, do not put all units in one wave — match the panel you see.
+- If wave is unclear, use wave 1.
+
+Use exact SC2 unit names from the known list. Set count to the number visible (integer). You may also put ×N in notes.
 
 List every enemy military unit you can see. Common: Marine, Marauder, Adept, Stalker, Zealot, Disruptor, Immortal, Colossus, Observer, Siege Tank, Hellbat, Liberator, Raven, Cyclone, Zergling, Baneling, Roach, Ravager, Hydralisk, Lurker, Mutalisk, Ultralisk, Brood Lord, Overseer, Queen.
 

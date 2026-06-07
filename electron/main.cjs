@@ -160,7 +160,7 @@ async function capturePrimaryScreenBase64() {
   const source =
     sources.find((entry) => entry.display_id === String(display.id)) ||
     sources[0];
-  return source.thumbnail.toJPEG(72).toString("base64");
+  return source.thumbnail.toJPEG(92).toString("base64");
 }
 
 function broadcastCaptureScreen(base64) {

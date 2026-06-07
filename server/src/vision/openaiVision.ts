@@ -60,10 +60,106 @@ export async function analyzeWithOpenAi(
   };
 }
 
-export function isOpenAiQuotaError(err: unknown): boolean {
-  if (err instanceof OpenAI.APIError) {
-    return err.status === 429 || err.status === 402;
+const OPENAI_MAX_RATE_LIMIT_RETRIES = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readOpenAiErrorFields(err: unknown): {
+  type?: string;
+  code?: string;
+  message?: string;
+  status?: number;
+  retryAfterMs?: number;
+} {
+  if (!(err instanceof OpenAI.APIError)) {
+    return { message: err instanceof Error ? err.message : String(err) };
   }
-  const message = err instanceof Error ? err.message : String(err);
-  return /quota|billing|rate limit|429/i.test(message);
+
+  const body = err.error as
+    | { type?: string; code?: string; message?: string }
+    | undefined;
+  const retryAfter = err.headers?.get?.("retry-after");
+  let retryAfterMs: number | undefined;
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      retryAfterMs = seconds * 1000;
+    }
+  }
+
+  return {
+    type: err.type ?? body?.type,
+    code: err.code ?? body?.code,
+    message: body?.message ?? err.message,
+    status: err.status,
+    retryAfterMs,
+  };
+}
+
+function openAiErrorToken(err: unknown): string {
+  const { type, code, message } = readOpenAiErrorFields(err);
+  return `${type ?? ""} ${code ?? ""} ${message ?? ""}`.toLowerCase();
+}
+
+/** Billing/quota exhaustion — safe to fall back to free OCR. */
+export function isOpenAiInsufficientQuotaError(err: unknown): boolean {
+  const { status } = readOpenAiErrorFields(err);
+  if (status === 402) return true;
+
+  const token = openAiErrorToken(err);
+  if (/insufficient_quota|billing_hard_limit|payment_required/.test(token)) {
+    return true;
+  }
+  if (/exceeded your current quota|check your plan and billing/.test(token)) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Transient throughput limit — should retry, not OCR-fallback. */
+export function isOpenAiRateLimitError(err: unknown): boolean {
+  if (isOpenAiInsufficientQuotaError(err)) return false;
+
+  const { status } = readOpenAiErrorFields(err);
+  if (status !== 429) return false;
+
+  const token = openAiErrorToken(err);
+  if (/rate_limit_exceeded|rate_limit/.test(token)) return true;
+
+  // Unknown 429: prefer retry over mislabeling as quota exhaustion.
+  return true;
+}
+
+/** @deprecated Use isOpenAiInsufficientQuotaError */
+export function isOpenAiQuotaError(err: unknown): boolean {
+  return isOpenAiInsufficientQuotaError(err);
+}
+
+export async function analyzeWithOpenAiResilient(
+  imageBase64: string,
+  mimeType: string
+): Promise<VisionResult> {
+  let lastErr: unknown;
+
+  for (let attempt = 0; attempt <= OPENAI_MAX_RATE_LIMIT_RETRIES; attempt++) {
+    try {
+      return await analyzeWithOpenAi(imageBase64, mimeType);
+    } catch (err) {
+      lastErr = err;
+      if (
+        !isOpenAiRateLimitError(err) ||
+        attempt >= OPENAI_MAX_RATE_LIMIT_RETRIES
+      ) {
+        throw err;
+      }
+      const { retryAfterMs } = readOpenAiErrorFields(err);
+      const delay = retryAfterMs ?? Math.min(1000 * 2 ** attempt, 8000);
+      await sleep(delay);
+    }
+  }
+
+  throw lastErr;
 }

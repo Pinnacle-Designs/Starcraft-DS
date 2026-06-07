@@ -4,6 +4,7 @@ import {
   VISION_USER_TEXT,
   type VisionResult,
 } from "./shared.js";
+import { getUnitReferenceCollageBase64 } from "./unitReference.js";
 
 function ollamaBaseUrl(): string {
   return (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434").replace(
@@ -16,15 +17,49 @@ export function isOllamaConfigured(): boolean {
   return process.env.VISION_PROVIDER === "ollama" || process.env.OLLAMA_ENABLED === "true" || !process.env.OPENAI_API_KEY;
 }
 
+function visionModelName(): string {
+  return (process.env.OLLAMA_VISION_MODEL ?? "llava").toLowerCase();
+}
+
+function modelInstalled(
+  tags: { models?: { name?: string }[] } | null,
+  model: string
+): boolean {
+  const models = tags?.models ?? [];
+  const key = model.toLowerCase();
+  return models.some((entry) => {
+    const name = (entry.name || "").toLowerCase();
+    return name === key || name.startsWith(`${key}:`);
+  });
+}
+
 export async function checkOllamaAvailable(): Promise<boolean> {
   try {
     const res = await fetch(`${ollamaBaseUrl()}/api/tags`, {
       signal: AbortSignal.timeout(2000),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    const tags = (await res.json()) as { models?: { name?: string }[] };
+    return modelInstalled(tags, visionModelName());
   } catch {
     return false;
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Wait for Ollama + vision model after auto-start (npm run dev). */
+export async function waitForOllamaVision(
+  maxMs = Number(process.env.OLLAMA_STARTUP_WAIT_MS || 30000)
+): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    if (await checkOllamaAvailable()) return true;
+    await sleep(1000);
+  }
+  return false;
 }
 
 export async function analyzeWithOllama(
@@ -32,7 +67,14 @@ export async function analyzeWithOllama(
   mimeType: string
 ): Promise<VisionResult> {
   const model = process.env.OLLAMA_VISION_MODEL ?? "llava";
-  const prompt = `${loadSystemPrompt()}\n\n${VISION_USER_TEXT}`;
+  const referenceCollage = getUnitReferenceCollageBase64();
+  const referenceHint = referenceCollage
+    ? "\n\nYou receive two images: (1) the gameplay screenshot to analyze, (2) a labeled reference sheet of official SC2 unit portraits. Match visible in-game sprites, icons, and models to the exact unit names on the reference sheet."
+    : "";
+  const prompt = `${loadSystemPrompt()}${referenceHint}\n\n${VISION_USER_TEXT}`;
+  const images = referenceCollage
+    ? [imageBase64, referenceCollage]
+    : [imageBase64];
 
   const res = await fetch(`${ollamaBaseUrl()}/api/chat`, {
     method: "POST",
@@ -44,7 +86,7 @@ export async function analyzeWithOllama(
         {
           role: "user",
           content: prompt,
-          images: [imageBase64],
+          images,
         },
       ],
     }),

@@ -1,0 +1,35 @@
+{
+  "source": "https://dist.sc2arcade.com/star-assets/ (SC2Mapster Asset Explorer — Blizzard game portraits)",
+  "portraitOverrides": {
+    "Hellbat": "hellbatblackopsportrait_static",
+    "Viking": "vikingfighterportrait_static"
+  },
+  "buttonOverrides": {
+    "Zealot": "btn-dark-unit-zealot",
+    "Sentry": "btn-dark-unit-sentry",
+    "Stalker": "btn-dark-unit-stalker",
+    "Immortal": "btn-dark-unit-immortal",
+    "Colossus": "btn-dark-unit-colossus",
+    "Phoenix": "btn-dark-unit-phoenix",
+    "Carrier": "btn-dark-unit-carrier",
+    "High Templar": "btn-dark-unit-hightemplar",
+    "Dark Templar": "btn-dark-unit-darktemplar1",
+    "Archon": "btn-dark-unit-archon",
+    "Oracle": "btn-dark-unit-oracle",
+    "Tempest": "btn-dark-unit-tempest",
+    "Void Ray": "btn-dark-unit-voidray",
+    "Adept": "btn-dark-unit-adept",
+    "Marine": "btn-custom-terran-marine",
+    "Marauder": "btn-custom-terran-marauder",
+    "Reaper": "btn-custom-terran-reaper",
+    "Ghost": "btn-custom-terran-ghost",
+    "Banshee": "btn-custom-terran-banshee",
+    "Battlecruiser": "btn-custom-terran-battlecruiser",
+    "Medivac": "btn-custom-terran-medivac",
+    "Siege Tank": "btn-custom-terran-siegetank-tankmode",
+    "Thor": "btn-custom-terran-thor",
+    "Viking": "btn-custom-terran-viking-fighter",
+    "Zergling": "btn-custom-zerg-zerglings",
+    "Widow Mine": "btn-flinks-arcade_iconwidowmine"
+  }
+}
