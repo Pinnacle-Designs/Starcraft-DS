@@ -42,7 +42,6 @@ jobs:
           ls -la release/
 
       - name: Upload installer to Cloudflare R2
-        if: ${{ secrets.R2_BUCKET }}
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -50,7 +49,12 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
           R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
-        run: node scripts/upload-installer-to-r2.cjs
+        run: |
+          if [ -z "$R2_BUCKET" ]; then
+            echo "R2_BUCKET secret not set — skipping R2 upload"
+            exit 0
+          fi
+          node scripts/upload-installer-to-r2.cjs
 
       - name: Print hosting instructions
         run: node scripts/publish-installer-url.cjs
