@@ -35,17 +35,14 @@ jobs:
           npm run build:desktop
           npm prune --omit=dev --prefix server
           node scripts/prepare-server-pack.cjs
+          test -f build/icon.ico || (echo "build/icon.ico missing" && exit 1)
           BUILD_ARGS=(--win --publish always)
           if [ -z "${WIN_CSC_LINK:-}" ]; then
             echo "WIN_CSC_LINK not set — unsigned build (embeds icon via resedit, skips code signing)"
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           npx electron-builder "${BUILD_ARGS[@]}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          node scripts/verify-win-icon.cjs
 
       - name: Verify update metadata
         shell: bash
@@ -90,9 +87,11 @@ jobs:
           find release -type f -name '*.exe' -print -exec ls -lh {} \;
           exe_count=$(find release -type f -name 'Starcraft-Coach-Setup-*.exe' | wc -l)
           if [ "$exe_count" -lt 1 ]; then
-            echo "::error::Installer .exe missing from artifact — release-windows may not have produced Starcraft-Coach-Setup-*.exe"
+            echo "::error::Installer .exe missing from artifact"
             exit 1
           fi
+
+      - name: Check R2 secrets are configured
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -108,8 +107,6 @@ jobs:
             echo "Add all four R2 secrets to Pinnacle-Designs/Starcraft-DS (repo or org secrets with repo access)."
             exit 1
           fi
-          ls -la release/ || true
-          find release -maxdepth 2 -name '*.exe' -print 2>/dev/null || true
 
       - name: Upload installer to Cloudflare R2
         env:

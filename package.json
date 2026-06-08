@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
@@ -37,8 +37,10 @@
     "productName": "Starcraft Coach",
     "copyright": "Copyright © Pinnacle Designs",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
+    "afterPack": "scripts/embed-win-icon.cjs",
     "compression": "store",
     "icon": "build/icon.ico",
     "files": [
@@ -137,6 +139,7 @@
     "concurrently": "^9.1.2",
     "electron": "^33.2.1",
     "electron-builder": "^26.15.2",
+    "resedit": "^1.7.2",
     "sharp": "^0.33.5",
     "to-ico": "^1.1.5",
     "wait-on": "^8.0.1"

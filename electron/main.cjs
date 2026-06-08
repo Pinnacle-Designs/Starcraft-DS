@@ -6,6 +6,7 @@ const {
   globalShortcut,
   ipcMain,
   Menu,
+  nativeImage,
   screen,
   shell,
   systemPreferences,
@@ -715,18 +716,28 @@ function packagedClientDist() {
   return candidates[0];
 }
 
-function getWindowIcon() {
+function resolveIconPath() {
   const names =
     process.platform === "win32"
       ? ["app-icon.ico", "app-icon.png"]
       : ["app-icon.png", "app-icon.ico"];
+  const bases = app.isPackaged
+    ? [process.resourcesPath, __dirname]
+    : [__dirname, process.resourcesPath];
   for (const name of names) {
-    for (const base of [__dirname, process.resourcesPath]) {
+    for (const base of bases) {
       const iconPath = path.join(base, name);
       if (fs.existsSync(iconPath)) return iconPath;
     }
   }
   return undefined;
+}
+
+function getWindowIcon() {
+  const iconPath = resolveIconPath();
+  if (!iconPath) return undefined;
+  const image = nativeImage.createFromPath(iconPath);
+  return image.isEmpty() ? iconPath : image;
 }
 
 function resolveUiFile(rootDir, urlPath) {
