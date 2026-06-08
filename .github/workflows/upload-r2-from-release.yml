@@ -45,6 +45,15 @@ jobs:
           curl -fsSL -L -o "release/${asset_name}" "$asset_url"
           ls -la release/
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install upload dependency
+        run: npm install @aws-sdk/client-s3@3 --no-save
+
       - name: Upload to Cloudflare R2
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -53,9 +62,13 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
           R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
-          AWS_DEFAULT_REGION: auto
-          AWS_REGION: auto
-          AWS_EC2_METADATA_DISABLED: "true"
+        run: node scripts/upload-installer-to-r2.cjs
+
+      - name: Verify public download URL
         run: |
-          sed -i 's/\r$//' scripts/upload-to-r2-awscli.sh
-          bash scripts/upload-to-r2-awscli.sh
+          sleep 3
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe")
+          echo "Public URL HTTP status: ${code}"
+          if [ "${code}" != "200" ]; then
+            echo "::warning::downloads.starcraftcoach.com returned ${code}. If upload succeeded, confirm R2 custom domain is linked to bucket ${R2_BUCKET:-starcraft-coach-downloads}."
+          fi
