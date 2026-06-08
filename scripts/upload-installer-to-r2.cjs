@@ -18,6 +18,35 @@ function requireEnv(name) {
   return value;
 }
 
+/** R2_BUCKET must be the bucket name only, e.g. starcraft-coach-downloads */
+function normalizeBucket(raw) {
+  let bucket = raw.trim();
+  if (bucket.startsWith("s3://")) {
+    bucket = bucket.slice(5);
+  }
+  if (bucket.includes("://")) {
+    try {
+      bucket = new URL(bucket).pathname.replace(/^\/+/, "");
+    } catch {
+      // fall through
+    }
+  }
+  if (bucket.includes("/")) {
+    const [name, ...rest] = bucket.split("/").filter(Boolean);
+    console.warn(
+      `[r2] R2_BUCKET should be the bucket name only; using "${name}" (ignored: ${rest.join("/")})`
+    );
+    bucket = name;
+  }
+  if (!bucket || bucket.includes("/")) {
+    console.error(
+      "[r2] invalid R2_BUCKET — set the secret to your bucket name only, e.g. starcraft-coach-downloads"
+    );
+    process.exit(1);
+  }
+  return bucket;
+}
+
 function findInstaller() {
   if (!fs.existsSync(releaseDir)) {
     console.error("[r2] release/ not found");
@@ -46,7 +75,7 @@ async function main() {
   const accountId = requireEnv("R2_ACCOUNT_ID");
   const accessKey = requireEnv("R2_ACCESS_KEY_ID");
   const secretKey = requireEnv("R2_SECRET_ACCESS_KEY");
-  const bucket = requireEnv("R2_BUCKET");
+  const bucket = normalizeBucket(requireEnv("R2_BUCKET"));
   const objectKey = process.env.R2_OBJECT_KEY?.trim() || "Starcraft-Coach-Setup.exe";
   const publicUrl =
     process.env.R2_PUBLIC_URL?.trim() ||

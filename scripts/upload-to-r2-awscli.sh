@@ -15,6 +15,11 @@ require_var R2_ACCOUNT_ID
 require_var R2_ACCESS_KEY_ID
 require_var R2_SECRET_ACCESS_KEY
 require_var R2_BUCKET
+# Bucket name only — strip accidental path suffix (e.g. bucket/key.exe)
+if [[ "${R2_BUCKET}" == */* ]]; then
+  echo "R2_BUCKET should be the bucket name only; using ${R2_BUCKET%%/*}"
+  R2_BUCKET="${R2_BUCKET%%/*}"
+fi
 
 OBJECT_KEY="${R2_OBJECT_KEY:-Starcraft-Coach-Setup.exe}"
 PUBLIC_URL="${R2_PUBLIC_URL:-https://downloads.starcraftcoach.com/${OBJECT_KEY}}"
