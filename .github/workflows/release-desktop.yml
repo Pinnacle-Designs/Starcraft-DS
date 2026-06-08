@@ -12,7 +12,7 @@ permissions:
 jobs:
   release-windows:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run build:desktop
+          npm prune --omit=dev --prefix server
           BUILD_ARGS=(--win --publish always)
           if [ -z "${WIN_CSC_LINK:-}" ]; then
             echo "WIN_CSC_LINK not set — building unsigned (skips winCodeSign hang)"
