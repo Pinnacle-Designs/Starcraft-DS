@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
@@ -27,6 +27,7 @@
     "print-installer-url": "node scripts/publish-installer-url.cjs",
     "upload-installer:r2": "node scripts/upload-installer-to-r2.cjs",
     "upload-installer:r2:aws": "bash scripts/upload-to-r2-awscli.sh",
+    "prepare-server-pack": "node scripts/prepare-server-pack.cjs",
     "electron": "electron electron/main.cjs",
     "electron:dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client,electron -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"wait-on http://localhost:5173 http://localhost:3847/api/health && electron electron/main.cjs\""
   },
@@ -37,7 +38,7 @@
     "directories": {
       "output": "release"
     },
-    "compression": "normal",
+    "compression": "store",
     "files": [
       "electron/**/*",
       "package.json",
@@ -58,7 +59,11 @@
       },
       {
         "from": "server/node_modules",
-        "to": "server/node_modules"
+        "to": "server/node_modules",
+        "filter": [
+          "**/*",
+          "!starcraft-ds/**"
+        ]
       },
       {
         "from": "data",
