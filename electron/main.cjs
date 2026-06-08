@@ -2,8 +2,10 @@ const {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   globalShortcut,
   ipcMain,
+  Menu,
   screen,
   shell,
   systemPreferences,
@@ -17,6 +19,7 @@ const { initAutoUpdater } = require("./updater.cjs");
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
 const API_PORT = process.env.PORT || "3847";
 const API_HEALTH_URL = `http://127.0.0.1:${API_PORT}/api/health`;
+const PACKAGED_UI_URL = `http://127.0.0.1:${API_PORT}/`;
 const isDev = !app.isPackaged;
 let apiServerProcess = null;
 
@@ -680,14 +683,24 @@ function clampOverlayBounds(x, y, width, height) {
   };
 }
 
-function loadPanelContents(win, config) {
-  const query = { panel: config.panel };
-  if (isDev) {
-    const qs = new URLSearchParams(query).toString();
-    return win.loadURL(`${DEV_URL}?${qs}`);
+function packagedClientDist() {
+  const inResources = path.join(process.resourcesPath, "client", "dist");
+  if (fs.existsSync(path.join(inResources, "index.html"))) {
+    return inResources;
   }
-  const indexPath = path.join(__dirname, "../client/dist/index.html");
-  return win.loadFile(indexPath, { query });
+  return path.join(app.getAppPath(), "client", "dist");
+}
+
+function packagedUiUrl(query) {
+  const qs = new URLSearchParams(query).toString();
+  return qs ? `${PACKAGED_UI_URL}?${qs}` : PACKAGED_UI_URL;
+}
+
+function loadPanelContents(win, config) {
+  if (isDev) {
+    return win.loadURL(`${DEV_URL}?panel=${config.panel}`);
+  }
+  return win.loadURL(packagedUiUrl({ panel: config.panel }));
 }
 
 function getPreloadPath() {
@@ -746,6 +759,7 @@ function startPackagedApiServer() {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
       STARCRAFT_DS_DATA_DIR: dataDir,
+      ELECTRON_CLIENT_DIST: packagedClientDist(),
       PORT: API_PORT,
       AUTO_START_OLLAMA: process.env.AUTO_START_OLLAMA ?? "true",
     },
@@ -792,8 +806,12 @@ function createMainWindow() {
   if (isDev) {
     mainWindow.loadURL(DEV_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../client/dist/index.html"));
+    mainWindow.loadURL(PACKAGED_UI_URL);
   }
+
+  mainWindow.webContents.on("did-fail-load", (_event, code, description) => {
+    console.error(`Main window failed to load (${code}): ${description}`);
+  });
 
   mainWindow.on("focus", () => {
     repinAllOverlayWindows();
@@ -934,13 +952,24 @@ function broadcastCoachState(state) {
 initAutoUpdater(ipcMain);
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null);
+
+  let apiReady = true;
   if (!isDev) {
     try {
       await startPackagedApiServer();
     } catch (err) {
+      apiReady = false;
+      const message = err instanceof Error ? err.message : String(err);
       console.error("Failed to start API server:", err);
+      dialog.showErrorBox(
+        "Starcraft Coach",
+        `Could not start the app backend.\n\n${message}\n\nTry restarting, or reinstall from starcraftcoach.com.`
+      );
     }
   }
+
+  if (!apiReady) return;
 
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);

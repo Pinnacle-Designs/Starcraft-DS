@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
@@ -362,6 +364,24 @@ app.post("/api/replay", upload.single("replay"), async (req, res) => {
     });
   }
 });
+
+/** Electron desktop: serve the built client over HTTP (ES modules fail on file://). */
+function mountPackagedClient() {
+  const clientDist = process.env.ELECTRON_CLIENT_DIST?.trim();
+  if (!clientDist) return;
+  const indexHtml = path.join(clientDist, "index.html");
+  if (!fs.existsSync(indexHtml)) {
+    console.warn(`[electron] client dist not found at ${clientDist}`);
+    return;
+  }
+  app.use(express.static(clientDist, { index: false }));
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(indexHtml);
+  });
+  console.log(`[electron] serving UI from ${clientDist}`);
+}
+
+mountPackagedClient();
 
 const httpServer = app.listen(PORT, async () => {
   const vision = await getVisionStatus();
