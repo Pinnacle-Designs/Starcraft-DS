@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -92,7 +95,8 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
           R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
-        run: node scripts/upload-installer-to-r2.cjs
+          AWS_DEFAULT_REGION: auto
+        run: bash scripts/upload-to-r2-awscli.sh
 
       - name: Print hosting instructions
         run: node scripts/publish-installer-url.cjs

@@ -26,6 +26,7 @@
     "dist:mac": "npm run build:desktop && electron-builder --mac",
     "print-installer-url": "node scripts/publish-installer-url.cjs",
     "upload-installer:r2": "node scripts/upload-installer-to-r2.cjs",
+    "upload-installer:r2:aws": "bash scripts/upload-to-r2-awscli.sh",
     "electron": "electron electron/main.cjs",
     "electron:dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client,electron -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"wait-on http://localhost:5173 http://localhost:3847/api/health && electron electron/main.cjs\""
   },
