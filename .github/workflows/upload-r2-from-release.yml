@@ -42,7 +42,7 @@ jobs:
           R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
           R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
         run: |
-          if [ -z "$R2_BUCKET" ]; then
+          if [ -z "${R2_ACCOUNT_ID}" ] || [ -z "${R2_ACCESS_KEY_ID}" ] || [ -z "${R2_SECRET_ACCESS_KEY}" ] || [ -z "${R2_BUCKET}" ]; then
             echo "Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET secrets first."
             exit 1
           fi

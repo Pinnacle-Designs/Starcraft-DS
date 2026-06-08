@@ -73,20 +73,16 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           missing=0
-          for name in R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET; do
-            eval "val=\$$name"
-            if [ -z "$val" ]; then
-              echo "::error::Missing GitHub secret: $name"
-              missing=1
-            else
-              echo "Secret present: $name"
-            fi
-          done
+          if [ -z "${R2_ACCOUNT_ID}" ]; then echo "::error::Missing GitHub secret: R2_ACCOUNT_ID"; missing=1; else echo "Secret present: R2_ACCOUNT_ID"; fi
+          if [ -z "${R2_ACCESS_KEY_ID}" ]; then echo "::error::Missing GitHub secret: R2_ACCESS_KEY_ID"; missing=1; else echo "Secret present: R2_ACCESS_KEY_ID"; fi
+          if [ -z "${R2_SECRET_ACCESS_KEY}" ]; then echo "::error::Missing GitHub secret: R2_SECRET_ACCESS_KEY"; missing=1; else echo "Secret present: R2_SECRET_ACCESS_KEY"; fi
+          if [ -z "${R2_BUCKET}" ]; then echo "::error::Missing GitHub secret: R2_BUCKET"; missing=1; else echo "Secret present: R2_BUCKET"; fi
           if [ "$missing" -eq 1 ]; then
             echo "Add all four R2 secrets to Pinnacle-Designs/Starcraft-DS (repo or org secrets with repo access)."
             exit 1
           fi
-          ls -la release/
+          ls -la release/ || true
+          find release -maxdepth 2 -name '*.exe' -print
 
       - name: Upload installer to Cloudflare R2
         env:
