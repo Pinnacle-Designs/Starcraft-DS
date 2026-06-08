@@ -28,6 +28,23 @@ export interface OverlayOpenResult {
   team: boolean;
 }
 
+export type AppUpdatePhase =
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "ready"
+  | "error";
+
+export interface AppUpdateStatusPayload {
+  phase: AppUpdatePhase;
+  currentVersion?: string;
+  version?: string;
+  percent?: number;
+  releaseNotes?: string;
+  error?: string;
+}
+
 export interface StarcraftDSElectron {
   isElectron: true;
   apiBase?: string;
@@ -57,6 +74,13 @@ export interface StarcraftDSElectron {
   requestScreenCaptureAccess: () => Promise<ScreenCaptureAccessResult>;
   captureScreenNow: () => Promise<ScreenCaptureNowResult>;
   getScreenCaptureStatus: () => Promise<{ granted: boolean }>;
+  getAppUpdateStatus: () => Promise<AppUpdateStatusPayload>;
+  checkForAppUpdate: () => Promise<AppUpdateStatusPayload>;
+  downloadAppUpdate: () => Promise<AppUpdateStatusPayload>;
+  installAppUpdate: () => Promise<{ ok: boolean }>;
+  onAppUpdateStatus: (
+    callback: (status: AppUpdateStatusPayload) => void
+  ) => () => void;
 }
 
 export interface HotkeyRecorderApi {

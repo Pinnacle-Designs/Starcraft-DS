@@ -17,6 +17,7 @@ import {
   manualArmyEntries,
   type ManualWavesState,
 } from "./manualArmy";
+import { showAiCaptureReplay } from "./featureFlags";
 import { useVisionTraining } from "./useVisionTraining";
 import {
   isElectronApp,
@@ -123,7 +124,7 @@ export default function Overlay({ panel }: Props) {
     lastCaptureSummary,
     error: captureScanError,
   } = useOverlayScreenCapture({
-    enabled: panel === "enemy" && isElectronApp(),
+    enabled: showAiCaptureReplay && panel === "enemy" && isElectronApp(),
     manualWaves,
     teamWaves,
     waveShift,
@@ -266,7 +267,7 @@ export default function Overlay({ panel }: Props) {
     >
       {panel === "enemy" ? (
         <>
-          {isElectronApp() ? (
+          {showAiCaptureReplay && isElectronApp() ? (
             <CaptureHotkeySettings
               scanning={captureScanning}
               lastCaptureAt={lastCaptureAt}
@@ -274,7 +275,7 @@ export default function Overlay({ panel }: Props) {
               onInteractionChange={setHotkeyUiActive}
             />
           ) : null}
-          {captureError ? (
+          {showAiCaptureReplay && captureError ? (
             <p className="capture-hotkey-error overlay-capture-error">
               {captureError}
             </p>
@@ -288,14 +289,18 @@ export default function Overlay({ panel }: Props) {
                 publishOverlayState({ manualWaves: waves });
               }}
               onClearSelections={handleClearSelections}
-              onSaveTraining={() => {
-                const units = manualArmyEntries(manualWaves);
-                if (units.length === 0) return;
-                setTrainingSaving(true);
-                void confirmCurrentLabels(units).finally(() =>
-                  setTrainingSaving(false)
-                );
-              }}
+              onSaveTraining={
+                showAiCaptureReplay
+                  ? () => {
+                      const units = manualArmyEntries(manualWaves);
+                      if (units.length === 0) return;
+                      setTrainingSaving(true);
+                      void confirmCurrentLabels(units).finally(() =>
+                        setTrainingSaving(false)
+                      );
+                    }
+                  : undefined
+              }
               trainingPending={trainingPending}
               trainingSaving={trainingSaving}
             />

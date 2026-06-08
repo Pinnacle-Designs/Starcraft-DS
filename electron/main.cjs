@@ -12,6 +12,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { initAutoUpdater } = require("./updater.cjs");
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
 const API_PORT = process.env.PORT || "3847";
@@ -927,6 +928,8 @@ function broadcastCoachState(state) {
     }
   }
 }
+
+initAutoUpdater(ipcMain);
 
 app.whenReady().then(async () => {
   if (!isDev) {

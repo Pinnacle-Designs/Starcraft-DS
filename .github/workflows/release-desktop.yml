@@ -27,13 +27,13 @@ jobs:
           npm ci
           npm run install:all
 
-      - name: Build desktop app
-        run: npm run dist:win
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release/*
-          generate_release_notes: true
+      - name: Build and publish desktop app
+        run: npm run build:desktop && npx electron-builder --win --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify update metadata
+        shell: bash
+        run: |
+          test -f release/latest.yml || (echo "latest.yml missing — auto-update will not work" && exit 1)
+          ls -la release/

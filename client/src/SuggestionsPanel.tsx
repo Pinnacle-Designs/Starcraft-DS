@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AnalyzeResponse, DetectedUnit, PlayerRace } from "./api";
+import { showAiCaptureReplay } from "./featureFlags";
 import { WAVE_DEFS } from "./manualArmy";
 import {
   allCounterPaths,
@@ -110,16 +111,16 @@ export function SuggestionsPanel({
               Updated {formatScanTime(lastScanAt)}
             </span>
           )}
-          {result?.mode === "ai" && result.provider === "ollama" && (
+          {showAiCaptureReplay && result?.mode === "ai" && result.provider === "ollama" && (
             <span className="badge badge-ollama">Ollama</span>
           )}
-          {result?.mode === "ai" && result.provider === "openai" && (
+          {showAiCaptureReplay && result?.mode === "ai" && result.provider === "openai" && (
             <span className="badge badge-ai">OpenAI</span>
           )}
-          {result?.mode === "ai" && !result.provider && (
+          {showAiCaptureReplay && result?.mode === "ai" && !result.provider && (
             <span className="badge badge-ai">AI</span>
           )}
-          {result?.provider === "ocr" && (
+          {showAiCaptureReplay && result?.provider === "ocr" && (
             <span className="badge badge-ocr">OCR</span>
           )}
           {result?.mode === "heuristic" &&
@@ -137,7 +138,9 @@ export function SuggestionsPanel({
             ? "● Scanning…"
             : lastScanAt
               ? `Updated ${formatScanTime(lastScanAt)}`
-              : "● Waiting for first scan…"}
+              : showAiCaptureReplay
+                ? "● Waiting for first scan…"
+                : "● Waiting for counters…"}
         </div>
       )}
 
@@ -450,12 +453,16 @@ export function SuggestionsPanel({
           {counterRefreshing
             ? "Refreshing counters…"
             : live && scanning
-            ? "Analyzing your capture…"
+            ? showAiCaptureReplay
+              ? "Analyzing your capture…"
+              : "Updating counters…"
             : live
-              ? "No units detected yet — keep Live coach on while scouting fights."
+              ? showAiCaptureReplay
+                ? "No units detected yet — keep Live coach on while scouting fights."
+                : "Tag enemy units in the wave builder to refresh counters."
               : compact
-                ? "Waiting for coach…"
-                : "Analyze, import a replay, or tag enemy units."}
+                ? "Waiting for counters…"
+                : "Tag enemy units in the wave builder to get counter suggestions."}
         </p>
       )}
       </div>

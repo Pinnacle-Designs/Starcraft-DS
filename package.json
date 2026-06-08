@@ -5,6 +5,10 @@
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
   "author": "pinnacle-designs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pinnacle-designs/Starcraft-DS.git"
+  },
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "kill-ports": "node scripts/kill-dev-ports.cjs",
@@ -31,7 +35,8 @@
     "files": [
       "electron/**/*",
       "client/dist/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/electron-updater/**/*"
     ],
     "extraResources": [
       {
@@ -57,7 +62,16 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
     },
-    "artifactName": "Starcraft-Coach-Setup-${version}.${ext}"
+    "artifactName": "Starcraft-Coach-Setup-${version}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "pinnacle-designs",
+      "repo": "Starcraft-DS",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

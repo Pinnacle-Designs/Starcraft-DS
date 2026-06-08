@@ -60,12 +60,14 @@ To enable Pages the first time: GitHub repo → **Settings** → **Pages** → *
 2. Run the installer. The app starts a local API server and opens the coach window.
 3. First launch may download the Ollama vision model (same as dev setup).
 
-Maintainers: tag a release to build the installer automatically:
+Maintainers: bump `version` in `package.json`, then tag a release to build the installer and push auto-update metadata (`latest.yml`):
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
+
+Installed desktop apps check GitHub Releases every few hours and show an **Update available** banner with an **Update now** button.
 
 > Do **not** open `client/index.html` directly in the browser — Vite must serve the app.
 

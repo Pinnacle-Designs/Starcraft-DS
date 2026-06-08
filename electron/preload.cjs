@@ -73,5 +73,14 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.invoke("screenCapture:requestAccess"),
   captureScreenNow: () => ipcRenderer.invoke("screenCapture:captureNow"),
   getScreenCaptureStatus: () => ipcRenderer.invoke("screenCapture:getStatus"),
+  getAppUpdateStatus: () => ipcRenderer.invoke("updates:getStatus"),
+  checkForAppUpdate: () => ipcRenderer.invoke("updates:check"),
+  downloadAppUpdate: () => ipcRenderer.invoke("updates:download"),
+  installAppUpdate: () => ipcRenderer.invoke("updates:install"),
+  onAppUpdateStatus: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("updates:status", handler);
+    return () => ipcRenderer.removeListener("updates:status", handler);
+  },
   hotkeyRecorder: hotkeyRecorderApi,
 });

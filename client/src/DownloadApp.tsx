@@ -70,13 +70,13 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
         </h2>
         <p className="download-app-text">
           {showHero
-            ? "This site runs counter lookups in your browser. Install Starcraft Coach on your PC for live screen capture, vision AI, replay import, and always-on-top overlays."
-            : "Get screen capture, vision AI, replay import, and native overlays with the Windows desktop build."}
+            ? "This site runs counter lookups in your browser. Install Starcraft Coach on your PC for always-on-top overlays and a dedicated coach window while you play."
+            : "Get always-on-top overlays and a dedicated coach window with the Windows desktop build."}
         </p>
         {!showHero && isStaticWebDeploy() ? (
           <p className="download-app-note">
-            Manual wave tagging works here; vision and capture need the installed
-            app.
+            Manual wave tagging works here; the desktop app adds overlay panels
+            you can place over your game.
           </p>
         ) : null}
       </div>

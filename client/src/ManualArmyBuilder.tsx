@@ -6,6 +6,7 @@ import {
   type UnitsByRace,
 } from "./api";
 import { CollapsibleWaveSection } from "./CollapsibleWaveSection";
+import { showAiCaptureReplay } from "./featureFlags";
 import { raceForWave } from "./teamWaves";
 import {
   activeWaveArmy,
@@ -258,7 +259,7 @@ export function ManualArmyBuilder({
       >
         Clear selections
       </button>
-      {!isFriendly && onSaveTraining ? (
+      {!isFriendly && showAiCaptureReplay && onSaveTraining ? (
         <button
           type="button"
           className="btn"

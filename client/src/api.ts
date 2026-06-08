@@ -140,7 +140,7 @@ export async function analyzeVisionQuick(
   imageBase64: string
 ): Promise<VisionQuickResponse> {
   if (isStaticWebDeploy()) {
-    throw new Error("Vision requires the desktop app.");
+    throw new Error("Tag enemy units in the wave builder to refresh counters.");
   }
   const res = await fetch(apiUrl("/api/vision"), {
     method: "POST",
@@ -174,7 +174,7 @@ export async function analyzeFrame(
       );
     }
     throw new Error(
-      "Screen capture and vision require the desktop app. Download it above, or tag enemy units manually."
+      "Tag enemy units in the wave builder to get counter suggestions."
     );
   }
   const res = await fetch(apiUrl("/api/analyze"), {

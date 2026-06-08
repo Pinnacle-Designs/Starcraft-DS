@@ -27,7 +27,11 @@ import {
   syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
-import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
+import {
+  captureMediaEnabled,
+  overlayEnabled,
+  showAiCaptureReplay,
+} from "./featureFlags";
 import {
   isElectronApp,
   MAIN_SYNC_ORIGIN,
@@ -42,6 +46,7 @@ import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 import { useVisionTraining } from "./useVisionTraining";
+import { AppUpdateBanner } from "./AppUpdateBanner";
 import { DownloadApp } from "./DownloadApp";
 
 export default function App() {
@@ -214,7 +219,7 @@ export default function App() {
     lastCaptureSummary,
     error: captureScanError,
   } = useOverlayScreenCapture({
-    enabled: isElectronApp(),
+    enabled: showAiCaptureReplay && isElectronApp(),
     manualWaves,
     teamWaves,
     waveShift,
@@ -370,7 +375,9 @@ export default function App() {
         if (data.detectedUnits.length === 0) {
           setLastError(
             data.scene?.slice(0, 140) ||
-              "No units detected. Tag manually, or install Ollama (ollama pull llava) for visual detection on the map."
+              showAiCaptureReplay
+                ? "No units detected. Tag manually, or install Ollama (ollama pull llava) for visual detection on the map."
+                : "No units tagged yet — add enemy units in the wave builder."
           );
         }
       } catch (e) {
@@ -498,12 +505,18 @@ export default function App() {
   const handleToggleLive = () => {
     if (!canLive) {
       setLastError(
-        "Live coach needs screen capture with OCR, or enemy units in the manual builder."
+        showAiCaptureReplay
+          ? "Live coach needs screen capture with OCR, or enemy units in the manual builder."
+          : "Tag enemy units in the wave builder to refresh counters."
       );
       return;
     }
     if (!capturing) {
-      setLastError("Start screen capture or upload a video before Live coach.");
+      setLastError(
+        showAiCaptureReplay
+          ? "Start screen capture or upload a video before Live coach."
+          : "Tag enemy units in the wave builder to refresh counters."
+      );
       return;
     }
     setLive((v) => !v);
@@ -511,6 +524,14 @@ export default function App() {
   };
 
   const visionHint = () => {
+    if (!showAiCaptureReplay) {
+      if (live) {
+        return scanning
+          ? "● Updating counters…"
+          : "● Refreshing counters from your army builder.";
+      }
+      return "";
+    }
     if (live) {
       if (scanning) return "● Scanning capture for enemy units…";
       if (visionEnabled) return `● Live vision (${vision?.active}) — updates every few seconds.`;
@@ -579,6 +600,7 @@ export default function App() {
         )}
       </header>
       <p className="header-slogan">Make better decisions. Win more games.</p>
+      <AppUpdateBanner />
       <DownloadApp />
       {overlayHint ? (
         <p className="status overlay-hint" role="status">
@@ -749,14 +771,14 @@ export default function App() {
           />
           )}
 
-          {isElectronApp() ? (
+          {showAiCaptureReplay && isElectronApp() ? (
             <CaptureHotkeySettings
               scanning={captureScanning}
               lastCaptureAt={lastCaptureAt}
               lastCaptureSummary={lastCaptureSummary}
             />
           ) : null}
-          {captureScanError ? (
+          {showAiCaptureReplay && captureScanError ? (
             <p className="capture-hotkey-error">{captureScanError}</p>
           ) : null}
           <ManualArmyBuilder
@@ -764,7 +786,9 @@ export default function App() {
             onChange={setManualWaves}
             onSubmit={handleManualSuggest}
             onClearSelections={handleClearSelections}
-            onSaveTraining={handleSaveTrainingLabels}
+            onSaveTraining={
+              showAiCaptureReplay ? handleSaveTrainingLabels : undefined
+            }
             trainingPending={trainingPending}
             trainingSaving={trainingSaving}
             refreshing={counterRefreshing}
@@ -800,7 +824,10 @@ export default function App() {
             lastScanAt={lastScanAt ?? lastCounterRefreshAt}
             counterRefreshing={counterRefreshing}
           />
-          {result?.scene && result.mode === "ai" && !live && (
+          {showAiCaptureReplay &&
+            result?.scene &&
+            result.mode === "ai" &&
+            !live && (
             <p className="status" style={{ marginTop: "0.75rem" }}>
               {result.scene.slice(0, 120)}
               {result.scene.length > 120 ? "…" : ""}
