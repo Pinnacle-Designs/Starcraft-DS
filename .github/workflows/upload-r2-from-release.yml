@@ -1,0 +1,49 @@
+name: Upload Release to R2
+
+# Re-upload an existing GitHub Release .exe to R2 without rebuilding.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v1.0.0)
+        required: false
+        default: v1.0.0
+
+permissions:
+  contents: read
+
+jobs:
+  upload-r2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Download release installer
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p release
+          curl -fsSL -o "release/Starcraft-Coach-Setup-${RELEASE_TAG#v}.exe" \
+            "https://github.com/Pinnacle-Designs/Starcraft-DS/releases/download/${RELEASE_TAG}/Starcraft-Coach-Setup-${RELEASE_TAG#v}.exe"
+          ls -la release/
+
+      - name: Upload to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
+          R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
+        run: |
+          if [ -z "$R2_BUCKET" ]; then
+            echo "Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET secrets first."
+            exit 1
+          fi
+          node scripts/upload-installer-to-r2.cjs

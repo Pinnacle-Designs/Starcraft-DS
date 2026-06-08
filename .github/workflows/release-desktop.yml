@@ -42,6 +42,7 @@ jobs:
           ls -la release/
 
       - name: Upload installer to Cloudflare R2
+        shell: bash
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
