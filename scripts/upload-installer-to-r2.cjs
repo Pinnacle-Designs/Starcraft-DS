@@ -104,6 +104,8 @@ async function main() {
       Key: objectKey,
       Body: body,
       ContentType: "application/octet-stream",
+      ContentDisposition: `attachment; filename="${objectKey}"`,
+      CacheControl: "public, max-age=3600",
     })
   );
 

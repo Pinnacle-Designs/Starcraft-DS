@@ -55,7 +55,6 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
           <a
             className="btn btn-primary download-app-btn"
             href={installer.downloadUrl}
-            download={installer.fileName}
             rel="noopener noreferrer"
           >
             Download for Windows
@@ -70,19 +69,11 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
             View releases
           </a>
         )}
-        <a
-          className="btn download-app-secondary"
-          href={releasesPage}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          All downloads
-        </a>
       </div>
       {installer && !loading ? (
         <p className="download-app-version">
           {installer.source === "hosted"
-            ? "Installer on Cloudflare (downloads.starcraftcoach.com)"
+            ? "Windows installer"
             : `Latest release: ${installer.tagName}`}
           {" · "}
           {installer.fileName}
