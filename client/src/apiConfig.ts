@@ -28,7 +28,6 @@ export function apiUrl(path: string): string {
   return `${base}${path}`;
 }
 
-export const GITHUB_REPO = "david-foy89/Starcraft-DS";
+export const GITHUB_REPO = "pinnacle-designs/Starcraft-DS";
 export const GITHUB_PAGES_URL =
-  import.meta.env.VITE_GITHUB_PAGES_URL ??
-  "https://david-foy89.github.io/Starcraft-DS/";
+  import.meta.env.VITE_GITHUB_PAGES_URL ?? "https://starcraftcoach.com/";

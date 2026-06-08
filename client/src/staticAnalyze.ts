@@ -31,6 +31,7 @@ let catalogCache: UnitCatalogJson | null = null;
 
 function dataUrl(file: string): string {
   const base = import.meta.env.BASE_URL ?? "/";
+  if (base === "./") return `./data/${file}`;
   const normalized = base.endsWith("/") ? base : `${base}/`;
   return `${normalized}data/${file}`;
 }
