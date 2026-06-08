@@ -680,11 +680,14 @@ function clampOverlayBounds(x, y, width, height) {
   };
 }
 
-function panelLoadUrl(config) {
-  const query = `panel=${config.panel}`;
-  if (isDev) return `${DEV_URL}?${query}`;
+function loadPanelContents(win, config) {
+  const query = { panel: config.panel };
+  if (isDev) {
+    const qs = new URLSearchParams(query).toString();
+    return win.loadURL(`${DEV_URL}?${qs}`);
+  }
   const indexPath = path.join(__dirname, "../client/dist/index.html");
-  return `file://${indexPath}?${query}`;
+  return win.loadFile(indexPath, { query });
 }
 
 function getPreloadPath() {
@@ -863,9 +866,8 @@ function createOverlayPanelWindow(panel) {
     if (!win.isDestroyed()) showOverlayWindow(win);
   });
 
-  const url = panelLoadUrl(config);
-  void win.loadURL(url).catch((err) => {
-    console.error(`Overlay panel "${panel}" failed to load ${url}:`, err);
+  void loadPanelContents(win, config).catch((err) => {
+    console.error(`Overlay panel "${panel}" failed to load:`, err);
   });
 
   win.webContents.on("did-fail-load", (_event, code, description) => {

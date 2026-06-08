@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
@@ -21,7 +21,7 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix server && npm run build --prefix client",
     "build:pages": "node scripts/build-pages.cjs",
-    "build:desktop": "npm run build --prefix server && npm run build --prefix client",
+    "build:desktop": "node scripts/build-desktop.cjs",
     "dist:win": "npm run build:desktop && electron-builder --win",
     "dist:mac": "npm run build:desktop && electron-builder --mac",
     "print-installer-url": "node scripts/publish-installer-url.cjs",
@@ -47,6 +47,14 @@
       {
         "from": "server/dist",
         "to": "server/dist"
+      },
+      {
+        "from": "server/package.json",
+        "to": "server/package.json"
+      },
+      {
+        "from": "server/node_modules",
+        "to": "server/node_modules"
       },
       {
         "from": "data",
