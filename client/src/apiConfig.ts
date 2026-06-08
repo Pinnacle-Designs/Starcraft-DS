@@ -31,3 +31,11 @@ export function apiUrl(path: string): string {
 export const GITHUB_REPO = "pinnacle-designs/Starcraft-DS";
 export const GITHUB_PAGES_URL =
   import.meta.env.VITE_GITHUB_PAGES_URL ?? "https://starcraftcoach.com/";
+
+/**
+ * Optional direct installer URL on your web server (Step 3–4 in distribution guide).
+ * Example: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
+ * When set, the download button uses this instead of the GitHub Releases API.
+ */
+export const WINDOWS_INSTALLER_URL =
+  import.meta.env.VITE_WINDOWS_INSTALLER_URL?.trim() || "";

@@ -23,12 +23,16 @@
     "build:pages": "node scripts/build-pages.cjs",
     "build:desktop": "npm run build --prefix server && npm run build --prefix client",
     "dist:win": "npm run build:desktop && electron-builder --win",
+    "dist:mac": "npm run build:desktop && electron-builder --mac",
+    "print-installer-url": "node scripts/publish-installer-url.cjs",
+    "upload-installer:r2": "node scripts/upload-installer-to-r2.cjs",
     "electron": "electron electron/main.cjs",
     "electron:dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client,electron -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"wait-on http://localhost:5173 http://localhost:3847/api/health && electron electron/main.cjs\""
   },
   "build": {
     "appId": "com.starcraftds.coach",
     "productName": "Starcraft Coach",
+    "copyright": "Copyright © Pinnacle Designs",
     "directories": {
       "output": "release"
     },
@@ -54,13 +58,33 @@
     ],
     "win": {
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true,
+      "publisherName": "Pinnacle Designs"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "Starcraft-Coach-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "shortcutName": "Starcraft Coach"
     },
     "artifactName": "Starcraft-Coach-Setup-${version}.${ext}",
     "publish": {

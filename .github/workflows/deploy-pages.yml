@@ -37,6 +37,8 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           VITE_GITHUB_PAGES: "true"
+          # Cloudflare R2 custom domain (see README — Hosting on Cloudflare)
+          VITE_WINDOWS_INSTALLER_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

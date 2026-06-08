@@ -50,24 +50,87 @@ Your browser should open **http://localhost:5173** automatically.
 The web UI is published at **https://starcraftcoach.com** (and **https://pinnacle-designs.github.io/Starcraft-DS/**) on every push to `main`.
 
 - **Browser site:** manual wave tagging and counter lookups (static data bundled with the site).
-- **Desktop app:** screen capture, vision AI, replay import, and native overlays.
+- **Desktop app:** always-on-top overlays and a dedicated coach window.
 
 To enable Pages the first time: GitHub repo → **Settings** → **Pages** → **Build and deployment** → Source: **GitHub Actions**.
 
+### Cloudflare setup (starcraftcoach.com)
+
+The site and installer use Cloudflare in front of GitHub Pages and R2.
+
+**Website (GitHub Pages + custom domain)**
+
+1. **Cloudflare DNS** → add a `CNAME` for `@` or `www` pointing to `pinnacle-designs.github.io` (or the GitHub Pages host shown in repo Settings → Pages).
+2. **SSL/TLS** → **Full** (GitHub Pages provides HTTPS; Cloudflare proxies it).
+3. Keep the `CNAME` file in `client/public/CNAME` as `starcraftcoach.com`.
+
+**Installer downloads (Cloudflare R2)**
+
+GitHub Pages is for the web app only — host the `.exe` on **R2**, not in the Pages artifact.
+
+1. **R2** → Create bucket (e.g. `starcraft-coach-downloads`).
+2. **R2** → bucket → **Settings** → **Public access** → **Custom domain** → `downloads.starcraftcoach.com` (Cloudflare adds DNS automatically).
+3. **R2** → **Manage R2 API tokens** → create token with Object Read & Write on that bucket.
+4. Add GitHub repo **Secrets** (for CI upload after each release):
+
+   | Secret | Value |
+   |--------|--------|
+   | `R2_ACCOUNT_ID` | Cloudflare dashboard → R2 → account ID |
+   | `R2_ACCESS_KEY_ID` | R2 API token access key |
+   | `R2_SECRET_ACCESS_KEY` | R2 API token secret |
+   | `R2_BUCKET` | Bucket name |
+
+5. After tagging a release, CI uploads `Starcraft-Coach-Setup.exe` to R2. Locally: `npm run upload-installer:r2` after `npm run dist:win`.
+
+The download button uses `https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe` (`VITE_WINDOWS_INSTALLER_URL` in the Pages workflow).
+
 ### Download the Windows app
 
-1. Open [Releases](https://github.com/pinnacle-designs/Starcraft-DS/releases/latest) and download **Starcraft-Coach-Setup-*.exe**.
-2. Run the installer. The app starts a local API server and opens the coach window.
-3. First launch may download the Ollama vision model (same as dev setup).
+Click **Download for Windows** on [starcraftcoach.com](https://starcraftcoach.com) or get the latest build from [GitHub Releases](https://github.com/pinnacle-designs/Starcraft-DS/releases/latest).
 
-Maintainers: bump `version` in `package.json`, then tag a release to build the installer and push auto-update metadata (`latest.yml`):
+Run the installer — it adds Starcraft Coach under Program Files, starts the local API, and opens the coach window. Installed apps also check for updates automatically.
+
+### Shipping a new desktop build (maintainers)
+
+This project already packages with **electron-builder** (NSIS `.exe` on Windows, `.dmg` on macOS) — the same role as Inno Setup or Advanced Installer.
+
+**Step 1 — Package**
 
 ```bash
+npm run dist:win    # Windows: release/Starcraft-Coach-Setup-<version>.exe
+npm run dist:mac    # macOS: release/Starcraft-Coach-<version>.dmg
+```
+
+Or tag a release and let CI build:
+
+```bash
+# bump version in package.json first
 git tag v1.0.1
 git push origin v1.0.1
 ```
 
-Installed desktop apps check GitHub Releases every few hours and show an **Update available** banner with an **Update now** button.
+**Step 2 — Sign (strongly recommended)**
+
+Unsigned installers trigger Windows SmartScreen / macOS Gatekeeper warnings.
+
+| OS | What you need |
+|----|----------------|
+| **Windows** | Code signing certificate (DigiCert, Sectigo, Azure Trusted Signing). Add GitHub secrets `WIN_CSC_LINK` (base64 `.pfx`) and `WIN_CSC_KEY_PASSWORD`. CI passes them as `CSC_LINK` / `CSC_KEY_PASSWORD` to electron-builder. |
+| **macOS** | Apple Developer ID + notarization (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`). |
+
+**Step 3 — Host on Cloudflare R2**
+
+Upload the signed `.exe` to R2 as `Starcraft-Coach-Setup.exe` on custom domain `downloads.starcraftcoach.com`. CI does this automatically when R2 secrets are set; or run `npm run upload-installer:r2` locally.
+
+(GitHub Releases remains the fallback and powers in-app auto-update.)
+
+**Step 4 — Website download button**
+
+`VITE_WINDOWS_INSTALLER_URL` in `.github/workflows/deploy-pages.yml` points at the R2 URL. The button uses the HTML `download` attribute so browsers save the file instead of opening it.
+
+**Step 5 — Auto-update**
+
+Tagged CI releases publish `latest.yml` so installed apps show an **Update available** banner. Run `npm run print-installer-url` after a local build to see upload paths and env vars.
 
 > Do **not** open `client/index.html` directly in the browser — Vite must serve the app.
 

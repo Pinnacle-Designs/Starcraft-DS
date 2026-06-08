@@ -1,52 +1,20 @@
 import { useEffect, useState } from "react";
 import { GITHUB_REPO, isStaticWebDeploy } from "./apiConfig";
+import {
+  resolveInstallerDownload,
+  type InstallerDownloadInfo,
+} from "./installerDownload";
 import { isElectronApp } from "./overlaySync";
 
-interface ReleaseAsset {
-  name: string;
-  browser_download_url: string;
-}
-
-interface ReleaseInfo {
-  tagName: string;
-  windowsUrl: string | null;
-  windowsLabel: string;
-}
-
-async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
-  try {
-    const res = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      tag_name?: string;
-      assets?: ReleaseAsset[];
-    };
-    const assets = data.assets ?? [];
-    const winAsset =
-      assets.find((asset) => /\.exe$/i.test(asset.name)) ??
-      assets.find((asset) => /windows|win/i.test(asset.name)) ??
-      assets[0];
-    return {
-      tagName: data.tag_name ?? "latest",
-      windowsUrl: winAsset?.browser_download_url ?? null,
-      windowsLabel: winAsset?.name ?? "Windows installer",
-    };
-  } catch {
-    return null;
-  }
-}
-
 export function DownloadApp({ compact = false }: { compact?: boolean }) {
-  const [release, setRelease] = useState<ReleaseInfo | null>(null);
+  const [installer, setInstaller] = useState<InstallerDownloadInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchLatestRelease().then((info) => {
+    void resolveInstallerDownload().then((info) => {
       if (!cancelled) {
-        setRelease(info);
+        setInstaller(info);
         setLoading(false);
       }
     });
@@ -82,12 +50,13 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="download-app-actions">
         {loading ? (
-          <span className="download-app-status">Checking releases…</span>
-        ) : release?.windowsUrl ? (
+          <span className="download-app-status">Checking for installer…</span>
+        ) : installer?.downloadUrl ? (
           <a
             className="btn btn-primary download-app-btn"
-            href={release.windowsUrl}
-            download
+            href={installer.downloadUrl}
+            download={installer.fileName}
+            rel="noopener noreferrer"
           >
             Download for Windows
           </a>
@@ -110,10 +79,13 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
           All downloads
         </a>
       </div>
-      {release?.tagName && !loading ? (
+      {installer && !loading ? (
         <p className="download-app-version">
-          Latest release: {release.tagName}
-          {release.windowsUrl ? ` · ${release.windowsLabel}` : ""}
+          {installer.source === "hosted"
+            ? "Installer on Cloudflare (downloads.starcraftcoach.com)"
+            : `Latest release: ${installer.tagName}`}
+          {" · "}
+          {installer.fileName}
         </p>
       ) : null}
     </section>
