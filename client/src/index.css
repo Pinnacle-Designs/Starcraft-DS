@@ -431,10 +431,6 @@ button:focus-visible {
   text-decoration: none;
 }
 
-.download-app-secondary {
-  text-decoration: none;
-}
-
 .download-app-status {
   font-size: 0.88rem;
   color: var(--muted);

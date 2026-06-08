@@ -55,6 +55,7 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
           <a
             className="btn btn-primary download-app-btn"
             href={installer.downloadUrl}
+            target="_blank"
             rel="noopener noreferrer"
           >
             Download for Windows
