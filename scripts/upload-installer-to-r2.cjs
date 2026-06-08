@@ -34,10 +34,18 @@ function findInstaller() {
     process.exit(1);
   }
   const files = fs.readdirSync(releaseDir);
-  const installer =
+  let installer =
     files.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
     files.find((name) => name.endsWith(".exe"));
   if (!installer) {
+    const nested = path.join(releaseDir, "release");
+    if (fs.existsSync(nested)) {
+      const nestedFiles = fs.readdirSync(nested);
+      installer =
+        nestedFiles.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
+        nestedFiles.find((name) => name.endsWith(".exe"));
+      if (installer) return path.join(nested, installer);
+    }
     console.error("[r2] no .exe in release/");
     process.exit(1);
   }

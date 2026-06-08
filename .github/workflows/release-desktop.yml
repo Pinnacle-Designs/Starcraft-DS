@@ -63,7 +63,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
-          path: release
+          path: .
 
       - name: Check R2 secrets are configured
         env:
