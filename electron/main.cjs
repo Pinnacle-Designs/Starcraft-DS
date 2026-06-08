@@ -684,11 +684,15 @@ function clampOverlayBounds(x, y, width, height) {
 }
 
 function packagedClientDist() {
-  const inResources = path.join(process.resourcesPath, "client", "dist");
-  if (fs.existsSync(path.join(inResources, "index.html"))) {
-    return inResources;
+  const candidates = [
+    path.join(process.resourcesPath, "client", "dist"),
+    path.join(app.getAppPath(), "client", "dist"),
+    path.join(process.resourcesPath, "..", "client", "dist"),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "index.html"))) return dir;
   }
-  return path.join(app.getAppPath(), "client", "dist");
+  return candidates[0];
 }
 
 function packagedUiUrl(query) {
