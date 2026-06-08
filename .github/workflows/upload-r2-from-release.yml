@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag (e.g. v1.0.0) or "latest"
+        description: Release tag (e.g. v1.0.11) or "latest"
         required: false
         default: latest
 
@@ -27,22 +27,45 @@ jobs:
           set -euo pipefail
           mkdir -p release
           tag="${RELEASE_TAG:-latest}"
+          if [ "$tag" != "latest" ] && [[ "$tag" != v* ]]; then
+            tag="v${tag}"
+          fi
           if [ "$tag" = "latest" ]; then
             api="https://api.github.com/repos/Pinnacle-Designs/Starcraft-DS/releases/latest"
           else
             api="https://api.github.com/repos/Pinnacle-Designs/Starcraft-DS/releases/tags/${tag}"
           fi
           echo "Fetching release metadata from: $api"
-          release_json=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api")
-          asset_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | .browser_download_url' | head -1)
-          asset_name=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | .name' | head -1)
+          http_code=$(curl -sS -o /tmp/release.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$api")
+          if [ "$http_code" = "404" ]; then
+            echo "::error::Release '${tag}' not found on GitHub."
+            echo "Create it first: git tag ${tag} && git push origin ${tag}"
+            echo "That triggers Release Desktop App, which builds and uploads to R2 automatically."
+            exit 1
+          fi
+          if [ "$http_code" != "200" ]; then
+            echo "::error::GitHub API returned HTTP ${http_code}"
+            cat /tmp/release.json || true
+            exit 1
+          fi
+          release_json=$(cat /tmp/release.json)
+          asset_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | select(.name | test("\\.exe\\.blockmap$") | not) | .browser_download_url' | head -1)
+          asset_name=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | select(.name | test("\\.exe\\.blockmap$") | not) | .name' | head -1)
+          resolved_tag=$(echo "$release_json" | jq -r '.tag_name')
           if [ -z "$asset_url" ] || [ "$asset_url" = "null" ]; then
-            echo "::error::No .exe asset found for release tag '${tag}'."
+            echo "::error::No .exe asset found for release '${resolved_tag}'."
             echo "Available releases: https://github.com/Pinnacle-Designs/Starcraft-DS/releases"
             exit 1
           fi
-          echo "Downloading ${asset_name}"
-          curl -fsSL -L -o "release/${asset_name}" "$asset_url"
+          echo "Downloading ${asset_name} from ${resolved_tag}"
+          dl_code=$(curl -sS -L -o "release/${asset_name}" -w "%{http_code}" "$asset_url")
+          if [ "$dl_code" != "200" ]; then
+            echo "::error::Download failed with HTTP ${dl_code}"
+            exit 1
+          fi
           ls -la release/
 
       - name: Setup Node

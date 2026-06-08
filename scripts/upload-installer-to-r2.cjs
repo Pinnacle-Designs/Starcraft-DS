@@ -48,21 +48,27 @@ function normalizeBucket(raw) {
 }
 
 function findInstaller() {
-  const candidates = [
-    releaseDir,
-    path.join(root, "release"),
-    root,
-  ];
-  for (const dir of candidates) {
+  const roots = [releaseDir, root];
+  for (const dir of roots) {
     if (!fs.existsSync(dir)) continue;
-    const files = fs.readdirSync(dir);
-    const installer =
-      files.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
-      files.find((name) => name.endsWith(".exe"));
-    if (installer) return path.join(dir, installer);
+    const direct = findExeInDir(dir);
+    if (direct) return direct;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const nested = findExeInDir(path.join(dir, entry.name));
+      if (nested) return nested;
+    }
   }
-  console.error("[r2] no .exe in release/ or workspace root");
+  console.error("[r2] no .exe in release/ (searched subfolders too)");
   process.exit(1);
+}
+
+function findExeInDir(dir) {
+  const files = fs.readdirSync(dir);
+  const installer =
+    files.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
+    files.find((name) => name.endsWith(".exe") && !name.endsWith(".blockmap"));
+  return installer ? path.join(dir, installer) : null;
 }
 
 async function main() {

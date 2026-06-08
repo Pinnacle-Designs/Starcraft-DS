@@ -58,6 +58,7 @@ jobs:
         with:
           name: windows-installer
           path: release/Starcraft-Coach-Setup-*.exe
+          if-no-files-found: error
           retention-days: 1
 
   upload-r2:
@@ -82,7 +83,16 @@ jobs:
           name: windows-installer
           path: release
 
-      - name: Check R2 secrets are configured
+      - name: Verify installer artifact
+        run: |
+          set -euo pipefail
+          echo "Artifact contents:"
+          find release -type f -name '*.exe' -print -exec ls -lh {} \;
+          exe_count=$(find release -type f -name 'Starcraft-Coach-Setup-*.exe' | wc -l)
+          if [ "$exe_count" -lt 1 ]; then
+            echo "::error::Installer .exe missing from artifact — release-windows may not have produced Starcraft-Coach-Setup-*.exe"
+            exit 1
+          fi
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
