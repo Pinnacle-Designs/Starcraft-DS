@@ -12,6 +12,7 @@ permissions:
 jobs:
   release-windows:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,9 +29,20 @@ jobs:
           npm run install:all
 
       - name: Build and publish desktop app
-        run: npm run build:desktop && npx electron-builder --win --publish always
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:desktop
+          BUILD_ARGS=(--win --publish always)
+          if [ -z "${WIN_CSC_LINK:-}" ]; then
+            echo "WIN_CSC_LINK not set — building unsigned (skips winCodeSign hang)"
+            BUILD_ARGS+=(--config.win.signAndEditExecutable=false)
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder "${BUILD_ARGS[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
