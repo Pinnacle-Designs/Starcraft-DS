@@ -122,12 +122,20 @@ function putObject({ endpoint, bucket, key, body, accessKey, secretKey }) {
         headers,
       },
       (res) => {
-        res.resume();
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve();
-          return;
-        }
-        reject(new Error(`R2 upload failed with status ${res.statusCode}`));
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve();
+            return;
+          }
+          const body = Buffer.concat(chunks).toString("utf8").trim();
+          reject(
+            new Error(
+              `R2 upload failed with status ${res.statusCode}${body ? `: ${body}` : ""}`
+            )
+          );
+        });
       }
     );
     req.on("error", reject);
