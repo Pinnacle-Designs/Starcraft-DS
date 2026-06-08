@@ -1,9 +1,7 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { dataPath } from "./dataPaths.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const costsPath = join(__dirname, "../../data/unit-costs.json");
+const costsPath = dataPath("unit-costs.json");
 
 /** Minerals per vespene when comparing total spend (standard SC2 heuristic). */
 export const GAS_MINERAL_VALUE = 2.5;

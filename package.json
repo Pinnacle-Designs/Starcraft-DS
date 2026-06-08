@@ -3,22 +3,66 @@
   "version": "1.0.0",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
+  "main": "electron/main.cjs",
+  "author": "david-foy89",
   "scripts": {
     "install:all": "npm install --prefix server && npm install --prefix client",
     "kill-ports": "node scripts/kill-dev-ports.cjs",
     "ensure-ollama": "node scripts/ensure-ollama.cjs",
     "fetch-unit-images": "node scripts/fetch-unit-images.cjs",
     "export-training": "node scripts/export-training-dataset.cjs",
+    "copy:data": "node scripts/copy-data-for-client.cjs",
     "dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix server && npm run build --prefix client",
+    "build:pages": "node scripts/build-pages.cjs",
+    "build:desktop": "npm run build --prefix server && npm run build --prefix client",
+    "dist:win": "npm run build:desktop && electron-builder --win",
     "electron": "electron electron/main.cjs",
     "electron:dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client,electron -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"wait-on http://localhost:5173 http://localhost:3847/api/health && electron electron/main.cjs\""
+  },
+  "build": {
+    "appId": "com.starcraftds.coach",
+    "productName": "Starcraft Coach",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "server/dist",
+        "to": "server/dist"
+      },
+      {
+        "from": "data",
+        "to": "data",
+        "filter": [
+          "**/*",
+          "!training/samples/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "artifactName": "Starcraft-Coach-Setup-${version}.${ext}"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
     "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "sharp": "^0.33.5",
     "wait-on": "^8.0.1"
   }

@@ -6,8 +6,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
+import { dataPath } from "../dataPaths.js";
 import type {
   TrainingIndex,
   TrainingSample,
@@ -16,8 +16,7 @@ import type {
   TrainingUnitLabel,
 } from "./types.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const trainingDir = join(__dirname, "../../../data/training");
+const trainingDir = dataPath("training");
 const samplesDir = join(trainingDir, "samples");
 const indexPath = join(trainingDir, "index.json");
 const MAX_SAMPLES = Number(process.env.TRAINING_MAX_SAMPLES || 500);

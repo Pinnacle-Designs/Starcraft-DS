@@ -42,6 +42,7 @@ import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 import { useVisionTraining } from "./useVisionTraining";
+import { DownloadApp } from "./DownloadApp";
 
 export default function App() {
   const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
@@ -551,7 +552,7 @@ export default function App() {
         <div>
           <h1 className="logo">
             <img
-              src="/starcraft-coach-logo.png"
+              src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
               alt="Starcraft Coach — The Ultimate Counter Tool"
               className="logo-img"
               width={512}
@@ -578,6 +579,7 @@ export default function App() {
         )}
       </header>
       <p className="header-slogan">Make better decisions. Win more games.</p>
+      <DownloadApp />
       {overlayHint ? (
         <p className="status overlay-hint" role="status">
           {overlayHint}

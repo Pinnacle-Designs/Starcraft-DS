@@ -1,6 +1,5 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { dataPath } from "./dataPaths.js";
 import {
   maxUnitsOnPlatform,
   platformLaneForUnit,
@@ -9,8 +8,7 @@ import {
   type PlatformLane,
 } from "./platformSlots.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const supplyPath = join(__dirname, "../../data/unit-supply.json");
+const supplyPath = dataPath("unit-supply.json");
 
 let unitSupply: Record<string, number> | null = null;
 

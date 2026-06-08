@@ -1,6 +1,4 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import {
   enemyStackPlatformUsage,
   parseEnemyCount,
@@ -9,6 +7,7 @@ import {
 } from "./counterQuantities.js";
 import { getPlatformCapacity } from "./platformSlots.js";
 import { getStackCost, getUnitCost } from "./unitCosts.js";
+import { dataPath } from "./dataPaths.js";
 
 export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
@@ -65,16 +64,15 @@ interface CountersDb {
   aliases: Record<string, string>;
 }
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const dataPath = join(__dirname, "../../data/counters.json");
-const tierPath = join(__dirname, "../../data/unit-tiers.json");
+const countersFile = dataPath("counters.json");
+const tiersFile = dataPath("unit-tiers.json");
 
 let db: CountersDb | null = null;
 let unitTiers: Record<string, number> | null = null;
 
 function loadUnitTiers(): Record<string, number> {
   if (!unitTiers) {
-    const raw = JSON.parse(readFileSync(tierPath, "utf-8")) as Record<
+    const raw = JSON.parse(readFileSync(tiersFile, "utf-8")) as Record<
       string,
       number
     >;
@@ -97,7 +95,7 @@ export function getUnitTiersMap(): Record<string, number> {
 
 function loadDb(): CountersDb {
   if (!db) {
-    db = JSON.parse(readFileSync(dataPath, "utf-8")) as CountersDb;
+    db = JSON.parse(readFileSync(countersFile, "utf-8")) as CountersDb;
   }
   return db;
 }

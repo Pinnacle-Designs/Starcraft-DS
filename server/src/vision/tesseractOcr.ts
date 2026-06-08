@@ -1,4 +1,4 @@
-import { createWorker, type Worker } from "tesseract.js";
+import { createWorker, PSM, type Worker } from "tesseract.js";
 import { imageDimensionsFromBase64 } from "./imageDimensions.js";
 import { detectFromText } from "./textDetection.js";
 import type { VisionResult } from "./shared.js";
@@ -10,7 +10,7 @@ async function getOcrWorker(): Promise<Worker> {
     workerInit = (async () => {
       const worker = await createWorker("eng");
       await worker.setParameters({
-        tessedit_pageseg_mode: "3",
+        tessedit_pageseg_mode: PSM.AUTO,
       });
       return worker;
     })().catch((err) => {
@@ -66,11 +66,11 @@ async function recognizeTiled(
 async function recognizeWithPsm(
   worker: Worker,
   dataUrl: string,
-  psm: string
+  psm: PSM
 ): Promise<string> {
   await worker.setParameters({ tessedit_pageseg_mode: psm });
   const text = await recognizeRegion(worker, dataUrl);
-  await worker.setParameters({ tessedit_pageseg_mode: "3" });
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
   return text;
 }
 
@@ -115,7 +115,7 @@ export async function analyzeWithTesseract(
     }
   }
 
-  const sparse = await recognizeWithPsm(worker, dataUrl, "11");
+  const sparse = await recognizeWithPsm(worker, dataUrl, PSM.SPARSE_TEXT);
   if (sparse.trim()) {
     combined = `${combined}\n${sparse}`;
     result = buildResult(combined, relaxed);

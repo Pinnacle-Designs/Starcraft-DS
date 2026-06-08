@@ -1,14 +1,12 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { dataPath } from "../dataPaths.js";
 import {
   getAllUnitNames,
   normalizeUnitName,
   normalizeUnitNameFuzzy,
 } from "../counterService.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const promptPath = join(__dirname, "../../../data/vision-system-prompt.txt");
+const promptPath = dataPath("vision-system-prompt.txt");
 
 export interface VisionDetectedUnit {
   name: string;

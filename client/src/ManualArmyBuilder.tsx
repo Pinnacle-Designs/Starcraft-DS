@@ -102,7 +102,7 @@ export function ManualArmyBuilder({
       isFriendly && teamWaves
         ? raceForWave(teamWaves, (waveIndex + 1) as 1 | 2 | 3)
         : waveArmy.enemyRace;
-    const parts = [race];
+    const parts: string[] = [race];
     if (count > 0) parts.push(`${count} tagged`);
     return parts.join(" · ");
   };

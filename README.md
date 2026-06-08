@@ -45,6 +45,28 @@ No OpenAI key is required for live vision.
 
 Your browser should open **http://localhost:5173** automatically.
 
+### Live website (GitHub Pages)
+
+The web UI is published at **https://david-foy89.github.io/Starcraft-DS/** on every push to `main`.
+
+- **Browser site:** manual wave tagging and counter lookups (static data bundled with the site).
+- **Desktop app:** screen capture, vision AI, replay import, and native overlays.
+
+To enable Pages the first time: GitHub repo → **Settings** → **Pages** → **Build and deployment** → Source: **GitHub Actions**.
+
+### Download the Windows app
+
+1. Open [Releases](https://github.com/david-foy89/Starcraft-DS/releases/latest) and download **Starcraft-Coach-Setup-*.exe**.
+2. Run the installer. The app starts a local API server and opens the coach window.
+3. First launch may download the Ollama vision model (same as dev setup).
+
+Maintainers: tag a release to build the installer automatically:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 > Do **not** open `client/index.html` directly in the browser — Vite must serve the app.
 
 ### Site won’t load?

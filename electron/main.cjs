@@ -8,11 +8,16 @@ const {
   shell,
   systemPreferences,
 } = require("electron");
+const { spawn } = require("child_process");
 const fs = require("fs");
+const http = require("http");
 const path = require("path");
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
+const API_PORT = process.env.PORT || "3847";
+const API_HEALTH_URL = `http://127.0.0.1:${API_PORT}/api/health`;
 const isDev = !app.isPackaged;
+let apiServerProcess = null;
 
 const OVERLAY_PANELS = {
   enemy: {
@@ -685,6 +690,89 @@ function getPreloadPath() {
   return path.join(__dirname, "preload.cjs");
 }
 
+function packagedResourcesRoot() {
+  return isDev ? path.join(__dirname, "..") : process.resourcesPath;
+}
+
+function waitForApiHealth(timeoutMs = 45_000) {
+  const started = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const req = http.get(API_HEALTH_URL, (res) => {
+        res.resume();
+        if (res.statusCode === 200) {
+          resolve();
+          return;
+        }
+        retry();
+      });
+      req.on("error", retry);
+      req.setTimeout(2_000, () => {
+        req.destroy();
+        retry();
+      });
+    };
+    const retry = () => {
+      if (Date.now() - started > timeoutMs) {
+        reject(new Error("API server did not start in time"));
+        return;
+      }
+      setTimeout(attempt, 500);
+    };
+    attempt();
+  });
+}
+
+function startPackagedApiServer() {
+  if (isDev) return Promise.resolve();
+
+  const root = packagedResourcesRoot();
+  const serverEntry = path.join(root, "server", "dist", "index.js");
+  const dataDir = path.join(root, "data");
+
+  if (!fs.existsSync(serverEntry)) {
+    return Promise.reject(
+      new Error(`Packaged API server not found at ${serverEntry}`)
+    );
+  }
+
+  apiServerProcess = spawn(process.execPath, [serverEntry], {
+    cwd: root,
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      STARCRAFT_DS_DATA_DIR: dataDir,
+      PORT: API_PORT,
+      AUTO_START_OLLAMA: process.env.AUTO_START_OLLAMA ?? "true",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  apiServerProcess.stdout?.on("data", (chunk) => {
+    console.log(`[api] ${chunk.toString().trimEnd()}`);
+  });
+  apiServerProcess.stderr?.on("data", (chunk) => {
+    console.error(`[api] ${chunk.toString().trimEnd()}`);
+  });
+  apiServerProcess.on("exit", (code, signal) => {
+    if (code != null && code !== 0) {
+      console.error(`[api] exited with code ${code}`);
+    }
+    if (signal) {
+      console.error(`[api] killed by signal ${signal}`);
+    }
+    apiServerProcess = null;
+  });
+
+  return waitForApiHealth();
+}
+
+function stopPackagedApiServer() {
+  if (!apiServerProcess || apiServerProcess.killed) return;
+  apiServerProcess.kill();
+  apiServerProcess = null;
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -840,7 +928,15 @@ function broadcastCoachState(state) {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  if (!isDev) {
+    try {
+      await startPackagedApiServer();
+    } catch (err) {
+      console.error("Failed to start API server:", err);
+    }
+  }
+
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);
   registerOverlayHotkeys();
@@ -861,6 +957,7 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  stopPackagedApiServer();
 });
 
 ipcMain.handle("overlay:open", () => openAllOverlayPanels());

@@ -1,6 +1,5 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { dataPath } from "./dataPaths.js";
 
 export type PlatformLane = "ground" | "air";
 
@@ -28,8 +27,7 @@ interface PlatformDb {
   units: Record<string, UnitPlatformFootprint>;
 }
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const platformPath = join(__dirname, "../../data/unit-platform.json");
+const platformPath = dataPath("unit-platform.json");
 
 let db: PlatformDb | null = null;
 

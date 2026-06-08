@@ -30,6 +30,7 @@ export interface OverlayOpenResult {
 
 export interface StarcraftDSElectron {
   isElectron: true;
+  apiBase?: string;
   openNativeOverlay: () => Promise<OverlayOpenResult>;
   broadcastCoachState: (state: unknown) => Promise<{ ok: boolean }>;
   onCoachState: (callback: (state: unknown) => void) => () => void;

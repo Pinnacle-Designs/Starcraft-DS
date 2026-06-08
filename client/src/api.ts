@@ -1,3 +1,9 @@
+import { apiUrl, isStaticWebDeploy } from "./apiConfig";
+import {
+  analyzeManualStatic,
+  fetchStaticUnitCatalog,
+} from "./staticAnalyze";
+
 export type PlayerRace = "Protoss" | "Terran" | "Zerg";
 
 export interface ManualUnitInput {
@@ -108,7 +114,11 @@ export interface UnitCatalog {
 }
 
 export async function fetchUnitCatalog(): Promise<UnitCatalog> {
-  const res = await fetch("/api/units");
+  if (isStaticWebDeploy()) {
+    const data = await fetchStaticUnitCatalog();
+    return { byRace: data.byRace, tierByUnit: data.tierByUnit };
+  }
+  const res = await fetch(apiUrl("/api/units"));
   if (!res.ok) throw new Error("Failed to load units");
   const data = (await res.json()) as UnitCatalog;
   return { byRace: data.byRace, tierByUnit: data.tierByUnit ?? {} };
@@ -129,7 +139,10 @@ export interface VisionQuickResponse {
 export async function analyzeVisionQuick(
   imageBase64: string
 ): Promise<VisionQuickResponse> {
-  const res = await fetch("/api/vision", {
+  if (isStaticWebDeploy()) {
+    throw new Error("Vision requires the desktop app.");
+  }
+  const res = await fetch(apiUrl("/api/vision"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -151,7 +164,20 @@ export async function analyzeFrame(
   waveShift: WaveShift = 0,
   options?: AnalyzeOptions
 ): Promise<AnalyzeResponse> {
-  const res = await fetch("/api/analyze", {
+  if (isStaticWebDeploy()) {
+    if (manualUnits?.length) {
+      return analyzeManualStatic(
+        manualUnits,
+        teamRaces,
+        waveShift,
+        options?.tierUnlocked
+      );
+    }
+    throw new Error(
+      "Screen capture and vision require the desktop app. Download it above, or tag enemy units manually."
+    );
+  }
+  const res = await fetch(apiUrl("/api/analyze"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -179,7 +205,19 @@ export async function fetchHealth(): Promise<{
   vision: boolean;
   visionProviders: VisionProviders;
 }> {
-  const res = await fetch("/api/health");
+  if (isStaticWebDeploy()) {
+    return {
+      ok: true,
+      vision: false,
+      visionProviders: {
+        active: null,
+        ollama: false,
+        openai: false,
+        ocr: false,
+      },
+    };
+  }
+  const res = await fetch(apiUrl("/api/health"));
   return res.json() as Promise<{
     ok: boolean;
     vision: boolean;
@@ -194,7 +232,10 @@ export async function inspectReplay(file: File): Promise<{
 }> {
   const form = new FormData();
   form.append("replay", file);
-  const res = await fetch("/api/replay/inspect", { method: "POST", body: form });
+  const res = await fetch(apiUrl("/api/replay/inspect"), {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(err.error ?? "Replay inspect failed");
@@ -221,7 +262,7 @@ export async function analyzeReplay(
   if (options.atGameSeconds !== undefined) {
     form.append("atGameSeconds", String(options.atGameSeconds));
   }
-  const res = await fetch("/api/replay", { method: "POST", body: form });
+  const res = await fetch(apiUrl("/api/replay"), { method: "POST", body: form });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(err.error ?? "Replay analysis failed");

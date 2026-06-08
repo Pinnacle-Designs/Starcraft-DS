@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("hotkeyRecorder", hotkeyRecorderApi);
 
 contextBridge.exposeInMainWorld("starcraftDS", {
   isElectron: true,
+  apiBase: "http://127.0.0.1:3847",
   openNativeOverlay: () => ipcRenderer.invoke("overlay:open"),
   broadcastCoachState: (state) => ipcRenderer.invoke("coach:publish", state),
   onCoachState: (callback) => {
