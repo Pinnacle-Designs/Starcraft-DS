@@ -81,7 +81,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
-          path: .
+          path: release
 
       - name: Check R2 secrets are configured
         env:
@@ -100,7 +100,7 @@ jobs:
             exit 1
           fi
           ls -la release/ || true
-          find release -maxdepth 2 -name '*.exe' -print
+          find release -maxdepth 2 -name '*.exe' -print 2>/dev/null || true
 
       - name: Upload installer to Cloudflare R2
         env:

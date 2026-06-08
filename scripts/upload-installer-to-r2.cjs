@@ -48,27 +48,21 @@ function normalizeBucket(raw) {
 }
 
 function findInstaller() {
-  if (!fs.existsSync(releaseDir)) {
-    console.error("[r2] release/ not found");
-    process.exit(1);
+  const candidates = [
+    releaseDir,
+    path.join(root, "release"),
+    root,
+  ];
+  for (const dir of candidates) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir);
+    const installer =
+      files.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
+      files.find((name) => name.endsWith(".exe"));
+    if (installer) return path.join(dir, installer);
   }
-  const files = fs.readdirSync(releaseDir);
-  let installer =
-    files.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
-    files.find((name) => name.endsWith(".exe"));
-  if (!installer) {
-    const nested = path.join(releaseDir, "release");
-    if (fs.existsSync(nested)) {
-      const nestedFiles = fs.readdirSync(nested);
-      installer =
-        nestedFiles.find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name)) ??
-        nestedFiles.find((name) => name.endsWith(".exe"));
-      if (installer) return path.join(nested, installer);
-    }
-    console.error("[r2] no .exe in release/");
-    process.exit(1);
-  }
-  return path.join(releaseDir, installer);
+  console.error("[r2] no .exe in release/ or workspace root");
+  process.exit(1);
 }
 
 async function main() {
