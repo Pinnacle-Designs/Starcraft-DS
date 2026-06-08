@@ -34,6 +34,7 @@ export type AppUpdatePhase =
   | "available"
   | "downloading"
   | "ready"
+  | "installing"
   | "error";
 
 export interface AppUpdateStatusPayload {
@@ -77,6 +78,7 @@ export interface StarcraftDSElectron {
   getAppUpdateStatus: () => Promise<AppUpdateStatusPayload>;
   checkForAppUpdate: () => Promise<AppUpdateStatusPayload>;
   downloadAppUpdate: () => Promise<AppUpdateStatusPayload>;
+  applyAppUpdate: () => Promise<AppUpdateStatusPayload>;
   installAppUpdate: () => Promise<{ ok: boolean }>;
   onAppUpdateStatus: (
     callback: (status: AppUpdateStatusPayload) => void

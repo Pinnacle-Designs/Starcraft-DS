@@ -16,6 +16,10 @@ const http = require("http");
 const path = require("path");
 const { initAutoUpdater } = require("./updater.cjs");
 
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.starcraftds.coach");
+}
+
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
 const API_PORT = process.env.PORT || "3847";
 const UI_PORT = process.env.UI_PORT || "3848";
@@ -712,12 +716,15 @@ function packagedClientDist() {
 }
 
 function getWindowIcon() {
-  const candidates = [
-    path.join(__dirname, "app-icon.png"),
-    path.join(process.resourcesPath, "app-icon.png"),
-  ];
-  for (const iconPath of candidates) {
-    if (fs.existsSync(iconPath)) return iconPath;
+  const names =
+    process.platform === "win32"
+      ? ["app-icon.ico", "app-icon.png"]
+      : ["app-icon.png", "app-icon.ico"];
+  for (const name of names) {
+    for (const base of [__dirname, process.resourcesPath]) {
+      const iconPath = path.join(base, name);
+      if (fs.existsSync(iconPath)) return iconPath;
+    }
   }
   return undefined;
 }

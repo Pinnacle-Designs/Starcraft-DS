@@ -37,8 +37,7 @@ jobs:
           node scripts/prepare-server-pack.cjs
           BUILD_ARGS=(--win --publish always)
           if [ -z "${WIN_CSC_LINK:-}" ]; then
-            echo "WIN_CSC_LINK not set — building unsigned (skips winCodeSign hang)"
-            BUILD_ARGS+=(--config.win.signAndEditExecutable=false)
+            echo "WIN_CSC_LINK not set — unsigned build (embeds icon via resedit, skips code signing)"
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           npx electron-builder "${BUILD_ARGS[@]}"

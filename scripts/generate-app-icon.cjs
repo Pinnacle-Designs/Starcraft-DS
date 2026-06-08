@@ -10,6 +10,7 @@ const root = path.join(__dirname, "..");
 const src = path.join(root, "client", "public", "starcraft-coach-logo.png");
 const buildDir = path.join(root, "build");
 const electronIcon = path.join(root, "electron", "app-icon.png");
+const electronIconIco = path.join(root, "electron", "app-icon.ico");
 
 async function main() {
   if (!fs.existsSync(src)) {
@@ -39,8 +40,11 @@ async function main() {
     )
   );
   fs.writeFileSync(path.join(buildDir, "icon.ico"), await toIco(pngBuffers));
+  fs.copyFileSync(path.join(buildDir, "icon.ico"), electronIconIco);
 
-  console.log("[icon] wrote build/icon.png, build/icon.ico, electron/app-icon.png");
+  console.log(
+    "[icon] wrote build/icon.png, build/icon.ico, electron/app-icon.png, electron/app-icon.ico"
+  );
 }
 
 if (require.main === module) {

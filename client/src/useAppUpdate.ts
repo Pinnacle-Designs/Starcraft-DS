@@ -7,6 +7,7 @@ export type AppUpdatePhase =
   | "available"
   | "downloading"
   | "ready"
+  | "installing"
   | "error";
 
 export interface AppUpdateStatus {
@@ -46,13 +47,9 @@ export function useAppUpdate() {
     if (next) setStatus(next as AppUpdateStatus);
   }, []);
 
-  const downloadUpdate = useCallback(async () => {
-    const next = await window.starcraftDS?.downloadAppUpdate?.();
+  const applyUpdate = useCallback(async () => {
+    const next = await window.starcraftDS?.applyAppUpdate?.();
     if (next) setStatus(next as AppUpdateStatus);
-  }, []);
-
-  const installUpdate = useCallback(async () => {
-    await window.starcraftDS?.installAppUpdate?.();
   }, []);
 
   const visible =
@@ -66,7 +63,6 @@ export function useAppUpdate() {
     visible,
     dismiss,
     checkForUpdate,
-    downloadUpdate,
-    installUpdate,
+    applyUpdate,
   };
 }

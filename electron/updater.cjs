@@ -1,8 +1,8 @@
 const { app, BrowserWindow } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
-const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
-const STARTUP_DELAY_MS = 30_000;
+const CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000;
+const STARTUP_DELAY_MS = 8_000;
 
 let updateStatus = {
   phase: "idle",
@@ -11,6 +11,7 @@ let updateStatus = {
 let checkTimer = null;
 let startupTimer = null;
 let downloadRequested = false;
+let installAfterDownload = false;
 
 function broadcastUpdateStatus() {
   const payload = { ...updateStatus };
@@ -31,6 +32,13 @@ function schedulePeriodicChecks() {
   checkTimer = setInterval(() => {
     void autoUpdater.checkForUpdates().catch(() => {});
   }, CHECK_INTERVAL_MS);
+}
+
+function quitAndRestart() {
+  setStatus({ phase: "installing", error: undefined });
+  setTimeout(() => {
+    autoUpdater.quitAndInstall(false, true);
+  }, 400);
 }
 
 function registerUpdateHandlers(ipcMain) {
@@ -65,6 +73,7 @@ function registerUpdateHandlers(ipcMain) {
       return { ...updateStatus };
     }
     downloadRequested = true;
+    installAfterDownload = false;
     setStatus({ phase: "downloading", percent: 0, error: undefined });
     try {
       await autoUpdater.downloadUpdate();
@@ -78,10 +87,41 @@ function registerUpdateHandlers(ipcMain) {
     }
   });
 
+  ipcMain.handle("updates:apply", async () => {
+    if (!app.isPackaged) return { ...updateStatus };
+
+    if (updateStatus.phase === "ready") {
+      quitAndRestart();
+      return { ...updateStatus };
+    }
+
+    if (
+      updateStatus.phase !== "available" &&
+      updateStatus.phase !== "error"
+    ) {
+      return { ...updateStatus };
+    }
+
+    installAfterDownload = true;
+    downloadRequested = true;
+    setStatus({ phase: "downloading", percent: 0, error: undefined });
+    try {
+      await autoUpdater.downloadUpdate();
+      return { ...updateStatus };
+    } catch (err) {
+      installAfterDownload = false;
+      downloadRequested = false;
+      const message =
+        err instanceof Error ? err.message : "Download failed.";
+      setStatus({ phase: "error", error: message });
+      return { ...updateStatus };
+    }
+  });
+
   ipcMain.handle("updates:install", () => {
     if (!app.isPackaged) return { ok: false };
     if (updateStatus.phase !== "ready") return { ok: false };
-    autoUpdater.quitAndInstall(false, true);
+    quitAndRestart();
     return { ok: true };
   });
 }
@@ -114,6 +154,7 @@ function initAutoUpdater(ipcMain) {
 
   autoUpdater.on("update-not-available", () => {
     downloadRequested = false;
+    installAfterDownload = false;
     setStatus({
       phase: "idle",
       version: undefined,
@@ -139,6 +180,10 @@ function initAutoUpdater(ipcMain) {
       percent: 100,
       error: undefined,
     });
+    if (installAfterDownload) {
+      installAfterDownload = false;
+      quitAndRestart();
+    }
   });
 
   autoUpdater.on("error", (err) => {
@@ -149,6 +194,7 @@ function initAutoUpdater(ipcMain) {
     const message = err instanceof Error ? err.message : String(err);
     setStatus({ phase: "error", error: message });
     downloadRequested = false;
+    installAfterDownload = false;
   });
 
   app.whenReady().then(() => {

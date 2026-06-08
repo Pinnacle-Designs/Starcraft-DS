@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld("starcraftDS", {
   getAppUpdateStatus: () => ipcRenderer.invoke("updates:getStatus"),
   checkForAppUpdate: () => ipcRenderer.invoke("updates:check"),
   downloadAppUpdate: () => ipcRenderer.invoke("updates:download"),
+  applyAppUpdate: () => ipcRenderer.invoke("updates:apply"),
   installAppUpdate: () => ipcRenderer.invoke("updates:install"),
   onAppUpdateStatus: (callback) => {
     const handler = (_event, payload) => callback(payload);

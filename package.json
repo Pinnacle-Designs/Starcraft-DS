@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
@@ -40,13 +40,17 @@
       "output": "release"
     },
     "compression": "store",
-    "icon": "build/icon.png",
+    "icon": "build/icon.ico",
     "files": [
       "electron/**/*",
       "package.json",
       "node_modules/electron-updater/**/*"
     ],
     "extraResources": [
+      {
+        "from": "electron/app-icon.ico",
+        "to": "app-icon.ico"
+      },
       {
         "from": "electron/app-icon.png",
         "to": "app-icon.png"
@@ -89,8 +93,9 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
-      "signAndEditExecutable": true,
+      "icon": "build/icon.ico",
+      "signExecutable": false,
+      "verifyUpdateCodeSignature": false,
       "publisherName": "Pinnacle Designs"
     },
     "mac": {
@@ -113,7 +118,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Starcraft Coach",
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "artifactName": "Starcraft-Coach-Setup-${version}.${ext}",
     "publish": {
@@ -130,7 +136,7 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.2",
     "sharp": "^0.33.5",
     "to-ico": "^1.1.5",
     "wait-on": "^8.0.1"

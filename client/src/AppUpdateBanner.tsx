@@ -1,13 +1,7 @@
 import { useAppUpdate } from "./useAppUpdate";
 
 export function AppUpdateBanner() {
-  const {
-    status,
-    visible,
-    dismiss,
-    downloadUpdate,
-    installUpdate,
-  } = useAppUpdate();
+  const { status, visible, dismiss, applyUpdate } = useAppUpdate();
 
   if (!visible) return null;
 
@@ -15,10 +9,11 @@ export function AppUpdateBanner() {
   const next = status.version ? `v${status.version}` : "a new version";
 
   let title = "Update available";
-  let message = `Starcraft Coach ${next} is ready. You have ${current}.`;
+  let message = `A newer version (${next}) is available. You have ${current}.`;
   let primaryLabel = "Update now";
-  let primaryAction = () => void downloadUpdate();
+  let primaryAction = () => void applyUpdate();
   let showDismiss = true;
+  let disabled = false;
 
   if (status.phase === "downloading") {
     title = "Downloading update";
@@ -26,17 +21,19 @@ export function AppUpdateBanner() {
     primaryLabel = "Downloading…";
     primaryAction = () => {};
     showDismiss = false;
-  } else if (status.phase === "ready") {
-    title = "Update ready";
-    message = `${next} downloaded. Restart to finish installing.`;
-    primaryLabel = "Restart and update";
-    primaryAction = () => void installUpdate();
+    disabled = true;
+  } else if (status.phase === "ready" || status.phase === "installing") {
+    title = "Installing update";
+    message = "Starcraft Coach will restart in a moment…";
+    primaryLabel = "Restarting…";
+    primaryAction = () => {};
     showDismiss = false;
+    disabled = true;
   } else if (status.phase === "error") {
     title = "Update failed";
     message = status.error ?? "Could not download the latest version.";
     primaryLabel = "Try again";
-    primaryAction = () => void downloadUpdate();
+    primaryAction = () => void applyUpdate();
     showDismiss = true;
   }
 
@@ -50,7 +47,7 @@ export function AppUpdateBanner() {
         <button
           type="button"
           className="btn btn-primary"
-          disabled={status.phase === "downloading"}
+          disabled={disabled}
           onClick={primaryAction}
         >
           {primaryLabel}
