@@ -4,6 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
+const toIco = require("to-ico");
 
 const root = path.join(__dirname, "..");
 const src = path.join(root, "client", "public", "starcraft-coach-logo.png");
@@ -27,7 +28,19 @@ async function main() {
     .resize(256, 256, { fit: "contain", background: bg })
     .png()
     .toFile(electronIcon);
-  console.log("[icon] wrote build/icon.png and electron/app-icon.png");
+
+  const icoSizes = [16, 24, 32, 48, 64, 128, 256];
+  const pngBuffers = await Promise.all(
+    icoSizes.map((size) =>
+      sharp(src)
+        .resize(size, size, { fit: "contain", background: bg })
+        .png()
+        .toBuffer()
+    )
+  );
+  fs.writeFileSync(path.join(buildDir, "icon.ico"), await toIco(pngBuffers));
+
+  console.log("[icon] wrote build/icon.png, build/icon.ico, electron/app-icon.png");
 }
 
 if (require.main === module) {
