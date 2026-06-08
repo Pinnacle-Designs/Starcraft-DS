@@ -12,9 +12,6 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   upload-r2:
     runs-on: ubuntu-latest
@@ -57,4 +54,8 @@ jobs:
           R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
           R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
           AWS_DEFAULT_REGION: auto
-        run: bash scripts/upload-to-r2-awscli.sh
+          AWS_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          sed -i 's/\r$//' scripts/upload-to-r2-awscli.sh
+          bash scripts/upload-to-r2-awscli.sh

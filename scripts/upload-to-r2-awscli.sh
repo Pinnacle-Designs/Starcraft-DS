@@ -28,13 +28,27 @@ if [ -z "$installer" ]; then
   exit 1
 fi
 
+if ! command -v aws >/dev/null 2>&1; then
+  echo "::error::AWS CLI not found on runner"
+  exit 1
+fi
+aws --version
+
 export AWS_ACCESS_KEY_ID="${R2_ACCESS_KEY_ID}"
 export AWS_SECRET_ACCESS_KEY="${R2_SECRET_ACCESS_KEY}"
-export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-auto}"
+export AWS_DEFAULT_REGION="auto"
+export AWS_REGION="auto"
+export AWS_EC2_METADATA_DISABLED="true"
 
 endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-echo "Uploading ${installer} -> s3://${R2_BUCKET}/${OBJECT_KEY}"
-aws s3 cp "${installer}" "s3://${R2_BUCKET}/${OBJECT_KEY}" --endpoint-url "${endpoint}"
+echo "Uploading ${installer} (${installer##*/}) -> s3://${R2_BUCKET}/${OBJECT_KEY}"
+
+# R2 requires CRC32; newer AWS CLI defaults can break uploads (exit 255 / InternalError).
+aws s3 cp "${installer}" "s3://${R2_BUCKET}/${OBJECT_KEY}" \
+  --endpoint-url "${endpoint}" \
+  --region auto \
+  --checksum-algorithm CRC32 \
+  --only-show-errors
 
 echo "R2 upload complete"
 echo "Public URL: ${PUBLIC_URL}"
