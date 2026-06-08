@@ -18,10 +18,26 @@ const { initAutoUpdater } = require("./updater.cjs");
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
 const API_PORT = process.env.PORT || "3847";
+const UI_PORT = process.env.UI_PORT || "3848";
 const API_HEALTH_URL = `http://127.0.0.1:${API_PORT}/api/health`;
-const PACKAGED_UI_URL = `http://127.0.0.1:${API_PORT}/`;
+const PACKAGED_UI_URL = `http://127.0.0.1:${UI_PORT}/`;
 const isDev = !app.isPackaged;
 let apiServerProcess = null;
+let uiServer = null;
+
+const UI_MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+};
 
 const OVERLAY_PANELS = {
   enemy: {
@@ -687,12 +703,84 @@ function packagedClientDist() {
   const candidates = [
     path.join(process.resourcesPath, "client", "dist"),
     path.join(app.getAppPath(), "client", "dist"),
-    path.join(process.resourcesPath, "..", "client", "dist"),
+    path.join(__dirname, "..", "client", "dist"),
   ];
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, "index.html"))) return dir;
   }
   return candidates[0];
+}
+
+function getWindowIcon() {
+  const candidates = [
+    path.join(__dirname, "app-icon.png"),
+    path.join(process.resourcesPath, "app-icon.png"),
+  ];
+  for (const iconPath of candidates) {
+    if (fs.existsSync(iconPath)) return iconPath;
+  }
+  return undefined;
+}
+
+function resolveUiFile(rootDir, urlPath) {
+  const relative = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  const filePath = path.normalize(path.join(rootDir, relative));
+  const rootWithSep = path.normalize(`${rootDir}${path.sep}`);
+  if (!filePath.startsWith(rootWithSep)) return null;
+  return filePath;
+}
+
+function startPackagedUiServer(clientDist) {
+  if (uiServer) return Promise.resolve(uiServer);
+  const indexHtml = path.join(clientDist, "index.html");
+  if (!fs.existsSync(indexHtml)) {
+    return Promise.reject(
+      new Error(`Desktop UI not found at ${clientDist}`)
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    uiServer = http.createServer((req, res) => {
+      try {
+        const url = new URL(req.url || "/", `http://127.0.0.1:${UI_PORT}`);
+        let filePath = resolveUiFile(clientDist, url.pathname);
+        if (
+          !filePath ||
+          !fs.existsSync(filePath) ||
+          fs.statSync(filePath).isDirectory()
+        ) {
+          filePath = indexHtml;
+        }
+        const ext = path.extname(filePath).toLowerCase();
+        res.setHeader("Content-Type", UI_MIME[ext] || "application/octet-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        fs.createReadStream(filePath)
+          .on("error", () => {
+            if (!res.headersSent) res.writeHead(500);
+            res.end("Failed to read UI file");
+          })
+          .pipe(res);
+      } catch (err) {
+        console.error("[ui] request failed:", err);
+        if (!res.headersSent) res.writeHead(500);
+        res.end("Internal UI error");
+      }
+    });
+
+    uiServer.listen(Number(UI_PORT), "127.0.0.1", () => {
+      console.log(
+        `[ui] serving ${clientDist} at http://127.0.0.1:${UI_PORT}/`
+      );
+      resolve(uiServer);
+    });
+    uiServer.on("error", reject);
+  });
+}
+
+function stopPackagedUiServer() {
+  if (!uiServer) return;
+  uiServer.close();
+  uiServer = null;
 }
 
 function packagedUiUrl(query) {
@@ -799,7 +887,8 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    title: "Starcraft-DS",
+    title: "Starcraft Coach",
+    icon: getWindowIcon(),
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -860,6 +949,7 @@ function createOverlayPanelWindow(panel) {
     minWidth: 260,
     minHeight: 200,
     title: config.title,
+    icon: getWindowIcon(),
     alwaysOnTop: true,
     frame: false,
     transparent: true,
@@ -961,14 +1051,16 @@ app.whenReady().then(async () => {
   let apiReady = true;
   if (!isDev) {
     try {
+      const clientDist = packagedClientDist();
+      await startPackagedUiServer(clientDist);
       await startPackagedApiServer();
     } catch (err) {
       apiReady = false;
       const message = err instanceof Error ? err.message : String(err);
-      console.error("Failed to start API server:", err);
+      console.error("Failed to start desktop app:", err);
       dialog.showErrorBox(
         "Starcraft Coach",
-        `Could not start the app backend.\n\n${message}\n\nTry restarting, or reinstall from starcraftcoach.com.`
+        `Could not start the app.\n\n${message}\n\nTry restarting, or reinstall from starcraftcoach.com.`
       );
     }
   }
@@ -995,6 +1087,7 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  stopPackagedUiServer();
   stopPackagedApiServer();
 });
 

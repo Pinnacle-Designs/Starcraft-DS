@@ -38,4 +38,13 @@ if (/\ssrc="\/assets\//.test(html) || /\shref="\/assets\//.test(html)) {
   process.exit(1);
 }
 
+const iconResult = spawnSync("node", ["scripts/generate-app-icon.cjs"], {
+  cwd: root,
+  stdio: "inherit",
+});
+if (iconResult.status !== 0) {
+  console.error("[desktop] icon generation failed");
+  process.exit(iconResult.status ?? 1);
+}
+
 console.log("[desktop] build ready for electron-builder");

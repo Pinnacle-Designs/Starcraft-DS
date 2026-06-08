@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
@@ -27,6 +27,7 @@
     "print-installer-url": "node scripts/publish-installer-url.cjs",
     "upload-installer:r2": "node scripts/upload-installer-to-r2.cjs",
     "upload-installer:r2:aws": "bash scripts/upload-to-r2-awscli.sh",
+    "generate-app-icon": "node scripts/generate-app-icon.cjs",
     "prepare-server-pack": "node scripts/prepare-server-pack.cjs",
     "electron": "electron electron/main.cjs",
     "electron:dev": "npm run kill-ports && node scripts/ensure-ollama.cjs && concurrently -n server,client,electron -c blue,green,magenta \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"wait-on http://localhost:5173 http://localhost:3847/api/health && electron electron/main.cjs\""
@@ -39,12 +40,17 @@
       "output": "release"
     },
     "compression": "store",
+    "icon": "build/icon.png",
     "files": [
       "electron/**/*",
       "package.json",
       "node_modules/electron-updater/**/*"
     ],
     "extraResources": [
+      {
+        "from": "electron/app-icon.png",
+        "to": "app-icon.png"
+      },
       {
         "from": "client/dist",
         "to": "client/dist"
@@ -83,6 +89,7 @@
           ]
         }
       ],
+      "icon": "build/icon.png",
       "signAndEditExecutable": true,
       "publisherName": "Pinnacle Designs"
     },
@@ -99,10 +106,14 @@
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": true,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Starcraft Coach"
+      "createStartMenuShortcut": true,
+      "shortcutName": "Starcraft Coach",
+      "installerIcon": "build/icon.png",
+      "uninstallerIcon": "build/icon.png"
     },
     "artifactName": "Starcraft-Coach-Setup-${version}.${ext}",
     "publish": {
