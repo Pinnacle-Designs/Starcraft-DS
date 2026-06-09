@@ -105,14 +105,21 @@ export function TeamArmyPanel({
   ) => {
     const def = WAVE_DEFS[waveIndex];
     const race = raceForWave(teamWaves, (waveIndex + 1) as 1 | 2 | 3);
-    const units = byRace?.[race] ?? [];
+    const maxTier = tierUnlocked[waveIndex];
+    const units = (byRace?.[race] ?? []).filter(
+      (name) => (tierByUnit[name] ?? 2) <= maxTier
+    );
 
     return (
       <>
         <p className={`status manual-army-hint ${def.colorClass}`}>
-          {race} units you already have on the battlefield.
+          {race} units at T{maxTier} or below — tag what you already have on the
+          battlefield.
         </p>
         <div className={`manual-army-grid ${def.colorClass}`}>
+          {units.length === 0 ? (
+            <p className="status">No units at this tech tier.</p>
+          ) : null}
           {units.flatMap((name, index) => {
             const tier = tierByUnit[name] ?? 2;
             const prevTier =

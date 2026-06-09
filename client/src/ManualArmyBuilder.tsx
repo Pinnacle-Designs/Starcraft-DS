@@ -313,6 +313,12 @@ export function ManualArmyBuilder({
         ) : null}
       </div>
 
+      {!isFriendly ? (
+        <p className="status team-selection-hint">
+          Pick opponent race per wave, then tag enemy units on the field.
+        </p>
+      ) : null}
+
       {loadError && (
         <p className="status" style={{ color: "var(--danger)" }}>
           {loadError}
