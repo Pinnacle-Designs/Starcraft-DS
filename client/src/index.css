@@ -497,7 +497,7 @@ button:focus-visible {
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   align-items: start;
 }
@@ -534,8 +534,19 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.panel-coach > .team-selection {
-  flex-shrink: 0;
+.panel-coach > .team-army-panel {
+  flex: 0 0 auto;
+  max-height: min(58vh, 32rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.team-wave-controls-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
 }
 
 .panel-coach > .suggestions {
@@ -2272,7 +2283,14 @@ body.overlay-electron .floating-overlay-panel-body * {
 .floating-overlay-panel-body .overlay-team-stack {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
   gap: 0.5rem;
+}
+
+.floating-overlay-panel-body .overlay-team-stack .team-army-panel .manual-army-grid {
+  grid-template-columns: 1fr;
 }
 
 .floating-overlay-panel-body .overlay-team-stack .suggestions-title {

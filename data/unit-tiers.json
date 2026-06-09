@@ -1,5 +1,5 @@
 {
-  "_meta": "Tiers follow SC2 production tech (same tier unlocks as Direct Strike). T1 = opening structures, T2 = Robo/Stargate/Factory/Lair, T3 = Fleet Beacon/Hive/Fusion Core.",
+  "_meta": "Tiers match the Direct Strike in-game tier upgrade panel (not SC2 ladder build order). T1 = before tier-2 upgrade. T2 = after tier-2 (adds cloaks + detectors). T3 = after tier-3 upgrade.",
   "Zealot": 1,
   "Adept": 1,
   "Stalker": 1,

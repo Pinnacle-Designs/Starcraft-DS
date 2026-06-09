@@ -13,7 +13,7 @@ import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { VideoUpload } from "./VideoUpload";
 import { SuggestionsPanel } from "./SuggestionsPanel";
-import { TeamSelection } from "./TeamSelection";
+import { TeamArmyPanel } from "./TeamArmyPanel";
 import {
   DEFAULT_TEAM_WAVES,
   DEFAULT_TIER_UNLOCKED,
@@ -292,8 +292,10 @@ export default function App() {
     return subscribeCoachState((incoming) => {
       if (incoming.origin !== OVERLAY_SYNC_ORIGIN) return;
       if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
-      if (incoming.teamRaces) {
-        setTeamWaves(incoming.teamRaces);
+      if (incoming.teamRaces) setTeamWaves(incoming.teamRaces);
+      if (incoming.friendlyWaves) {
+        setFriendlyWaves(incoming.friendlyWaves);
+      } else if (incoming.teamRaces) {
         setFriendlyWaves((waves) =>
           syncFriendlyWaveRaces(waves, incoming.teamRaces!)
         );
@@ -314,6 +316,7 @@ export default function App() {
       waveShift,
       tierUnlocked,
       manualWaves,
+      friendlyWaves,
       result,
       live,
       scanning,
@@ -327,6 +330,7 @@ export default function App() {
     waveShift,
     tierUnlocked,
     manualWaves,
+    friendlyWaves,
     playerRace,
     result,
     live,
@@ -434,12 +438,17 @@ export default function App() {
     void refreshCounters();
   };
 
-  const handleClearSelections = useCallback(() => {
+  const handleClearEnemySelections = useCallback(() => {
     setManualWaves((waves) => clearAllWaves(waves));
-    setFriendlyWaves((waves) => clearAllWaves(waves));
     setResult(null);
     setLastCounterRefreshAt(null);
   }, []);
+
+  const handleClearFriendlySelections = useCallback(() => {
+    setFriendlyWaves((waves) =>
+      syncFriendlyWaveRaces(clearAllWaves(waves), teamWaves)
+    );
+  }, [teamWaves]);
 
   const handleTeamWavesChange = useCallback(
     (teams: typeof teamWaves) => {
@@ -783,22 +792,16 @@ export default function App() {
           ) : null}
           <ManualArmyBuilder
             waves={manualWaves}
+            collapsibleWaves
             onChange={setManualWaves}
             onSubmit={handleManualSuggest}
-            onClearSelections={handleClearSelections}
+            onClearSelections={handleClearEnemySelections}
             onSaveTraining={
               showAiCaptureReplay ? handleSaveTrainingLabels : undefined
             }
             trainingPending={trainingPending}
             trainingSaving={trainingSaving}
             refreshing={counterRefreshing}
-          />
-          <ManualArmyBuilder
-            variant="friendly"
-            waves={friendlyWaves}
-            teamWaves={teamWaves}
-            onChange={setFriendlyWaves}
-            onClearSelections={handleClearSelections}
           />
           {lastError && (
             <p className="status" style={{ color: "var(--danger)" }}>
@@ -808,13 +811,16 @@ export default function App() {
         </section>
 
         <aside className="panel panel-coach">
-          <TeamSelection
+          <TeamArmyPanel
             teamWaves={teamWaves}
             waveShift={waveShift}
             tierUnlocked={tierUnlocked}
-            onChange={handleTeamWavesChange}
+            friendlyWaves={friendlyWaves}
+            onTeamChange={handleTeamWavesChange}
             onWaveShiftChange={setWaveShift}
-            onTierUnlockedChange={setTierUnlocked}
+            onTierChange={setTierUnlocked}
+            onFriendlyChange={setFriendlyWaves}
+            onClearFriendly={handleClearFriendlySelections}
           />
           <SuggestionsPanel
             playerRace={playerRace}

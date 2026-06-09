@@ -3,7 +3,7 @@ import type { AnalyzeResponse, WaveShift } from "./api";
 import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { SuggestionsPanel } from "./SuggestionsPanel";
-import { TeamSelection } from "./TeamSelection";
+import { TeamArmyPanel } from "./TeamArmyPanel";
 import { OverlayPanelShell } from "./OverlayPanelShell";
 import {
   DEFAULT_TEAM_WAVES,
@@ -15,6 +15,7 @@ import {
   clearAllWaves,
   EMPTY_MANUAL_WAVES,
   manualArmyEntries,
+  syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
 import { showAiCaptureReplay } from "./featureFlags";
@@ -54,6 +55,9 @@ export default function Overlay({ panel }: Props) {
     useState<TierUnlocked>(DEFAULT_TIER_UNLOCKED);
   const [manualWaves, setManualWaves] =
     useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
+  const [friendlyWaves, setFriendlyWaves] = useState<ManualWavesState>(() =>
+    syncFriendlyWaveRaces(EMPTY_MANUAL_WAVES, DEFAULT_TEAM_WAVES)
+  );
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [live, setLive] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -82,6 +86,13 @@ export default function Overlay({ panel }: Props) {
     if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
     if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
     if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
+    if (incoming.friendlyWaves) {
+      setFriendlyWaves(incoming.friendlyWaves);
+    } else if (incoming.teamRaces) {
+      setFriendlyWaves((waves) =>
+        syncFriendlyWaveRaces(waves, incoming.teamRaces!)
+      );
+    }
     setResult(incoming.result);
     setLive(incoming.live);
     if (incoming.scanning != null) setScanning(incoming.scanning);
@@ -100,6 +111,7 @@ export default function Overlay({ panel }: Props) {
         waveShift: patch.waveShift ?? waveShift,
         tierUnlocked: patch.tierUnlocked ?? tierUnlocked,
         manualWaves: patch.manualWaves ?? manualWaves,
+        friendlyWaves: patch.friendlyWaves ?? friendlyWaves,
         result:
           patch.result !== undefined ? patch.result : (base?.result ?? null),
         live: patch.live ?? base?.live ?? false,
@@ -115,7 +127,7 @@ export default function Overlay({ panel }: Props) {
         updatedAt: Date.now(),
       });
     },
-    [teamWaves, waveShift, tierUnlocked, manualWaves]
+    [teamWaves, waveShift, tierUnlocked, manualWaves, friendlyWaves]
   );
 
   const {
@@ -238,13 +250,19 @@ export default function Overlay({ panel }: Props) {
     void window.starcraftDS.setClickThrough(enabled);
   }, []);
 
-  const handleClearSelections = useCallback(() => {
+  const handleClearEnemySelections = useCallback(() => {
     const cleared = clearAllWaves(manualWaves);
     setManualWaves(cleared);
     setResult(null);
     setCaptureError(null);
     publishOverlayState({ manualWaves: cleared, result: null });
   }, [manualWaves, publishOverlayState]);
+
+  const handleClearFriendlySelections = useCallback(() => {
+    const cleared = syncFriendlyWaveRaces(clearAllWaves(friendlyWaves), teamWaves);
+    setFriendlyWaves(cleared);
+    publishOverlayState({ friendlyWaves: cleared });
+  }, [friendlyWaves, teamWaves, publishOverlayState]);
 
   // Chrome blocks two popups from one click — open team from the enemy popup instead.
   useEffect(() => {
@@ -288,7 +306,7 @@ export default function Overlay({ panel }: Props) {
                 setManualWaves(waves);
                 publishOverlayState({ manualWaves: waves });
               }}
-              onClearSelections={handleClearSelections}
+              onClearSelections={handleClearEnemySelections}
               onSaveTraining={
                 showAiCaptureReplay
                   ? () => {
@@ -307,24 +325,33 @@ export default function Overlay({ panel }: Props) {
           </div>
         </>
       ) : (
-        <div className="overlay-team-stack">
-          <TeamSelection
+        <div className="overlay-team-stack overlay-interactive">
+          <TeamArmyPanel
             teamWaves={teamWaves}
             waveShift={waveShift}
             tierUnlocked={tierUnlocked}
-            collapsibleWaves
-            onChange={(teams) => {
+            friendlyWaves={friendlyWaves}
+            onTeamChange={(teams) => {
               setTeamWaves(teams);
-              publishOverlayState({ teamRaces: teams });
+              setFriendlyWaves((waves) => {
+                const next = syncFriendlyWaveRaces(waves, teams);
+                publishOverlayState({ teamRaces: teams, friendlyWaves: next });
+                return next;
+              });
             }}
             onWaveShiftChange={(shift) => {
               setWaveShift(shift);
               publishOverlayState({ waveShift: shift });
             }}
-            onTierUnlockedChange={(tiers) => {
+            onTierChange={(tiers) => {
               setTierUnlocked(tiers);
               publishOverlayState({ tierUnlocked: tiers });
             }}
+            onFriendlyChange={(waves) => {
+              setFriendlyWaves(waves);
+              publishOverlayState({ friendlyWaves: waves });
+            }}
+            onClearFriendly={handleClearFriendlySelections}
           />
           <SuggestionsPanel
             playerRace={primaryTeamRace(teamWaves)}
