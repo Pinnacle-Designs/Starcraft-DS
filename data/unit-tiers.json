@@ -16,6 +16,7 @@
   "Colossus": 3,
   "Carrier": 3,
   "Tempest": 3,
+  "Mothership": 3,
   "Marine": 1,
   "Marauder": 1,
   "Reaper": 1,
@@ -35,7 +36,7 @@
   "Zergling": 1,
   "Queen": 1,
   "Baneling": 1,
-  "Roach": 2,
+  "Roach": 1,
   "Hydralisk": 2,
   "Lurker": 2,
   "Ravager": 2,
@@ -44,7 +45,7 @@
   "Swarm Host": 2,
   "Ultralisk": 3,
   "Brood Lord": 3,
-  "Corruptor": 3,
+  "Corruptor": 2,
   "Viper": 3,
   "Overseer": 2
 }

@@ -31,6 +31,7 @@
   "Oracle": { "minerals": 150, "gas": 150 },
   "Observer": { "minerals": 25, "gas": 75 },
   "Tempest": { "minerals": 250, "gas": 175 },
+  "Mothership": { "minerals": 400, "gas": 400 },
   "Void Ray": { "minerals": 250, "gas": 150 },
   "Zergling": { "minerals": 25, "gas": 0 },
   "Roach": { "minerals": 75, "gas": 25 },
