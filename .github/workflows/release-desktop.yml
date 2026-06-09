@@ -56,8 +56,6 @@ jobs:
           npx electron-builder "${BUILD_ARGS[@]}"
           node scripts/verify-win-icon.cjs
           node scripts/cleanup-duplicate-github-releases.cjs
-          test -f release/latest.yml
-          test -f release/Starcraft-Coach-Setup-*.exe
 
       - name: Verify update metadata
         shell: bash

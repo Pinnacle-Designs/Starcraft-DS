@@ -28,6 +28,9 @@ async function github(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
+    if (res.status === 404 && options.method === "DELETE") {
+      return null;
+    }
     throw new Error(`GitHub API ${path} failed (${res.status}): ${body}`);
   }
   if (res.status === 204) return null;
@@ -49,10 +52,11 @@ function isBrokenRelease(release) {
   return !hasLatestYml(release) && !hasInstallerExe(release);
 }
 
-async function main() {
-  const releases = await github(
-    `/repos/${REPO}/releases?per_page=20`
-  );
+async function listReleases() {
+  return github(`/repos/${REPO}/releases?per_page=20`);
+}
+
+function groupByTag(releases) {
   const byTag = new Map();
   for (const release of releases) {
     if (!release.tag_name) continue;
@@ -60,8 +64,13 @@ async function main() {
     list.push(release);
     byTag.set(release.tag_name, list);
   }
+  return byTag;
+}
 
+async function main() {
+  let releases = await listReleases();
   let deleted = 0;
+
   for (const release of releases) {
     if (!isBrokenRelease(release)) continue;
     const names = (release.assets || []).map((asset) => asset.name).join(", ");
@@ -73,6 +82,9 @@ async function main() {
     });
     deleted += 1;
   }
+
+  releases = await listReleases();
+  const byTag = groupByTag(releases);
 
   for (const [tag, group] of byTag.entries()) {
     if (group.length < 2) continue;
