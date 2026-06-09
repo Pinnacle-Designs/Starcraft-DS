@@ -97,8 +97,7 @@
       ],
       "icon": "build/icon.ico",
       "signExecutable": false,
-      "verifyUpdateCodeSignature": false,
-      "publisherName": "Pinnacle Designs"
+      "verifyUpdateCodeSignature": false
     },
     "mac": {
       "target": [

@@ -30,6 +30,8 @@ jobs:
 
       - name: Build and publish desktop app
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           npm run build:desktop
