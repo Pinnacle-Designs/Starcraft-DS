@@ -40,18 +40,18 @@ jobs:
           npm prune --omit=dev --prefix server
           node scripts/prepare-server-pack.cjs
           test -f build/icon.ico || (echo "build/icon.ico missing" && exit 1)
+          node scripts/cleanup-duplicate-github-releases.cjs --skip-latest-check
           BUILD_ARGS=(--win --publish always)
           if [ -n "${WIN_CSC_LINK:-}" ]; then
             CSC_FILE="${RUNNER_TEMP}/codesign.pfx"
             echo "$WIN_CSC_LINK" | base64 -d > "$CSC_FILE"
             export CSC_LINK="$CSC_FILE"
             export CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
-            BUILD_ARGS+=(--config.win.signExecutable=true)
+            BUILD_ARGS+=(--config.win.signExecutable=true --config.win.signAndEditExecutable=true)
             echo "Code signing enabled via WIN_CSC_LINK secret"
           else
-            echo "::warning::WIN_CSC_LINK not set — unsigned build. Auto-update from signed installs will fail until secrets are configured."
+            echo "WIN_CSC_LINK not set — unsigned build (auto-update works after one manual install on v1.0.14+)"
             export CSC_IDENTITY_AUTO_DISCOVERY=false
-            BUILD_ARGS+=(--config.win.signExecutable=false)
           fi
           npx electron-builder "${BUILD_ARGS[@]}"
           node scripts/verify-win-icon.cjs

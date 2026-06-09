@@ -32,6 +32,17 @@ function hasLatestYml(release) {
   return (release.assets || []).some((asset) => asset.name === "latest.yml");
 }
 
+function hasInstallerExe(release) {
+  return (release.assets || []).some(
+    (asset) =>
+      asset.name.endsWith(".exe") && !asset.name.endsWith(".exe.blockmap")
+  );
+}
+
+function isBrokenRelease(release) {
+  return !hasLatestYml(release) && !hasInstallerExe(release);
+}
+
 async function main() {
   const releases = await github(
     `/repos/${REPO}/releases?per_page=20`
@@ -45,6 +56,18 @@ async function main() {
   }
 
   let deleted = 0;
+  for (const release of releases) {
+    if (!isBrokenRelease(release)) continue;
+    const names = (release.assets || []).map((asset) => asset.name).join(", ");
+    console.log(
+      `[release-cleanup] deleting broken ${release.tag_name} release ${release.id} (${names || "no assets"})`
+    );
+    await github(`/repos/${REPO}/releases/${release.id}`, {
+      method: "DELETE",
+    });
+    deleted += 1;
+  }
+
   for (const [tag, group] of byTag.entries()) {
     if (group.length < 2) continue;
     const keeper =
@@ -69,17 +92,22 @@ async function main() {
     }
   }
 
-  const latest = await github(`/repos/${REPO}/releases/latest`);
-  if (!hasLatestYml(latest)) {
-    console.error(
-      `[release-cleanup] /releases/latest (${latest.id}) is missing latest.yml`
+  if (!process.argv.includes("--skip-latest-check")) {
+    const latest = await github(`/repos/${REPO}/releases/latest`);
+    if (!hasLatestYml(latest)) {
+      console.error(
+        `[release-cleanup] /releases/latest (${latest.id}) is missing latest.yml`
+      );
+      process.exit(1);
+    }
+    console.log(
+      `[release-cleanup] ok — latest is ${latest.tag_name} with latest.yml (deleted ${deleted} release(s))`
     );
-    process.exit(1);
+  } else {
+    console.log(
+      `[release-cleanup] pre-publish cleanup done (deleted ${deleted} release(s))`
+    );
   }
-
-  console.log(
-    `[release-cleanup] ok — latest is ${latest.tag_name} with latest.yml (deleted ${deleted} duplicate release(s))`
-  );
 }
 
 main().catch((err) => {
