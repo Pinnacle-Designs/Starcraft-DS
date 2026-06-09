@@ -45,6 +45,7 @@ jobs:
           fi
           npx electron-builder "${BUILD_ARGS[@]}"
           node scripts/verify-win-icon.cjs
+          node scripts/cleanup-duplicate-github-releases.cjs
 
       - name: Verify update metadata
         shell: bash

@@ -1,8 +1,10 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000;
-const STARTUP_DELAY_MS = 8_000;
+const STARTUP_DELAY_MS = 4_000;
+const UPDATE_FEED_URL =
+  "https://github.com/Pinnacle-Designs/Starcraft-DS/releases/latest/download";
 
 let updateStatus = {
   phase: "idle",
@@ -12,6 +14,7 @@ let checkTimer = null;
 let startupTimer = null;
 let downloadRequested = false;
 let installAfterDownload = false;
+let checkInFlight = false;
 
 function broadcastUpdateStatus() {
   const payload = { ...updateStatus };
@@ -30,8 +33,24 @@ function setStatus(patch) {
 function schedulePeriodicChecks() {
   if (checkTimer) clearInterval(checkTimer);
   checkTimer = setInterval(() => {
-    void autoUpdater.checkForUpdates().catch(() => {});
+    void runUpdateCheck();
   }, CHECK_INTERVAL_MS);
+}
+
+async function runUpdateCheck() {
+  if (!app.isPackaged || checkInFlight) return;
+  checkInFlight = true;
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[updater] check failed:", message);
+    if (updateStatus.phase === "checking") {
+      setStatus({ phase: "error", error: message });
+    }
+  } finally {
+    checkInFlight = false;
+  }
 }
 
 function quitAndRestart() {
@@ -39,6 +58,40 @@ function quitAndRestart() {
   setTimeout(() => {
     autoUpdater.quitAndInstall(false, true);
   }, 400);
+}
+
+function maybePromptNativeUpdate() {
+  if (updateStatus.phase !== "available" || !updateStatus.version) return;
+  const current = updateStatus.currentVersion || app.getVersion();
+  if (updateStatus.version === current) return;
+
+  const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
+  const options = {
+    type: "info",
+    title: "Update available",
+    message: `Starcraft Coach v${updateStatus.version} is available.`,
+    detail: `You have v${current}. Restart to download and install the update from the banner, or choose Update now.`,
+    buttons: ["Update now", "Later"],
+    defaultId: 0,
+    cancelId: 1,
+  };
+
+  const show = win
+    ? dialog.showMessageBox(win, options)
+    : dialog.showMessageBox(options);
+
+  void show.then(({ response }) => {
+    if (response !== 0) return;
+    downloadRequested = true;
+    installAfterDownload = true;
+    setStatus({ phase: "downloading", percent: 0, error: undefined });
+    void autoUpdater.downloadUpdate().catch((err) => {
+      downloadRequested = false;
+      installAfterDownload = false;
+      const message = err instanceof Error ? err.message : String(err);
+      setStatus({ phase: "error", error: message });
+    });
+  });
 }
 
 function registerUpdateHandlers(ipcMain) {
@@ -53,18 +106,8 @@ function registerUpdateHandlers(ipcMain) {
       };
     }
     setStatus({ phase: "checking", error: undefined });
-    try {
-      const result = await autoUpdater.checkForUpdates();
-      if (!result?.updateInfo) {
-        setStatus({ phase: "idle", error: undefined });
-      }
-      return { ...updateStatus };
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Could not check for updates.";
-      setStatus({ phase: "error", error: message });
-      return { ...updateStatus };
-    }
+    await runUpdateCheck();
+    return { ...updateStatus };
   });
 
   ipcMain.handle("updates:download", async () => {
@@ -126,6 +169,13 @@ function registerUpdateHandlers(ipcMain) {
   });
 }
 
+function notifyRendererReady() {
+  broadcastUpdateStatus();
+  if (updateStatus.phase === "idle" || updateStatus.phase === "error") {
+    void runUpdateCheck();
+  }
+}
+
 function initAutoUpdater(ipcMain) {
   registerUpdateHandlers(ipcMain);
 
@@ -133,9 +183,14 @@ function initAutoUpdater(ipcMain) {
     return;
   }
 
+  autoUpdater.logger = console;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowDowngrade = false;
+  autoUpdater.setFeedURL({
+    provider: "generic",
+    url: UPDATE_FEED_URL,
+  });
 
   autoUpdater.on("checking-for-update", () => {
     setStatus({ phase: "checking", error: undefined });
@@ -150,6 +205,7 @@ function initAutoUpdater(ipcMain) {
         typeof info.releaseNotes === "string" ? info.releaseNotes : undefined,
       error: undefined,
     });
+    maybePromptNativeUpdate();
   });
 
   autoUpdater.on("update-not-available", () => {
@@ -187,11 +243,12 @@ function initAutoUpdater(ipcMain) {
   });
 
   autoUpdater.on("error", (err) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[updater] error:", message);
     if (!downloadRequested && updateStatus.phase === "checking") {
-      setStatus({ phase: "idle", error: undefined });
+      setStatus({ phase: "error", error: message });
       return;
     }
-    const message = err instanceof Error ? err.message : String(err);
     setStatus({ phase: "error", error: message });
     downloadRequested = false;
     installAfterDownload = false;
@@ -199,7 +256,7 @@ function initAutoUpdater(ipcMain) {
 
   app.whenReady().then(() => {
     startupTimer = setTimeout(() => {
-      void autoUpdater.checkForUpdates().catch(() => {});
+      void runUpdateCheck();
       schedulePeriodicChecks();
     }, STARTUP_DELAY_MS);
   });
@@ -210,4 +267,4 @@ function initAutoUpdater(ipcMain) {
   });
 }
 
-module.exports = { initAutoUpdater };
+module.exports = { initAutoUpdater, notifyRendererReady };

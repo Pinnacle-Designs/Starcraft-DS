@@ -15,7 +15,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
-const { initAutoUpdater } = require("./updater.cjs");
+const { initAutoUpdater, notifyRendererReady } = require("./updater.cjs");
 
 if (process.platform === "win32") {
   app.setAppUserModelId("com.starcraftds.coach");
@@ -922,6 +922,10 @@ function createMainWindow() {
 
   mainWindow.webContents.on("did-fail-load", (_event, code, description) => {
     console.error(`Main window failed to load (${code}): ${description}`);
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    notifyRendererReady();
   });
 
   mainWindow.on("focus", () => {

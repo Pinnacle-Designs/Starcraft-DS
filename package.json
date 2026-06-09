@@ -125,7 +125,7 @@
     "artifactName": "Starcraft-Coach-Setup-${version}.${ext}",
     "publish": {
       "provider": "github",
-      "owner": "pinnacle-designs",
+      "owner": "Pinnacle-Designs",
       "repo": "Starcraft-DS",
       "releaseType": "release"
     }
