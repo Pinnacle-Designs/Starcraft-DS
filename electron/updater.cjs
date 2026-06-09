@@ -15,6 +15,8 @@ let startupTimer = null;
 let downloadRequested = false;
 let installAfterDownload = false;
 let checkInFlight = false;
+let promptedUpdateVersion = null;
+let startupCheckDone = false;
 
 function broadcastUpdateStatus() {
   const payload = { ...updateStatus };
@@ -64,6 +66,8 @@ function maybePromptNativeUpdate() {
   if (updateStatus.phase !== "available" || !updateStatus.version) return;
   const current = updateStatus.currentVersion || app.getVersion();
   if (updateStatus.version === current) return;
+  if (promptedUpdateVersion === updateStatus.version) return;
+  promptedUpdateVersion = updateStatus.version;
 
   const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
   const options = {
@@ -171,7 +175,13 @@ function registerUpdateHandlers(ipcMain) {
 
 function notifyRendererReady() {
   broadcastUpdateStatus();
+  if (startupCheckDone || checkInFlight) return;
+  if (updateStatus.phase === "available" || updateStatus.phase === "ready") {
+    startupCheckDone = true;
+    return;
+  }
   if (updateStatus.phase === "idle" || updateStatus.phase === "error") {
+    startupCheckDone = true;
     void runUpdateCheck();
   }
 }
@@ -258,7 +268,10 @@ function initAutoUpdater(ipcMain) {
 
   app.whenReady().then(() => {
     startupTimer = setTimeout(() => {
-      void runUpdateCheck();
+      if (!startupCheckDone) {
+        startupCheckDone = true;
+        void runUpdateCheck();
+      }
       schedulePeriodicChecks();
     }, STARTUP_DELAY_MS);
   });

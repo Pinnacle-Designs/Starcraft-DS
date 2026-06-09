@@ -37,16 +37,7 @@ export function useAppUpdate() {
       setStatus(next as AppUpdateStatus);
     });
 
-    const timer = window.setTimeout(() => {
-      void api.checkForAppUpdate?.().then((next) => {
-        if (next) setStatus(next as AppUpdateStatus);
-      });
-    }, 1500);
-
-    return () => {
-      window.clearTimeout(timer);
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   const dismiss = useCallback(() => {
