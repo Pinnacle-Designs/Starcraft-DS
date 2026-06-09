@@ -1583,21 +1583,62 @@ button:focus-visible {
   }
 }
 
-.manual-army-tier-label {
-  grid-column: 1 / -1;
+.tier-collapsible-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tier-collapsible {
+  border-radius: 4px;
+  background: rgba(10, 12, 16, 0.25);
+  border: 1px solid rgba(70, 78, 90, 0.3);
+  overflow: hidden;
+}
+
+.tier-collapsible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.tier-collapsible-label {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  padding: 0.3rem 0 0.15rem;
-  margin-top: 0.1rem;
-  border-bottom: 1px solid var(--border);
 }
 
-.manual-army-tier-label:first-child {
-  margin-top: 0;
-  padding-top: 0;
+.tier-collapsible-summary {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tier-collapsible-body {
+  padding: 0 0.35rem 0.35rem;
+}
+
+.tier-collapsible.wave-red .tier-collapsible-label {
+  color: #ff8a8a;
+}
+
+.tier-collapsible.wave-amber .tier-collapsible-label {
+  color: var(--amber);
+}
+
+.tier-collapsible.wave-cyan .tier-collapsible-label {
+  color: var(--cyan);
 }
 
 .manual-army-row {
@@ -2217,6 +2258,18 @@ body.overlay-electron .floating-overlay-panel-body * {
 .floating-overlay-panel-body .wave-collapsible-summary {
   max-width: 7.5rem;
   font-size: 0.58rem;
+}
+
+.floating-overlay-panel-body .tier-collapsible-list {
+  gap: 0.25rem;
+}
+
+.floating-overlay-panel-body .tier-collapsible-toggle {
+  padding: 0.28rem 0.35rem;
+}
+
+.floating-overlay-panel-body .tier-collapsible-body {
+  padding: 0 0.3rem 0.3rem;
 }
 
 .floating-overlay-panel-body .team-wave-label {

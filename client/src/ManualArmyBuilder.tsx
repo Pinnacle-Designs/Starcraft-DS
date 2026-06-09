@@ -15,7 +15,6 @@ import {
   manualArmyTotal,
   setActiveWave,
   setEnemyRace,
-  setUnitCount,
   updateActiveWave,
   updateWave,
   WAVE_DEFS,
@@ -24,6 +23,7 @@ import {
   type ManualWavesState,
   type WaveIndex,
 } from "./manualArmy";
+import { TieredUnitGrid } from "./TieredUnitGrid";
 
 const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
 
@@ -156,77 +156,15 @@ export function ManualArmyBuilder({
           </div>
         )}
 
-        <div className={`manual-army-grid ${def.colorClass}`}>
-          {units.flatMap((name, index) => {
-            const tier = tierByUnit[name] ?? 2;
-            const prevTier =
-              index > 0 ? (tierByUnit[units[index - 1]] ?? 2) : null;
-            const count = waveArmy.counts[name] ?? 0;
-            const row = (
-              <div key={name} className="manual-army-row">
-                <span className="manual-army-name" title={name}>
-                  {name}
-                </span>
-                <div className="unit-count-stepper">
-                  <input
-                    type="number"
-                    className="unit-count-input"
-                    min={0}
-                    max={9999}
-                    step={1}
-                    value={count === 0 ? "" : count}
-                    placeholder="0"
-                    aria-label={`${name} count`}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const n =
-                        raw === "" ? 0 : Math.max(0, parseInt(raw, 10) || 0);
-                      patchWaveArmy(setUnitCount(waveArmy, name, n));
-                    }}
-                  />
-                  <div className="unit-count-arrows">
-                    <button
-                      type="button"
-                      className="unit-count-arrow"
-                      aria-label={`Increase ${name}`}
-                      disabled={count >= 9999}
-                      onClick={() =>
-                        patchWaveArmy(
-                          setUnitCount(waveArmy, name, Math.min(9999, count + 1))
-                        )
-                      }
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      className="unit-count-arrow"
-                      aria-label={`Decrease ${name}`}
-                      disabled={count <= 0}
-                      onClick={() =>
-                        patchWaveArmy(
-                          setUnitCount(waveArmy, name, Math.max(0, count - 1))
-                        )
-                      }
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-            if (tier === prevTier) return [row];
-            return [
-              <div
-                key={`tier-${waveIndex}-${tier}`}
-                className="manual-army-tier-label"
-              >
-                Tier {tier}
-              </div>,
-              row,
-            ];
-          })}
-        </div>
+        <TieredUnitGrid
+          waveIndex={waveIndex}
+          colorClass={def.colorClass}
+          units={units}
+          tierByUnit={tierByUnit}
+          waveArmy={waveArmy}
+          patchWaveArmy={patchWaveArmy}
+          emptyMessage="No units for this race."
+        />
 
         {showWaveClear ? (
           <div className="manual-army-actions manual-army-actions-inline">
