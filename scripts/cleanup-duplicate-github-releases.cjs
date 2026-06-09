@@ -86,7 +86,23 @@ async function main() {
   releases = await listReleases();
   const byTag = groupByTag(releases);
 
-  for (const [tag, group] of byTag.entries()) {
+  if (process.argv.includes("--skip-latest-check")) {
+    const tag = `v${pkg.version}`;
+    for (const release of releases) {
+      if (release.tag_name !== tag) continue;
+      const names = (release.assets || []).map((asset) => asset.name).join(", ");
+      console.log(
+        `[release-cleanup] clearing ${tag} release ${release.id} before rebuild (${names || "no assets"})`
+      );
+      await github(`/repos/${REPO}/releases/${release.id}`, {
+        method: "DELETE",
+      });
+      deleted += 1;
+    }
+    releases = await listReleases();
+  }
+
+  for (const [tag, group] of groupByTag(releases).entries()) {
     if (group.length < 2) continue;
     const keeper =
       group.find((release) => hasLatestYml(release)) ||
