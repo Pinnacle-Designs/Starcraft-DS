@@ -32,6 +32,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           npm run build:desktop
@@ -39,9 +41,17 @@ jobs:
           node scripts/prepare-server-pack.cjs
           test -f build/icon.ico || (echo "build/icon.ico missing" && exit 1)
           BUILD_ARGS=(--win --publish always)
-          if [ -z "${WIN_CSC_LINK:-}" ]; then
-            echo "WIN_CSC_LINK not set — unsigned build (embeds icon via resedit, skips code signing)"
+          if [ -n "${WIN_CSC_LINK:-}" ]; then
+            CSC_FILE="${RUNNER_TEMP}/codesign.pfx"
+            echo "$WIN_CSC_LINK" | base64 -d > "$CSC_FILE"
+            export CSC_LINK="$CSC_FILE"
+            export CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+            BUILD_ARGS+=(--config.win.signExecutable=true)
+            echo "Code signing enabled via WIN_CSC_LINK secret"
+          else
+            echo "::warning::WIN_CSC_LINK not set — unsigned build. Auto-update from signed installs will fail until secrets are configured."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
+            BUILD_ARGS+=(--config.win.signExecutable=false)
           fi
           npx electron-builder "${BUILD_ARGS[@]}"
           node scripts/verify-win-icon.cjs
@@ -52,6 +62,19 @@ jobs:
         run: |
           test -f release/latest.yml || (echo "latest.yml missing — auto-update will not work" && exit 1)
           ls -la release/
+
+      - name: Verify installer code signature
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path release -Filter 'Starcraft-Coach-Setup-*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Installer .exe not found in release/' }
+          $sig = Get-AuthenticodeSignature -FilePath $exe.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.SignerCertificate) {
+            Write-Host "Signed by: $($sig.SignerCertificate.Subject)"
+          } else {
+            Write-Host '::warning::Installer is unsigned. Users on signed older builds cannot auto-update until WIN_CSC_LINK is configured.'
+          }
 
       - name: Upload installer artifact for R2
         uses: actions/upload-artifact@v4

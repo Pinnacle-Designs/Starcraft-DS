@@ -187,6 +187,8 @@ function initAutoUpdater(ipcMain) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowDowngrade = false;
+  // Allow updates when CI builds are unsigned (signed installs still need a signed release).
+  autoUpdater.verifyUpdateCodeSignature = false;
   autoUpdater.setFeedURL({
     provider: "generic",
     url: UPDATE_FEED_URL,
