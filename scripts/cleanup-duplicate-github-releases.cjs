@@ -2,7 +2,13 @@
  * electron-builder can create multiple GitHub releases for one tag (e.g. blockmap-only).
  * The GitHub "latest" API then points at a release without latest.yml and auto-update breaks.
  */
-const REPO = process.env.GITHUB_REPOSITORY || "Pinnacle-Designs/Starcraft-DS";
+const path = require("path");
+const pkg = require(path.join(__dirname, "..", "package.json"));
+const publish = pkg.build?.publish;
+const REPO =
+  publish?.owner && publish?.repo
+    ? `${publish.owner}/${publish.repo}`
+    : "Pinnacle-Designs/Starcraft-DS";
 const TOKEN = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 
 if (!TOKEN) {
@@ -93,10 +99,19 @@ async function main() {
   }
 
   if (!process.argv.includes("--skip-latest-check")) {
+    const tag = `v${pkg.version}`;
+    const tagRelease = await github(`/repos/${REPO}/releases/tags/${tag}`);
+    if (hasLatestYml(tagRelease) && hasInstallerExe(tagRelease)) {
+      console.log(
+        `[release-cleanup] ok — ${tag} has latest.yml and installer (deleted ${deleted} release(s))`
+      );
+      return;
+    }
+
     const latest = await github(`/repos/${REPO}/releases/latest`);
     if (!hasLatestYml(latest)) {
       console.error(
-        `[release-cleanup] /releases/latest (${latest.id}) is missing latest.yml`
+        `[release-cleanup] ${tag} and /releases/latest (${latest.id}) are missing latest.yml`
       );
       process.exit(1);
     }

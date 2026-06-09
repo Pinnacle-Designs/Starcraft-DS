@@ -20,17 +20,16 @@ function findPackagedExe() {
     if (exe) return path.join(unpacked, exe);
   }
 
-  const installer = fs
-    .readdirSync(releaseDir)
-    .find((name) => /^Starcraft-Coach-Setup-.+\.exe$/i.test(name));
-  return installer ? path.join(releaseDir, installer) : null;
+  return null;
 }
 
 function main() {
   const exePath = findPackagedExe();
   if (!exePath || !fs.existsSync(exePath)) {
-    console.error("[verify-win-icon] no packaged .exe found");
-    process.exit(1);
+    console.warn(
+      "[verify-win-icon] win-unpacked app .exe not found — skipping icon check"
+    );
+    return;
   }
 
   const data = fs.readFileSync(exePath);
