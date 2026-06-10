@@ -204,6 +204,12 @@ export default function Overlay({ panel }: Props) {
     const api = window.starcraftDS;
     if (!api?.setIgnoreMouseEvents) return;
 
+    // Team panel is fully interactive — never ignore OS mouse events (keeps drag + clicks).
+    if (panel === "team") {
+      void api.setIgnoreMouseEvents(false);
+      return;
+    }
+
     const INTERACTIVE =
       ".floating-overlay-panel-header, .floating-overlay-panel-footer, .capture-hotkey-settings, .capture-hotkey-interactive, .overlay-interactive, .overlay-interactive *";
     let ignoring = false;
@@ -230,20 +236,26 @@ export default function Overlay({ panel }: Props) {
       applyIgnore(!pointerIsInteractive(e.clientX, e.clientY));
     };
 
+    const onPointerEnter = () => {
+      applyIgnore(false);
+    };
+
     const onPointerLeave = () => {
       applyIgnore(true);
     };
 
-    applyIgnore(true);
+    applyIgnore(false);
     document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerenter", onPointerEnter);
     document.addEventListener("pointerleave", onPointerLeave);
 
     return () => {
       document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerenter", onPointerEnter);
       document.removeEventListener("pointerleave", onPointerLeave);
       applyIgnore(false);
     };
-  }, [clickThrough, hotkeyUiActive]);
+  }, [clickThrough, hotkeyUiActive, panel]);
 
   const handleClickThroughChange = useCallback((enabled: boolean) => {
     if (!window.starcraftDS?.setClickThrough) return;
@@ -278,9 +290,11 @@ export default function Overlay({ panel }: Props) {
       title={spec.title}
       panelId={panel}
       onClose={closeOverlayWindow}
-      clickThrough={clickThrough}
+      clickThrough={panel === "enemy" ? clickThrough : false}
       onClickThroughChange={
-        window.starcraftDS?.isElectron ? handleClickThroughChange : undefined
+        window.starcraftDS?.isElectron && panel === "enemy"
+          ? handleClickThroughChange
+          : undefined
       }
     >
       {panel === "enemy" ? (

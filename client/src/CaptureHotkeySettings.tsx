@@ -8,6 +8,7 @@ import {
   normalizeAccelerator,
   saveCaptureHotkey,
 } from "./overlayCaptureHotkey";
+import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 
 interface Props {
   onHotkeyChange?: (accelerator: string) => void;
@@ -284,6 +285,13 @@ export function CaptureHotkeySettings({
             : `During a game, press ${formatHotkeyLabel(hotkey)} to capture the screen and detect enemy units anywhere on the map (Ollama visual AI).`}
         </p>
       )}
+
+      {!recording ? (
+        <Sc2DisplayModeHint
+          compact={compact}
+          className="capture-hotkey-hint sc2-display-hint"
+        />
+      ) : null}
 
       <div className="capture-hotkey-manual">
         <button

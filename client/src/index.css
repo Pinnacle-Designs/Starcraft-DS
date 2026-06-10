@@ -2537,6 +2537,12 @@ body.overlay-electron .floating-overlay-panel-body * {
   opacity: 0.92;
 }
 
+.overlay-click-through-active .floating-overlay-panel-header,
+.overlay-panel-team .floating-overlay-panel-header {
+  pointer-events: auto;
+  -webkit-app-region: drag;
+}
+
 .floating-overlay-panel-body.passthrough {
   pointer-events: none;
   opacity: 0.92;

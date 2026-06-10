@@ -47,6 +47,7 @@ import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 import { useVisionTraining } from "./useVisionTraining";
 import { AppUpdateBanner } from "./AppUpdateBanner";
+import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 import { DownloadApp } from "./DownloadApp";
 
 export default function App() {
@@ -605,6 +606,7 @@ export default function App() {
                 ? "Opens always-on-top enemy and team panels you can drag over your game."
                 : "Opens two separate windows you can place over your game. Allow popups for this site — team selection opens automatically after enemy waves."}
             </p>
+            <Sc2DisplayModeHint className="overlay-note sc2-display-hint" />
           </div>
         )}
       </header>
@@ -659,9 +661,16 @@ export default function App() {
                 <canvas ref={canvasRef} hidden />
                 {!capturing && (
                   <div className="preview-placeholder">
-                    {isElectronApp()
-                      ? "Start capture to analyze full-screen screenshots of your primary display (same as the capture hotkey)."
-                      : "Share your StarCraft II window or upload a video below to begin"}
+                    {isElectronApp() ? (
+                      <>
+                        Start capture to analyze full-screen screenshots of your
+                        primary display (same as the capture hotkey). Use{" "}
+                        <strong>Fullscreen Windowed</strong> in SC2 video settings
+                        for best results.
+                      </>
+                    ) : (
+                      "Share your StarCraft II window or upload a video below to begin"
+                    )}
                   </div>
                 )}
                 {capturing && videoSource === "electron" && (

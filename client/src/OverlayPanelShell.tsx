@@ -27,7 +27,7 @@ export function OverlayPanelShell({
     <div
       className={`overlay-panel-window-root${
         panelId === "team" ? " overlay-panel-team" : ""
-      }${clickThrough ? " overlay-click-through-active" : ""}`}
+      }${clickThrough && panelId !== "team" ? " overlay-click-through-active" : ""}`}
       role="dialog"
       aria-label={title}
     >
@@ -49,13 +49,20 @@ export function OverlayPanelShell({
       </header>
       <div
         className={
-          clickThrough
+          clickThrough && panelId !== "team"
             ? "floating-overlay-panel-body passthrough"
             : "floating-overlay-panel-body"
         }
       >
         {children}
       </div>
+      {electron && panelId === "team" ? (
+        <footer className="floating-overlay-panel-footer">
+          <span className="overlay-hotkey-hint">
+            Drag the header to move. This panel stays clickable while you play.
+          </span>
+        </footer>
+      ) : null}
       {electron && onClickThroughChange ? (
         <footer className="floating-overlay-panel-footer">
           {footerTop}

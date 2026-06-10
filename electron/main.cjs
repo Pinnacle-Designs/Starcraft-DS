@@ -153,10 +153,13 @@ function broadcastOverlayClickThrough() {
   for (const panel of Object.keys(overlayWindows)) {
     const win = overlayWindows[panel];
     if (!win || win.isDestroyed()) continue;
-    if (!overlayClickThrough) {
+    if (!overlayClickThrough || panel === "team") {
       clearOverlayMouseIgnore(win);
     }
-    win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+    win.webContents.send(
+      "overlay:clickThroughState",
+      panel === "team" ? false : overlayClickThrough
+    );
   }
 }
 
@@ -167,10 +170,14 @@ function applyOverlayClickThrough(enabled) {
 
 function syncOverlayClickThrough(win) {
   if (!win || win.isDestroyed()) return;
-  if (!overlayClickThrough) {
+  const isTeamPanel = overlayWindows.team === win;
+  if (!overlayClickThrough || isTeamPanel) {
     clearOverlayMouseIgnore(win);
   }
-  win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+  win.webContents.send(
+    "overlay:clickThroughState",
+    isTeamPanel ? false : overlayClickThrough
+  );
 }
 
 function captureHotkeyFile() {
@@ -1142,6 +1149,10 @@ ipcMain.handle("overlay:setClickThrough", (_event, enabled) => {
 ipcMain.handle("overlay:setIgnoreMouseEvents", (event, ignore) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || win.isDestroyed()) return;
+  if (overlayWindows.team === win) {
+    win.setIgnoreMouseEvents(false);
+    return;
+  }
   if (ignore) {
     win.setIgnoreMouseEvents(true, { forward: true });
   } else {
