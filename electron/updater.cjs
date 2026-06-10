@@ -39,16 +39,18 @@ function schedulePeriodicChecks() {
 }
 
 async function runUpdateCheck() {
-  if (!app.isPackaged || checkInFlight) return;
+  if (!app.isPackaged || checkInFlight) return false;
   checkInFlight = true;
   try {
     await autoUpdater.checkForUpdates();
+    return true;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[updater] check failed:", message);
     if (updateStatus.phase === "checking") {
       setStatus({ phase: "error", error: message });
     }
+    return true;
   } finally {
     checkInFlight = false;
   }
@@ -137,17 +139,24 @@ function registerUpdateHandlers(ipcMain) {
 }
 
 function runStartupUpdateCheck() {
-  if (startupCheckDone || checkInFlight || !app.isPackaged) return;
-  startupCheckDone = true;
+  if (startupCheckDone || !app.isPackaged) return;
+
   if (
     updateStatus.phase === "available" ||
     updateStatus.phase === "ready" ||
     updateStatus.phase === "downloading" ||
     updateStatus.phase === "installing"
   ) {
+    startupCheckDone = true;
     return;
   }
-  void runUpdateCheck();
+
+  if (checkInFlight) return;
+
+  void (async () => {
+    const ran = await runUpdateCheck();
+    if (ran) startupCheckDone = true;
+  })();
 }
 
 function notifyRendererReady() {
