@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://starcraftcoach.com/sitemap.xml

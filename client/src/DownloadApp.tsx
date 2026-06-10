@@ -38,7 +38,7 @@ export function DownloadApp({ compact = false }: { compact?: boolean }) {
         </h2>
         <p className="download-app-text">
           {showHero
-            ? "This site runs counter lookups in your browser. Install Starcraft Coach on your PC for always-on-top overlays and a dedicated coach window while you play."
+            ? "This site runs Direct Strike counter lookups in your browser. Install Starcraft Coach on Windows for always-on-top overlays and a dedicated coach window while you play."
             : "Get always-on-top overlays and a dedicated coach window with the Windows desktop build."}
         </p>
         {!showHero && isStaticWebDeploy() ? (

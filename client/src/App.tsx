@@ -583,7 +583,7 @@ export default function App() {
           <h1 className="logo">
             <img
               src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
-              alt="Starcraft Coach — The Ultimate Counter Tool"
+              alt="Starcraft Coach — Direct Strike counter tool for StarCraft II"
               className="logo-img"
               width={512}
               height={512}
@@ -608,7 +608,9 @@ export default function App() {
           </div>
         )}
       </header>
-      <p className="header-slogan">Make better decisions. Win more games.</p>
+      <p className="header-slogan">
+        Direct Strike counter coach — make better decisions, win more games.
+      </p>
       <AppUpdateBanner />
       <DownloadApp />
       {overlayHint ? (
@@ -617,7 +619,7 @@ export default function App() {
         </p>
       ) : null}
 
-      <div className="grid">
+      <main className="grid">
         <section className="panel">
           {captureMediaEnabled && (
           <section className="panel-section capture-section">
@@ -840,7 +842,7 @@ export default function App() {
             </p>
           )}
         </aside>
-      </div>
+      </main>
 
       <footer className="sources">
         Counter data from{" "}

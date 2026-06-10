@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000;
@@ -15,7 +15,6 @@ let startupTimer = null;
 let downloadRequested = false;
 let installAfterDownload = false;
 let checkInFlight = false;
-let promptedUpdateVersion = null;
 let startupCheckDone = false;
 
 function broadcastUpdateStatus() {
@@ -60,42 +59,6 @@ function quitAndRestart() {
   setTimeout(() => {
     autoUpdater.quitAndInstall(false, true);
   }, 400);
-}
-
-function maybePromptNativeUpdate() {
-  if (updateStatus.phase !== "available" || !updateStatus.version) return;
-  const current = updateStatus.currentVersion || app.getVersion();
-  if (updateStatus.version === current) return;
-  if (promptedUpdateVersion === updateStatus.version) return;
-  promptedUpdateVersion = updateStatus.version;
-
-  const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
-  const options = {
-    type: "info",
-    title: "Update available",
-    message: `Starcraft Coach v${updateStatus.version} is available.`,
-    detail: `You have v${current}. Restart to download and install the update from the banner, or choose Update now.`,
-    buttons: ["Update now", "Later"],
-    defaultId: 0,
-    cancelId: 1,
-  };
-
-  const show = win
-    ? dialog.showMessageBox(win, options)
-    : dialog.showMessageBox(options);
-
-  void show.then(({ response }) => {
-    if (response !== 0) return;
-    downloadRequested = true;
-    installAfterDownload = true;
-    setStatus({ phase: "downloading", percent: 0, error: undefined });
-    void autoUpdater.downloadUpdate().catch((err) => {
-      downloadRequested = false;
-      installAfterDownload = false;
-      const message = err instanceof Error ? err.message : String(err);
-      setStatus({ phase: "error", error: message });
-    });
-  });
 }
 
 function registerUpdateHandlers(ipcMain) {
@@ -173,17 +136,23 @@ function registerUpdateHandlers(ipcMain) {
   });
 }
 
-function notifyRendererReady() {
-  broadcastUpdateStatus();
-  if (startupCheckDone || checkInFlight) return;
-  if (updateStatus.phase === "available" || updateStatus.phase === "ready") {
-    startupCheckDone = true;
+function runStartupUpdateCheck() {
+  if (startupCheckDone || checkInFlight || !app.isPackaged) return;
+  startupCheckDone = true;
+  if (
+    updateStatus.phase === "available" ||
+    updateStatus.phase === "ready" ||
+    updateStatus.phase === "downloading" ||
+    updateStatus.phase === "installing"
+  ) {
     return;
   }
-  if (updateStatus.phase === "idle" || updateStatus.phase === "error") {
-    startupCheckDone = true;
-    void runUpdateCheck();
-  }
+  void runUpdateCheck();
+}
+
+function notifyRendererReady() {
+  broadcastUpdateStatus();
+  runStartupUpdateCheck();
 }
 
 function initAutoUpdater(ipcMain) {
@@ -217,7 +186,6 @@ function initAutoUpdater(ipcMain) {
         typeof info.releaseNotes === "string" ? info.releaseNotes : undefined,
       error: undefined,
     });
-    maybePromptNativeUpdate();
   });
 
   autoUpdater.on("update-not-available", () => {
@@ -268,10 +236,7 @@ function initAutoUpdater(ipcMain) {
 
   app.whenReady().then(() => {
     startupTimer = setTimeout(() => {
-      if (!startupCheckDone) {
-        startupCheckDone = true;
-        void runUpdateCheck();
-      }
+      runStartupUpdateCheck();
       schedulePeriodicChecks();
     }, STARTUP_DELAY_MS);
   });
