@@ -1,4 +1,54 @@
 {
   "version": 1,
-  "samples": []
+  "samples": [
+    {
+      "id": "6ecfe1c5-7f55-4692-814d-d3410e659ae4",
+      "createdAt": 1780861115912,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/6ecfe1c5-7f55-4692-814d-d3410e659ae4.jpg",
+      "rawDetected": [],
+      "corrected": [
+        {
+          "name": "Ravager",
+          "count": 2,
+          "wave": 1
+        }
+      ],
+      "teamRaces": [
+        "Protoss",
+        null,
+        null
+      ],
+      "waveShift": 0,
+      "scene": " ```json\n{\n    \"detectedUnits\": [],\n    \"scene\": \"Gameplay screenshot showing a Direct Strike match.\"\n}\n``` "
+    },
+    {
+      "id": "2894783f-02e1-4706-beb3-2c590e84445b",
+      "createdAt": 1780861218122,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/2894783f-02e1-4706-beb3-2c590e84445b.jpg",
+      "rawDetected": [],
+      "corrected": [
+        {
+          "name": "Ravager",
+          "count": 2,
+          "wave": 1
+        },
+        {
+          "name": "Zergling",
+          "count": 12,
+          "wave": 1
+        }
+      ],
+      "teamRaces": [
+        "Protoss",
+        null,
+        null
+      ],
+      "waveShift": 0,
+      "scene": " ```json\n{\n  \"detectedUnits\": [\n    {\n      \"name\": \"Marine\",\n      \"wave\": 1,\n      \"count\": 8,\n      \"confidence\": \"low\",\n      \"notes\": \"\"\n    }\n  ],\n  \"scene\": \"Ladder 1v1 gameplay screenshot with"
+    }
+  ]
 }
