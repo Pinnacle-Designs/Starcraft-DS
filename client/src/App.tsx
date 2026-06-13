@@ -584,11 +584,16 @@ export default function App() {
           <h1 className="logo">
             <img
               src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
-              alt="Starcraft Coach — Direct Strike counter tool for StarCraft II"
+              alt=""
               className="logo-img"
               width={512}
               height={512}
+              decoding="async"
+              fetchPriority="high"
             />
+            <span className="logo-text">
+              Starcraft Coach — Direct Strike counter tool for StarCraft II
+            </span>
           </h1>
         </div>
         {overlayEnabled && (
@@ -854,14 +859,20 @@ export default function App() {
       </main>
 
       <footer className="sources">
-        Counter data from{" "}
-        <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
-          Osiris SC2 Guide
-        </a>
-        ,{" "}
-        <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
-        , and{" "}
-        <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
+        <p>
+          Counter data from{" "}
+          <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
+            Osiris SC2 Guide
+          </a>
+          ,{" "}
+          <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
+          , and{" "}
+          <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
+        </p>
+        <p className="site-footer-meta">
+          Starcraft Coach — free Direct Strike counter tool for StarCraft II.{" "}
+          <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
+        </p>
       </footer>
 
     </div>

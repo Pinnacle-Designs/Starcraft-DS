@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# Overlay popups are app utilities, not landing pages.
+Disallow: /*?panel=
+Disallow: /*#/overlay/
+
 Sitemap: https://starcraftcoach.com/sitemap.xml
