@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ds",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "private": true,
   "description": "AI screen-capture counter coach for StarCraft II",
   "main": "electron/main.cjs",
