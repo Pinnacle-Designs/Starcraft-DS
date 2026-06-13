@@ -1,0 +1,261 @@
+import { useState } from "react";
+import {
+  type PlayerRace,
+  type TierUnlocked,
+  type UnitTier,
+  type WaveShift,
+} from "./api";
+import { CollapsibleWaveSection } from "./CollapsibleWaveSection";
+import {
+  clearWaveArmy,
+  manualArmyEntries,
+  manualArmyTotal,
+  updateWave,
+  waveEntries,
+  WAVE_DEFS,
+  type ManualArmyState,
+  type ManualWavesState,
+  type WaveIndex,
+} from "./manualArmy";
+import { TieredUnitGrid } from "./TieredUnitGrid";
+import { useUnitCatalog } from "./useUnitCatalog";
+import {
+  raceForWave,
+  setTierUnlockedForWave,
+  toggleTeamWaveRace,
+  type TeamWaves,
+} from "./teamWaves";
+
+const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
+
+const WAVE_SHIFT_OPTIONS: { value: WaveShift; label: string }[] = [
+  { value: 0, label: "None" },
+  { value: 1, label: "+1 wave" },
+  { value: 2, label: "+2 waves" },
+];
+
+const TIER_OPTIONS: UnitTier[] = [1, 2, 3];
+
+const DEFAULT_EXPANDED: Record<WaveIndex, boolean> = {
+  0: true,
+  1: false,
+  2: false,
+};
+
+interface Props {
+  teamWaves: TeamWaves;
+  waveShift: WaveShift;
+  tierUnlocked: TierUnlocked;
+  friendlyWaves: ManualWavesState;
+  onTeamChange: (teams: TeamWaves) => void;
+  onWaveShiftChange: (shift: WaveShift) => void;
+  onTierChange: (tiers: TierUnlocked) => void;
+  onFriendlyChange: (waves: ManualWavesState) => void;
+  onClearFriendly: () => void;
+}
+
+export function TeamArmyPanel({
+  teamWaves,
+  waveShift,
+  tierUnlocked,
+  friendlyWaves,
+  onTeamChange,
+  onWaveShiftChange,
+  onTierChange,
+  onFriendlyChange,
+  onClearFriendly,
+}: Props) {
+  const [expandedWaves, setExpandedWaves] =
+    useState<Record<WaveIndex, boolean>>(DEFAULT_EXPANDED);
+  const { byRace, tierByUnit, loadError } = useUnitCatalog();
+
+  const allEntries = manualArmyEntries(friendlyWaves);
+  const total = manualArmyTotal(friendlyWaves);
+
+  const toggleWave = (index: WaveIndex) => {
+    setExpandedWaves((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const waveSummary = (index: WaveIndex) => {
+    const race = raceForWave(teamWaves, (index + 1) as 1 | 2 | 3);
+    const tagged = waveEntries(friendlyWaves.waves[index]).length;
+    const parts = [race, `T${tierUnlocked[index]}`];
+    if (tagged > 0) parts.push(`${tagged} tagged`);
+    return parts.join(" · ");
+  };
+
+  const renderUnitGrid = (
+    waveIndex: WaveIndex,
+    waveArmy: ManualArmyState,
+    patchWaveArmy: (next: ManualArmyState) => void
+  ) => {
+    const def = WAVE_DEFS[waveIndex];
+    const race = raceForWave(teamWaves, (waveIndex + 1) as 1 | 2 | 3);
+    const maxTier = tierUnlocked[waveIndex];
+    const units = (byRace?.[race] ?? []).filter(
+      (name) => (tierByUnit[name] ?? 2) <= maxTier
+    );
+
+    return (
+      <>
+        <p className={`status manual-army-hint ${def.colorClass}`}>
+          {race} units at T{maxTier} or below — tag what you already have on the
+          battlefield.
+        </p>
+        <TieredUnitGrid
+          waveIndex={waveIndex}
+          colorClass={def.colorClass}
+          units={units}
+          tierByUnit={tierByUnit}
+          waveArmy={waveArmy}
+          patchWaveArmy={patchWaveArmy}
+        />
+      </>
+    );
+  };
+
+  return (
+    <div className="panel-section team-army-panel">
+      <h2 className="panel-section-title">
+        <span className="panel-heading panel-heading-inline">
+          Team &amp; army (up to 3)
+        </span>
+      </h2>
+      <p className="status team-selection-hint">
+        Pick races and tech per wave, then tag units you already have on the
+        field.
+      </p>
+
+      {loadError ? (
+        <p className="status" style={{ color: "var(--danger)" }}>
+          {loadError}
+        </p>
+      ) : null}
+      {!byRace && !loadError ? (
+        <p className="status">Loading unit list…</p>
+      ) : null}
+
+      {byRace ? (
+        <div className="wave-collapsible-list">
+          {WAVE_DEFS.map((def) => {
+            const waveArmy = friendlyWaves.waves[def.index];
+            const patchWaveArmy = (next: ManualArmyState) =>
+              onFriendlyChange(updateWave(friendlyWaves, def.index, next));
+
+            return (
+              <CollapsibleWaveSection
+                key={def.index}
+                label={def.label}
+                colorClass={def.colorClass}
+                summary={waveSummary(def.index)}
+                expanded={expandedWaves[def.index]}
+                onToggle={() => toggleWave(def.index)}
+              >
+                <div className="team-wave-controls team-wave-controls-stacked">
+                  <div className="race-picker team-wave-picker">
+                    {RACES.map((race) => (
+                      <button
+                        key={race}
+                        type="button"
+                        className={`race-btn ${
+                          teamWaves[def.index] === race
+                            ? `active-${race.toLowerCase()}`
+                            : ""
+                        }`}
+                        onClick={() =>
+                          onTeamChange(
+                            toggleTeamWaveRace(teamWaves, def.index, race)
+                          )
+                        }
+                      >
+                        {race}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="team-wave-tier">
+                    <span className="team-tier-label">Tech</span>
+                    <div className="tier-unlock-picker">
+                      {TIER_OPTIONS.map((tier) => (
+                        <button
+                          key={tier}
+                          type="button"
+                          className={`tier-unlock-btn${
+                            tierUnlocked[def.index] === tier ? " active" : ""
+                          }`}
+                          title={`Max tech tier unlocked on ${def.label}`}
+                          onClick={() =>
+                            onTierChange(
+                              setTierUnlockedForWave(
+                                tierUnlocked,
+                                def.index,
+                                tier
+                              )
+                            )
+                          }
+                        >
+                          T{tier}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {renderUnitGrid(def.index, waveArmy, patchWaveArmy)}
+
+                <div className="manual-army-actions manual-army-actions-inline">
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={waveEntries(waveArmy).length === 0}
+                    onClick={() => patchWaveArmy(clearWaveArmy(waveArmy))}
+                  >
+                    Clear {def.label}
+                  </button>
+                </div>
+              </CollapsibleWaveSection>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <div className="wave-shift-row">
+        <span className="panel-subheading">Wave shift</span>
+        <div className="wave-shift-picker">
+          {WAVE_SHIFT_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={`wave-shift-btn${waveShift === value ? " active" : ""}`}
+              onClick={() => onWaveShiftChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="status team-selection-hint team-shift-hint">
+        {waveShift === 0
+          ? "Enemy tags match your team waves 1:1."
+          : waveShift === 1
+            ? "Your team is 1 wave ahead — enemy Wave 1 uses your Wave 2 counters, etc."
+            : "Your team is 2 waves ahead — enemy Wave 1 uses your Wave 3 counters, etc."}
+      </p>
+
+      <div className="manual-army-actions">
+        <span className="status">
+          {allEntries.length === 0
+            ? "No units tagged across waves"
+            : `${allEntries.length} tagged · ${total} units total`}
+        </span>
+        <button
+          type="button"
+          className="btn"
+          disabled={allEntries.length === 0}
+          onClick={() => onClearFriendly()}
+        >
+          Clear selections
+        </button>
+      </div>
+    </div>
+  );
+}

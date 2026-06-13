@@ -8,6 +8,7 @@ import {
   normalizeAccelerator,
   saveCaptureHotkey,
 } from "./overlayCaptureHotkey";
+import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 
 interface Props {
   onHotkeyChange?: (accelerator: string) => void;
@@ -47,33 +48,41 @@ export function CaptureHotkeySettings({
     }
   }, []);
 
-  useEffect(() => {
+  const syncHotkeyFromElectron = useCallback(async () => {
     const api = window.starcraftDS;
     if (!api?.getCaptureHotkey) return;
-    void (async () => {
-      const accel = await api.getCaptureHotkey();
-      if (accel) {
-        const normalized = normalizeAccelerator(accel);
-        setHotkey(normalized);
-        saveCaptureHotkey(normalized);
-        setManualValue(formatHotkeyLabel(normalized));
-      }
-      if (api.getCaptureHotkeyStatus) {
-        const status = await api.getCaptureHotkeyStatus();
-        if (!status.registered) {
-          setError(
-            `${formatHotkeyLabel(status.saved)} is not available on this PC. Choose another shortcut.`
-          );
-        } else if (status.active !== status.saved) {
-          setError(
-            `${formatHotkeyLabel(status.saved)} is in use by another app. Active shortcut: ${formatHotkeyLabel(status.active)}.`
-          );
-          setHotkey(normalizeAccelerator(status.active));
-          setManualValue(formatHotkeyLabel(status.active));
-        }
-      }
-    })();
+    const accel = await api.getCaptureHotkey();
+    const status = api.getCaptureHotkeyStatus
+      ? await api.getCaptureHotkeyStatus()
+      : null;
+    const active = normalizeAccelerator(
+      status?.active?.trim() || accel || DEFAULT_CAPTURE_HOTKEY
+    );
+    setHotkey(active);
+    saveCaptureHotkey(active);
+    setManualValue(formatHotkeyLabel(active));
+    if (!status) {
+      setError(null);
+      return;
+    }
+    if (!status.registered) {
+      setError(
+        `${formatHotkeyLabel(status.saved)} is not available on this PC. Choose another shortcut.`
+      );
+      return;
+    }
+    if (status.active !== status.saved) {
+      setError(
+        `${formatHotkeyLabel(status.saved)} is in use by another app. Using ${formatHotkeyLabel(status.active)} instead.`
+      );
+      return;
+    }
+    setError(null);
   }, []);
+
+  useEffect(() => {
+    void syncHotkeyFromElectron();
+  }, [syncHotkeyFromElectron]);
 
   useEffect(() => {
     recordingRef.current = recording;
@@ -84,9 +93,39 @@ export function CaptureHotkeySettings({
     if (!api?.onHotkeyRecordingCancelled) return;
     return api.onHotkeyRecordingCancelled(() => {
       setRecording(false);
+      setSaving(false);
       setError(null);
     });
   }, []);
+
+  useEffect(() => {
+    const api = window.starcraftDS;
+    if (!api?.onHotkeyRecorded) return;
+
+    const offRecorded = api.onHotkeyRecorded((payload) => {
+      const saved = normalizeAccelerator(payload.accelerator);
+      setRecording(false);
+      setSaving(false);
+      setError(null);
+      saveCaptureHotkey(saved);
+      setHotkey(saved);
+      setManualValue(formatHotkeyLabel(saved));
+      onHotkeyChange?.(saved);
+      setManualOpen(false);
+      void syncHotkeyFromElectron();
+    });
+
+    const offFailed = api.onHotkeyRecordFailed?.((payload) => {
+      setRecording(false);
+      setSaving(false);
+      setError(payload.error ?? "Hotkey could not be registered.");
+    });
+
+    return () => {
+      offRecorded();
+      offFailed?.();
+    };
+  }, [onHotkeyChange, syncHotkeyFromElectron]);
 
   useEffect(() => {
     onInteractionChange?.(recording || manualOpen);
@@ -113,7 +152,7 @@ export function CaptureHotkeySettings({
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
-        void window.starcraftDS?.endHotkeyRecording?.();
+        void window.starcraftDS?.cancelHotkeyRecording?.();
       }
     };
   }, []);
@@ -144,6 +183,7 @@ export function CaptureHotkeySettings({
           setHotkey(saved);
           setManualValue(formatHotkeyLabel(saved));
           onHotkeyChange?.(saved);
+          void syncHotkeyFromElectron();
           return true;
         }
 
@@ -157,20 +197,24 @@ export function CaptureHotkeySettings({
         await endRecordingMode();
       }
     },
-    [endRecordingMode, onHotkeyChange]
+    [endRecordingMode, onHotkeyChange, syncHotkeyFromElectron]
   );
 
   const startRecording = useCallback(async () => {
     setError(null);
+    setSaving(false);
     pinMouseEvents();
     if (window.starcraftDS?.beginHotkeyRecording) {
       await window.starcraftDS.beginHotkeyRecording();
+      setRecording(true);
+      return;
     }
     setRecording(true);
   }, [pinMouseEvents]);
 
   useEffect(() => {
     if (!recording) return;
+    if (window.starcraftDS?.beginHotkeyRecording) return;
     const onKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -193,7 +237,7 @@ export function CaptureHotkeySettings({
   };
 
   const applyManual = () => {
-    void persistHotkey(manualValue).then((ok) => {
+    void persistHotkey(manualValue.replace(/\s*\+\s*/g, "+")).then((ok) => {
       if (ok) setManualOpen(false);
     });
   };
@@ -231,7 +275,8 @@ export function CaptureHotkeySettings({
 
       {recording ? (
         <p className="capture-hotkey-hint capture-hotkey-recording">
-          Press the key combination you want (Esc to cancel). Example: Ctrl+Shift+S
+          Press the key combination you want here (Esc to cancel). Keep this window
+          focused — example: Ctrl+Alt+C
         </p>
       ) : (
         <p className="capture-hotkey-hint">
@@ -240,6 +285,13 @@ export function CaptureHotkeySettings({
             : `During a game, press ${formatHotkeyLabel(hotkey)} to capture the screen and detect enemy units anywhere on the map (Ollama visual AI).`}
         </p>
       )}
+
+      {!recording ? (
+        <Sc2DisplayModeHint
+          compact={compact}
+          className="capture-hotkey-hint sc2-display-hint"
+        />
+      ) : null}
 
       <div className="capture-hotkey-manual">
         <button

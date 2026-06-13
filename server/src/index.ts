@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
@@ -46,12 +48,16 @@ app.use(express.json({ limit: "12mb" }));
 
 app.get("/api/health", async (_req, res) => {
   const vision = await getVisionStatus();
+  const clientDist = resolveElectronClientDist();
   res.json({
     ok: true,
     vision: vision.active !== null,
     visionProviders: vision,
     units: getAllUnitNames().length,
     training: getTrainingStats(),
+    desktopUi: clientDist
+      ? { mounted: true, path: clientDist }
+      : { mounted: false },
   });
 });
 
@@ -362,6 +368,40 @@ app.post("/api/replay", upload.single("replay"), async (req, res) => {
     });
   }
 });
+
+/** Electron desktop: serve the built client over HTTP (ES modules fail on file://). */
+function resolveElectronClientDist(): string | null {
+  const dataRoot = process.env.STARCRAFT_DS_DATA_DIR?.trim();
+  const candidates = [
+    process.env.ELECTRON_CLIENT_DIST?.trim(),
+    dataRoot ? path.join(path.dirname(dataRoot), "client", "dist") : null,
+    path.join(process.cwd(), "client", "dist"),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "index.html"))) return dir;
+  }
+  console.warn(
+    `[electron] client dist not found; tried: ${candidates.join(", ")}`
+  );
+  return null;
+}
+
+function mountPackagedClient() {
+  const clientDist = resolveElectronClientDist();
+  if (!clientDist) return;
+  const indexHtml = path.join(clientDist, "index.html");
+  app.use(express.static(clientDist, { index: false }));
+  app.get("/", (_req, res) => {
+    res.sendFile(indexHtml);
+  });
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(indexHtml);
+  });
+  console.log(`[electron] serving UI from ${clientDist}`);
+}
+
+mountPackagedClient();
 
 const httpServer = app.listen(PORT, async () => {
   const vision = await getVisionStatus();

@@ -3,7 +3,7 @@ import type { AnalyzeResponse, WaveShift } from "./api";
 import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { SuggestionsPanel } from "./SuggestionsPanel";
-import { TeamSelection } from "./TeamSelection";
+import { TeamArmyPanel } from "./TeamArmyPanel";
 import { OverlayPanelShell } from "./OverlayPanelShell";
 import {
   DEFAULT_TEAM_WAVES,
@@ -15,8 +15,10 @@ import {
   clearAllWaves,
   EMPTY_MANUAL_WAVES,
   manualArmyEntries,
+  syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
+import { showAiCaptureReplay } from "./featureFlags";
 import { useVisionTraining } from "./useVisionTraining";
 import {
   isElectronApp,
@@ -53,6 +55,9 @@ export default function Overlay({ panel }: Props) {
     useState<TierUnlocked>(DEFAULT_TIER_UNLOCKED);
   const [manualWaves, setManualWaves] =
     useState<ManualWavesState>(EMPTY_MANUAL_WAVES);
+  const [friendlyWaves, setFriendlyWaves] = useState<ManualWavesState>(() =>
+    syncFriendlyWaveRaces(EMPTY_MANUAL_WAVES, DEFAULT_TEAM_WAVES)
+  );
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [live, setLive] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -81,6 +86,13 @@ export default function Overlay({ panel }: Props) {
     if (incoming.waveShift != null) setWaveShift(incoming.waveShift);
     if (incoming.tierUnlocked) setTierUnlocked(incoming.tierUnlocked);
     if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
+    if (incoming.friendlyWaves) {
+      setFriendlyWaves(incoming.friendlyWaves);
+    } else if (incoming.teamRaces) {
+      setFriendlyWaves((waves) =>
+        syncFriendlyWaveRaces(waves, incoming.teamRaces!)
+      );
+    }
     setResult(incoming.result);
     setLive(incoming.live);
     if (incoming.scanning != null) setScanning(incoming.scanning);
@@ -99,6 +111,7 @@ export default function Overlay({ panel }: Props) {
         waveShift: patch.waveShift ?? waveShift,
         tierUnlocked: patch.tierUnlocked ?? tierUnlocked,
         manualWaves: patch.manualWaves ?? manualWaves,
+        friendlyWaves: patch.friendlyWaves ?? friendlyWaves,
         result:
           patch.result !== undefined ? patch.result : (base?.result ?? null),
         live: patch.live ?? base?.live ?? false,
@@ -114,7 +127,7 @@ export default function Overlay({ panel }: Props) {
         updatedAt: Date.now(),
       });
     },
-    [teamWaves, waveShift, tierUnlocked, manualWaves]
+    [teamWaves, waveShift, tierUnlocked, manualWaves, friendlyWaves]
   );
 
   const {
@@ -123,7 +136,7 @@ export default function Overlay({ panel }: Props) {
     lastCaptureSummary,
     error: captureScanError,
   } = useOverlayScreenCapture({
-    enabled: panel === "enemy" && isElectronApp(),
+    enabled: showAiCaptureReplay && panel === "enemy" && isElectronApp(),
     manualWaves,
     teamWaves,
     waveShift,
@@ -191,6 +204,12 @@ export default function Overlay({ panel }: Props) {
     const api = window.starcraftDS;
     if (!api?.setIgnoreMouseEvents) return;
 
+    // Team panel is fully interactive — never ignore OS mouse events (keeps drag + clicks).
+    if (panel === "team") {
+      void api.setIgnoreMouseEvents(false);
+      return;
+    }
+
     const INTERACTIVE =
       ".floating-overlay-panel-header, .floating-overlay-panel-footer, .capture-hotkey-settings, .capture-hotkey-interactive, .overlay-interactive, .overlay-interactive *";
     let ignoring = false;
@@ -209,41 +228,73 @@ export default function Overlay({ panel }: Props) {
     if (hotkeyUiActive) return;
 
     const pointerIsInteractive = (x: number, y: number) => {
+      for (const selector of [
+        ".floating-overlay-panel-header",
+        ".floating-overlay-panel-footer",
+      ]) {
+        const region = document.querySelector(selector);
+        if (!region) continue;
+        const rect = region.getBoundingClientRect();
+        if (
+          x >= rect.left &&
+          x <= rect.right &&
+          y >= rect.top &&
+          y <= rect.bottom
+        ) {
+          return true;
+        }
+      }
       const el = document.elementFromPoint(x, y);
       return Boolean(el?.closest(INTERACTIVE));
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons !== 0) {
+        applyIgnore(false);
+        return;
+      }
       applyIgnore(!pointerIsInteractive(e.clientX, e.clientY));
+    };
+
+    const onPointerEnter = () => {
+      applyIgnore(false);
     };
 
     const onPointerLeave = () => {
       applyIgnore(true);
     };
 
-    applyIgnore(true);
+    applyIgnore(false);
     document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerenter", onPointerEnter);
     document.addEventListener("pointerleave", onPointerLeave);
 
     return () => {
       document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerenter", onPointerEnter);
       document.removeEventListener("pointerleave", onPointerLeave);
       applyIgnore(false);
     };
-  }, [clickThrough, hotkeyUiActive]);
+  }, [clickThrough, hotkeyUiActive, panel]);
 
   const handleClickThroughChange = useCallback((enabled: boolean) => {
     if (!window.starcraftDS?.setClickThrough) return;
     void window.starcraftDS.setClickThrough(enabled);
   }, []);
 
-  const handleClearSelections = useCallback(() => {
+  const handleClearEnemySelections = useCallback(() => {
     const cleared = clearAllWaves(manualWaves);
     setManualWaves(cleared);
     setResult(null);
     setCaptureError(null);
     publishOverlayState({ manualWaves: cleared, result: null });
   }, [manualWaves, publishOverlayState]);
+
+  const handleClearFriendlySelections = useCallback(() => {
+    const cleared = syncFriendlyWaveRaces(clearAllWaves(friendlyWaves), teamWaves);
+    setFriendlyWaves(cleared);
+    publishOverlayState({ friendlyWaves: cleared });
+  }, [friendlyWaves, teamWaves, publishOverlayState]);
 
   // Chrome blocks two popups from one click — open team from the enemy popup instead.
   useEffect(() => {
@@ -259,14 +310,16 @@ export default function Overlay({ panel }: Props) {
       title={spec.title}
       panelId={panel}
       onClose={closeOverlayWindow}
-      clickThrough={clickThrough}
+      clickThrough={panel === "enemy" ? clickThrough : false}
       onClickThroughChange={
-        window.starcraftDS?.isElectron ? handleClickThroughChange : undefined
+        window.starcraftDS?.isElectron && panel === "enemy"
+          ? handleClickThroughChange
+          : undefined
       }
     >
       {panel === "enemy" ? (
         <>
-          {isElectronApp() ? (
+          {showAiCaptureReplay && isElectronApp() ? (
             <CaptureHotkeySettings
               scanning={captureScanning}
               lastCaptureAt={lastCaptureAt}
@@ -274,7 +327,7 @@ export default function Overlay({ panel }: Props) {
               onInteractionChange={setHotkeyUiActive}
             />
           ) : null}
-          {captureError ? (
+          {showAiCaptureReplay && captureError ? (
             <p className="capture-hotkey-error overlay-capture-error">
               {captureError}
             </p>
@@ -287,39 +340,52 @@ export default function Overlay({ panel }: Props) {
                 setManualWaves(waves);
                 publishOverlayState({ manualWaves: waves });
               }}
-              onClearSelections={handleClearSelections}
-              onSaveTraining={() => {
-                const units = manualArmyEntries(manualWaves);
-                if (units.length === 0) return;
-                setTrainingSaving(true);
-                void confirmCurrentLabels(units).finally(() =>
-                  setTrainingSaving(false)
-                );
-              }}
+              onClearSelections={handleClearEnemySelections}
+              onSaveTraining={
+                showAiCaptureReplay
+                  ? () => {
+                      const units = manualArmyEntries(manualWaves);
+                      if (units.length === 0) return;
+                      setTrainingSaving(true);
+                      void confirmCurrentLabels(units).finally(() =>
+                        setTrainingSaving(false)
+                      );
+                    }
+                  : undefined
+              }
               trainingPending={trainingPending}
               trainingSaving={trainingSaving}
             />
           </div>
         </>
       ) : (
-        <div className="overlay-team-stack">
-          <TeamSelection
+        <div className="overlay-team-stack overlay-interactive">
+          <TeamArmyPanel
             teamWaves={teamWaves}
             waveShift={waveShift}
             tierUnlocked={tierUnlocked}
-            collapsibleWaves
-            onChange={(teams) => {
+            friendlyWaves={friendlyWaves}
+            onTeamChange={(teams) => {
               setTeamWaves(teams);
-              publishOverlayState({ teamRaces: teams });
+              setFriendlyWaves((waves) => {
+                const next = syncFriendlyWaveRaces(waves, teams);
+                publishOverlayState({ teamRaces: teams, friendlyWaves: next });
+                return next;
+              });
             }}
             onWaveShiftChange={(shift) => {
               setWaveShift(shift);
               publishOverlayState({ waveShift: shift });
             }}
-            onTierUnlockedChange={(tiers) => {
+            onTierChange={(tiers) => {
               setTierUnlocked(tiers);
               publishOverlayState({ tierUnlocked: tiers });
             }}
+            onFriendlyChange={(waves) => {
+              setFriendlyWaves(waves);
+              publishOverlayState({ friendlyWaves: waves });
+            }}
+            onClearFriendly={handleClearFriendlySelections}
           />
           <SuggestionsPanel
             playerRace={primaryTeamRace(teamWaves)}

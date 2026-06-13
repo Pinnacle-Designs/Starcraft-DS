@@ -1,6 +1,5 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { dataPath } from "./dataPaths.js";
 import {
   maxUnitsOnPlatform,
   platformLaneForUnit,
@@ -9,8 +8,7 @@ import {
   type PlatformLane,
 } from "./platformSlots.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const supplyPath = join(__dirname, "../../data/unit-supply.json");
+const supplyPath = dataPath("unit-supply.json");
 
 let unitSupply: Record<string, number> | null = null;
 
@@ -81,6 +79,16 @@ export interface BuildCount {
   maxOnPlatform?: number;
   /** True when count was reduced to fit the staging platform. */
   platformLimited?: boolean;
+  /** Per-unit mineral cost. */
+  unitMinerals?: number;
+  /** Per-unit vespene cost. */
+  unitGas?: number;
+  /** Total minerals to build the suggested stack. */
+  stackMinerals?: number;
+  /** Total gas to build the suggested stack. */
+  stackGas?: number;
+  /** minerals + gas×2.5 for the suggested stack. */
+  stackCost?: number;
 }
 
 const HARD_SUPPLY_RATIO = 0.72;

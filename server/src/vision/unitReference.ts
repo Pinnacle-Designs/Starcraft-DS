@@ -1,9 +1,8 @@
 import { existsSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
+import { dataPath } from "../dataPaths.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const refDir = join(__dirname, "../../../data/unit-reference");
+const refDir = dataPath("unit-reference");
 
 let collageCache: string | undefined;
 

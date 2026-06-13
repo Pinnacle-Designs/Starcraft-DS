@@ -6,8 +6,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
+import { dataPath } from "../dataPaths.js";
 import type {
   TrainingIndex,
   TrainingSample,
@@ -16,8 +16,7 @@ import type {
   TrainingUnitLabel,
 } from "./types.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const trainingDir = join(__dirname, "../../../data/training");
+const trainingDir = dataPath("training");
 const samplesDir = join(trainingDir, "samples");
 const indexPath = join(trainingDir, "index.json");
 const MAX_SAMPLES = Number(process.env.TRAINING_MAX_SAMPLES || 500);
@@ -145,23 +144,18 @@ export function listTrainingSamples(limit = 50): TrainingSample[] {
 }
 
 export function getTrainingExamplesForPrompt(
-  max = Number(process.env.VISION_TRAINING_EXAMPLES_MAX || 5)
+  max = Number(process.env.VISION_TRAINING_EXAMPLES_MAX || 2)
 ): TrainingSample[] {
   const index = readIndex();
   if (!max || max <= 0) return [];
 
-  const prioritized = [
-    ...index.samples.filter(
-      (s) => labelsKey(s.rawDetected) !== labelsKey(s.corrected)
-    ),
-    ...index.samples.filter(
-      (s) =>
-        labelsKey(s.rawDetected) === labelsKey(s.corrected) &&
-        s.corrected.length > 0
-    ),
-  ];
+  // Text-only few-shot from confirmed labels causes the model to parrot past waves.
+  // Only inject samples where the user corrected a wrong detection.
+  const corrections = index.samples.filter(
+    (s) => labelsKey(s.rawDetected) !== labelsKey(s.corrected)
+  );
 
-  return prioritized.slice(-max).reverse();
+  return corrections.slice(-max).reverse();
 }
 
 export interface SaveCorrectionInput {

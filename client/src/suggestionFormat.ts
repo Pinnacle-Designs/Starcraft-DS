@@ -116,6 +116,26 @@ export function formatPlatformHint(
   return `${enemyPart}; ${counterPart}${limitPart}.`;
 }
 
+export function formatResourceCost(
+  minerals: number,
+  gas: number,
+  compact = false
+): string {
+  const parts: string[] = [];
+  if (minerals > 0) parts.push(compact ? `${minerals}m` : `${minerals} minerals`);
+  if (gas > 0) parts.push(compact ? `${gas}g` : `${gas} gas`);
+  return parts.length > 0 ? parts.join(compact ? " / " : ", ") : "free";
+}
+
+export function formatStackCostLabel(
+  minerals?: number,
+  gas?: number,
+  compact = true
+): string | null {
+  if (minerals == null && gas == null) return null;
+  return `~${formatResourceCost(minerals ?? 0, gas ?? 0, compact)}`;
+}
+
 export function formatEnemyStack(
   enemyUnit: string,
   enemyCount?: number,

@@ -1,4 +1,4 @@
-import { createWorker, type Worker } from "tesseract.js";
+import { createWorker, PSM, type Worker } from "tesseract.js";
 import { imageDimensionsFromBase64 } from "./imageDimensions.js";
 import { detectFromText } from "./textDetection.js";
 import type { VisionResult } from "./shared.js";
@@ -10,7 +10,7 @@ async function getOcrWorker(): Promise<Worker> {
     workerInit = (async () => {
       const worker = await createWorker("eng");
       await worker.setParameters({
-        tessedit_pageseg_mode: "3",
+        tessedit_pageseg_mode: PSM.AUTO,
       });
       return worker;
     })().catch((err) => {
@@ -66,16 +66,16 @@ async function recognizeTiled(
 async function recognizeWithPsm(
   worker: Worker,
   dataUrl: string,
-  psm: string
+  psm: PSM
 ): Promise<string> {
   await worker.setParameters({ tessedit_pageseg_mode: psm });
   const text = await recognizeRegion(worker, dataUrl);
-  await worker.setParameters({ tessedit_pageseg_mode: "3" });
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
   return text;
 }
 
-function buildResult(text: string): VisionResult {
-  const matched = detectFromText(text);
+function buildResult(text: string, relaxed = false): VisionResult {
+  const matched = detectFromText(text, { requireCount: !relaxed });
   return {
     detectedUnits: matched.detectedUnits,
     scene: text.trim().slice(0, 200) || "OCR found no readable text.",
@@ -87,13 +87,15 @@ function buildResult(text: string): VisionResult {
 
 export async function analyzeWithTesseract(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  options?: { relaxed?: boolean }
 ): Promise<VisionResult> {
+  const relaxed = options?.relaxed === true;
   const worker = await getOcrWorker();
   const dataUrl = `data:${mimeType};base64,${imageBase64}`;
 
   let combined = await recognizeRegion(worker, dataUrl);
-  let result = buildResult(combined);
+  let result = buildResult(combined, relaxed);
   if (result.detectedUnits.length > 0) return result;
 
   const dims = imageDimensionsFromBase64(imageBase64, mimeType);
@@ -108,15 +110,15 @@ export async function analyzeWithTesseract(
     );
     if (tiled.trim()) {
       combined = `${combined}\n${tiled}`;
-      result = buildResult(combined);
+      result = buildResult(combined, relaxed);
       if (result.detectedUnits.length > 0) return result;
     }
   }
 
-  const sparse = await recognizeWithPsm(worker, dataUrl, "11");
+  const sparse = await recognizeWithPsm(worker, dataUrl, PSM.SPARSE_TEXT);
   if (sparse.trim()) {
     combined = `${combined}\n${sparse}`;
-    result = buildResult(combined);
+    result = buildResult(combined, relaxed);
   }
 
   return result;
@@ -124,10 +126,11 @@ export async function analyzeWithTesseract(
 
 export async function analyzeWithTesseractSafe(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  options?: { relaxed?: boolean }
 ): Promise<VisionResult> {
   try {
-    return await analyzeWithTesseract(imageBase64, mimeType);
+    return await analyzeWithTesseract(imageBase64, mimeType, options);
   } catch (err) {
     const message = err instanceof Error ? err.message : "OCR failed";
     return {

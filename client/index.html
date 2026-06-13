@@ -1,18 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EQ0XKLJWND"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-EQ0XKLJWND");
+    </script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0c0f" />
-    <title>Starcraft Coach — Live Counter Tool</title>
+    <meta name="color-scheme" content="dark" />
+
+    <title>Starcraft Coach — Direct Strike Counter Tool for StarCraft II</title>
+    <meta
+      name="description"
+      content="Free StarCraft II Direct Strike counter coach. Tag enemy waves, set your race and tech tier, and get instant Terran, Zerg, and Protoss unit counter suggestions. Web tool and Windows app with in-game overlays."
+    />
+    <meta
+      name="keywords"
+      content="StarCraft 2, StarCraft II, SC2, Direct Strike, arcade mode, counter tool, unit counters, wave tagging, build order, Terran, Zerg, Protoss, SC2 coach, Direct Strike counters"
+    />
+    <meta name="author" content="Pinnacle Designs" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://starcraftcoach.com/" />
+    <link
+      rel="sitemap"
+      type="application/xml"
+      title="Sitemap"
+      href="https://starcraftcoach.com/sitemap.xml"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Starcraft Coach" />
+    <meta property="og:url" content="https://starcraftcoach.com/" />
+    <meta
+      property="og:title"
+      content="Starcraft Coach — Direct Strike Counter Tool for StarCraft II"
+    />
+    <meta
+      property="og:description"
+      content="Tag enemy waves in Direct Strike and get instant counter suggestions. Free browser tool plus a Windows desktop app with draggable in-game overlay panels."
+    />
+    <meta
+      property="og:image"
+      content="https://starcraftcoach.com/starcraft-coach-logo.png"
+    />
+    <meta property="og:image:alt" content="Starcraft Coach logo" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Starcraft Coach — Direct Strike Counter Tool"
+    />
+    <meta
+      name="twitter:description"
+      content="Free counter coach for StarCraft II Direct Strike. Tag enemy units, pick your tech tier, and get build suggestions while you play."
+    />
+    <meta
+      name="twitter:image"
+      content="https://starcraftcoach.com/starcraft-coach-logo.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Starcraft Coach — Direct Strike counter tool logo"
+    />
+
+    <link rel="icon" type="image/png" href="starcraft-coach-logo.png" />
+    <link rel="apple-touch-icon" href="starcraft-coach-logo.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="./data/counters.json" as="fetch" crossorigin />
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600;700&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600;700&display=swap"
+      />
+    </noscript>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://starcraftcoach.com/#organization",
+            "name": "Pinnacle Designs",
+            "url": "https://starcraftcoach.com/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://starcraftcoach.com/starcraft-coach-logo.png",
+              "width": 512,
+              "height": 512
+            },
+            "sameAs": [
+              "https://github.com/pinnacle-designs/Starcraft-DS"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://starcraftcoach.com/#website",
+            "name": "Starcraft Coach",
+            "url": "https://starcraftcoach.com/",
+            "description": "Counter coach for StarCraft II Direct Strike arcade mode.",
+            "publisher": {
+              "@id": "https://starcraftcoach.com/#organization"
+            },
+            "inLanguage": "en-US"
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://starcraftcoach.com/#webpage",
+            "url": "https://starcraftcoach.com/",
+            "name": "Starcraft Coach — Direct Strike Counter Tool for StarCraft II",
+            "description": "Tag enemy waves, set your race and tech tier, and get instant Direct Strike counter suggestions for Terran, Zerg, and Protoss.",
+            "isPartOf": {
+              "@id": "https://starcraftcoach.com/#website"
+            },
+            "about": {
+              "@type": "VideoGame",
+              "name": "StarCraft II",
+              "gamePlatform": "PC",
+              "genre": "Real-time strategy"
+            },
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://starcraftcoach.com/starcraft-coach-logo.png"
+            },
+            "inLanguage": "en-US"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://starcraftcoach.com/#app",
+            "name": "Starcraft Coach",
+            "applicationCategory": "GameApplication",
+            "applicationSubCategory": "Strategy game helper",
+            "operatingSystem": "Windows, Web Browser",
+            "description": "Tag enemy waves in Direct Strike and get counter unit suggestions based on your race, tech tier, and army composition.",
+            "url": "https://starcraftcoach.com/",
+            "downloadUrl": "https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe",
+            "featureList": [
+              "Enemy wave tagging by race and unit count",
+              "Team race and tech tier selection per wave",
+              "Instant Direct Strike counter suggestions",
+              "Coverage summary for hard and soft counters",
+              "Windows desktop app with in-game overlay panels",
+              "Screen capture hotkey for quick army reads"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock"
+            },
+            "author": {
+              "@id": "https://starcraftcoach.com/#organization"
+            },
+            "isPartOf": {
+              "@id": "https://starcraftcoach.com/#website"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://starcraftcoach.com/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is Starcraft Coach?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Starcraft Coach is a free counter tool for StarCraft II Direct Strike. You tag enemy units per wave, choose your team race and unlocked tech tier, and get suggested counters for Terran, Zerg, and Protoss."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Starcraft Coach work with Direct Strike?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Starcraft Coach is built for the Direct Strike arcade mode. Counter data is tuned for Direct Strike unit tiers and common army compositions, not standard ladder matchmaking."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is Starcraft Coach free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. The web tool is free to use in your browser. The Windows desktop app is also free to download and includes always-on-top overlay panels for in-game use."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need the desktop app?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. You can tag enemy waves and view counter suggestions in the browser. The Windows app adds draggable overlay windows, screen-capture hotkeys, and a dedicated coach window while you play."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
+    <noscript>
+      <header>
+        <h1>Starcraft Coach — Direct Strike Counter Tool for StarCraft II</h1>
+        <p>
+          Free counter coach for the Direct Strike arcade mode. Tag enemy waves,
+          set your team race and tech tier, and get Terran, Zerg, and Protoss
+          counter suggestions.
+        </p>
+      </header>
+      <main>
+        <section>
+          <h2>Tag enemy waves</h2>
+          <p>
+            Record opponent races and unit counts for each wave so the coach
+            knows what you are facing in Direct Strike.
+          </p>
+        </section>
+        <section>
+          <h2>Pick your team and tech</h2>
+          <p>
+            Choose your race per wave and the highest tech tier you have unlocked
+            to get counters you can actually build.
+          </p>
+        </section>
+        <section>
+          <h2>Get counter suggestions</h2>
+          <p>
+            See hard and soft counters, coverage summaries, and build tips based
+            on Direct Strike unit tiers and Havrlant-style army guides.
+          </p>
+        </section>
+        <section>
+          <h2>Windows desktop app</h2>
+          <p>
+            <a href="https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe">
+              Download Starcraft Coach for Windows
+            </a>
+            for always-on-top enemy and team overlay panels while you play.
+          </p>
+        </section>
+      </main>
+      <footer>
+        <p>
+          <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
+        </p>
+      </footer>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

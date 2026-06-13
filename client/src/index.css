@@ -96,6 +96,19 @@ body {
   background-attachment: fixed;
 }
 
+.app-shell-loading {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.panel,
+.panel-coach {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -311,6 +324,20 @@ button:focus-visible {
 .logo {
   margin: 0;
   line-height: 0;
+  position: relative;
+}
+
+.logo-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .logo-img {
@@ -365,9 +392,139 @@ button:focus-visible {
   }
 }
 
+.download-app {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(8, 12, 18, 0.72);
+}
+
+.download-app-hero {
+  margin-bottom: 1.75rem;
+  padding: 1.25rem 1.35rem;
+  border-color: rgba(212, 184, 122, 0.28);
+  background: linear-gradient(
+    135deg,
+    rgba(212, 184, 122, 0.08),
+    rgba(8, 12, 18, 0.85)
+  );
+}
+
+.download-app-compact {
+  padding: 0.75rem 1rem;
+}
+
+.download-app-copy {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.download-app-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #d4b87a;
+}
+
+.download-app-text,
+.download-app-note,
+.download-app-version {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.download-app-note {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.download-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.download-app-btn {
+  text-decoration: none;
+}
+
+.download-app-status {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.download-app-version {
+  flex-basis: 100%;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+}
+
+.app-update-banner {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.95rem 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(126, 200, 160, 0.35);
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(126, 200, 160, 0.12),
+    rgba(8, 12, 18, 0.9)
+  );
+}
+
+.app-update-copy {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.app-update-title {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #7ec8a0;
+  font-size: 0.98rem;
+}
+
+.app-update-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-update-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: #7ec8a0;
+  transition: width 0.2s ease;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
   align-items: start;
 }
@@ -404,8 +561,19 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.panel-coach > .team-selection {
-  flex-shrink: 0;
+.panel-coach > .team-army-panel {
+  flex: 0 0 auto;
+  max-height: min(58vh, 32rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.team-wave-controls-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
 }
 
 .panel-coach > .suggestions {
@@ -864,6 +1032,55 @@ button:focus-visible {
   margin-top: 0.2rem;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+.stack-cost {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stack-cost-enemy {
+  color: #e8a060;
+}
+
+.stack-cost-build {
+  display: inline-block;
+  margin-left: 0.35rem;
+  color: #7ec8a0;
+}
+
+.suggestion-tech-tier {
+  margin-left: 0.35rem;
+  color: #8eb4ff;
+}
+
+.build-best-overall {
+  margin-top: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.build-best-overall .build-alt-label {
+  color: #d4b87a;
+}
+
+.best-overall-tier {
+  color: #d4b87a;
+}
+
+.stack-cost-best {
+  color: #d4b87a;
+}
+
+.build-locked-tier {
+  margin-top: 0.35rem;
+  opacity: 0.82;
+}
+
+.build-locked-option {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
 }
 
 .counter-paths {
@@ -1393,25 +1610,67 @@ button:focus-visible {
   }
 }
 
-.manual-army-tier-label {
-  grid-column: 1 / -1;
+.tier-collapsible-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tier-collapsible {
+  border-radius: 4px;
+  background: rgba(10, 12, 16, 0.25);
+  border: 1px solid rgba(70, 78, 90, 0.3);
+  overflow: hidden;
+}
+
+.tier-collapsible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.tier-collapsible-label {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  padding: 0.3rem 0 0.15rem;
-  margin-top: 0.1rem;
-  border-bottom: 1px solid var(--border);
 }
 
-.manual-army-tier-label:first-child {
-  margin-top: 0;
-  padding-top: 0;
+.tier-collapsible-summary {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tier-collapsible-body {
+  padding: 0 0.35rem 0.35rem;
+}
+
+.tier-collapsible.wave-red .tier-collapsible-label {
+  color: #ff8a8a;
+}
+
+.tier-collapsible.wave-amber .tier-collapsible-label {
+  color: var(--amber);
+}
+
+.tier-collapsible.wave-cyan .tier-collapsible-label {
+  color: var(--cyan);
 }
 
 .manual-army-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
@@ -1425,6 +1684,50 @@ button:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.unit-count-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.unit-count-bulk-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.65rem;
+  padding: 0 0.1rem;
+  border: 1px solid rgba(70, 78, 90, 0.65);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #2a303a 0%, #1a1f27 100%);
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.unit-count-bulk-btn:hover:not(:disabled) {
+  color: var(--text-silver);
+  border-color: rgba(90, 98, 110, 0.85);
+  background: linear-gradient(180deg, #3a424e 0%, #242a34 100%);
+}
+
+.unit-count-bulk-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, #1e232b 0%, #161a20 100%);
+}
+
+.unit-count-bulk-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .unit-count-stepper {
@@ -1544,6 +1847,10 @@ button:focus-visible {
 
 .sources a {
   color: var(--cyan);
+}
+
+.site-footer-meta {
+  margin: 0.5rem 0 0;
 }
 
 .badge {
@@ -2029,6 +2336,18 @@ body.overlay-electron .floating-overlay-panel-body * {
   font-size: 0.58rem;
 }
 
+.floating-overlay-panel-body .tier-collapsible-list {
+  gap: 0.25rem;
+}
+
+.floating-overlay-panel-body .tier-collapsible-toggle {
+  padding: 0.28rem 0.35rem;
+}
+
+.floating-overlay-panel-body .tier-collapsible-body {
+  padding: 0 0.3rem 0.3rem;
+}
+
 .floating-overlay-panel-body .team-wave-label {
   padding-top: 0;
 }
@@ -2093,7 +2412,14 @@ body.overlay-electron .floating-overlay-panel-body * {
 .floating-overlay-panel-body .overlay-team-stack {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
   gap: 0.5rem;
+}
+
+.floating-overlay-panel-body .overlay-team-stack .team-army-panel .manual-army-grid {
+  grid-template-columns: 1fr;
 }
 
 .floating-overlay-panel-body .overlay-team-stack .suggestions-title {
@@ -2285,6 +2611,12 @@ body.overlay-electron .floating-overlay-panel-body * {
 
 .overlay-click-through-active {
   opacity: 0.92;
+}
+
+.overlay-click-through-active .floating-overlay-panel-header,
+.overlay-panel-team .floating-overlay-panel-header {
+  pointer-events: auto;
+  -webkit-app-region: drag;
 }
 
 .floating-overlay-panel-body.passthrough {

@@ -10,6 +10,16 @@ import type { ManualWavesState } from "./manualArmy";
 import type { CoachState } from "./overlaySync";
 import type { PendingVisionCapture } from "./visionTraining";
 
+let lastHandledCaptureAt = 0;
+
+function shouldHandleCaptureEvent(at?: number): boolean {
+  const stamp = at ?? 0;
+  if (!stamp) return true;
+  if (stamp <= lastHandledCaptureAt) return false;
+  lastHandledCaptureAt = stamp;
+  return true;
+}
+
 interface Options {
   enabled: boolean;
   manualWaves: ManualWavesState;
@@ -50,7 +60,6 @@ export function useOverlayScreenCapture({
     null
   );
   const scanningRef = useRef(false);
-  const lastCaptureEventAt = useRef(0);
 
   useEffect(() => {
     fetchUnitCatalog()
@@ -61,6 +70,11 @@ export function useOverlayScreenCapture({
         byRaceRef.current = null;
       });
   }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    void window.starcraftDS?.requestScreenCaptureAccess?.();
+  }, [enabled]);
 
   const runCapture = useCallback(async (imageBase64: string) => {
     if (!imageBase64?.trim() || scanningRef.current) return;
@@ -105,7 +119,8 @@ export function useOverlayScreenCapture({
       });
       if (applied.addedCount === 0) {
         setError(
-          "No enemy units detected on screen — capture while enemies are visible on the map."
+          applied.visionScene ??
+            "No enemy units detected — capture while enemy armies are visible on the main map (not only the minimap). First scan may take up to a minute while Ollama analyzes tiles."
         );
       }
     } catch (e) {
@@ -119,9 +134,11 @@ export function useOverlayScreenCapture({
   useEffect(() => {
     if (!enabled || !window.starcraftDS?.onCaptureHotkey) return;
     return window.starcraftDS.onCaptureHotkey((payload) => {
-      const at = payload.at ?? 0;
-      if (at && at === lastCaptureEventAt.current) return;
-      lastCaptureEventAt.current = at;
+      if (payload.error) {
+        setError(payload.error);
+        return;
+      }
+      if (!shouldHandleCaptureEvent(payload.at)) return;
       void runCapture(payload.base64);
     });
   }, [enabled, runCapture]);

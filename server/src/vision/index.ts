@@ -32,7 +32,25 @@ async function resolveOllamaReady(): Promise<boolean> {
   return waitForOllamaVision();
 }
 
-/** Ollama reads unit models on the screenshot; OCR only when visual AI is unavailable. */
+function mergeDetectedUnits(
+  primary: VisionResult["detectedUnits"],
+  secondary: VisionResult["detectedUnits"]
+): VisionResult["detectedUnits"] {
+  const merged = new Map<string, VisionResult["detectedUnits"][number]>();
+  for (const unit of [...primary, ...secondary]) {
+    const key = `${unit.name}:${unit.wave ?? 0}`;
+    const prev = merged.get(key);
+    if (!prev) {
+      merged.set(key, unit);
+      continue;
+    }
+    const count = Math.max(prev.count ?? 1, unit.count ?? 1);
+    merged.set(key, { ...prev, count });
+  }
+  return [...merged.values()];
+}
+
+/** Ollama reads battlefield sprites; OCR supplements when text labels are visible. */
 async function analyzeVisualFirst(
   imageBase64: string,
   mimeType: string,
@@ -40,17 +58,34 @@ async function analyzeVisualFirst(
 ): Promise<VisionResult> {
   if (ollamaUp) {
     const visual = await analyzeWithOllamaSafe(imageBase64, mimeType);
+    if (visual.detectedUnits.length > 0) {
+      return visual;
+    }
+
+    const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType, {
+      relaxed: true,
+    });
+    if (ocr.detectedUnits.length > 0) {
+      return {
+        ...ocr,
+        detectedUnits: mergeDetectedUnits(visual.detectedUnits, ocr.detectedUnits),
+        scene: ocr.scene ?? visual.scene,
+        mode: visual.mode === "ai" ? "ai" : ocr.mode,
+        provider: "ollama",
+      };
+    }
+
     return {
       ...visual,
       scene:
         visual.scene ??
-        (visual.detectedUnits.length > 0
-          ? undefined
-          : "No enemy units detected in this screenshot."),
+        "No enemy units detected. Ensure enemies are visible on the map and Ollama (llava) is running.",
     };
   }
 
-  const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType);
+  const ocr = await analyzeWithTesseractSafe(imageBase64, mimeType, {
+    relaxed: true,
+  });
   return {
     ...ocr,
     scene:

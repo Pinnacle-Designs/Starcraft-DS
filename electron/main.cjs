@@ -2,17 +2,47 @@ const {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   globalShortcut,
   ipcMain,
+  Menu,
+  nativeImage,
   screen,
   shell,
   systemPreferences,
 } = require("electron");
+const { spawn } = require("child_process");
 const fs = require("fs");
+const http = require("http");
 const path = require("path");
+const { initAutoUpdater, notifyRendererReady } = require("./updater.cjs");
+
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.starcraftds.coach");
+}
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
+const API_PORT = process.env.PORT || "3847";
+const UI_PORT = process.env.UI_PORT || "3848";
+const API_HEALTH_URL = `http://127.0.0.1:${API_PORT}/api/health`;
+const PACKAGED_UI_URL = `http://127.0.0.1:${UI_PORT}/`;
 const isDev = !app.isPackaged;
+let apiServerProcess = null;
+let uiServer = null;
+
+const UI_MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+};
 
 const OVERLAY_PANELS = {
   enemy: {
@@ -48,8 +78,24 @@ const CAPTURE_HOTKEY_FALLBACKS = [
 let captureHotkeyAccelerator = DEFAULT_CAPTURE_HOTKEY;
 let hotkeyRecording = false;
 let hotkeyRecordingBlurHandler = null;
+let hotkeyRecordingInputHandlers = null;
+let hotkeyRecorderWindow = null;
+let clickThroughBeforeRecording = false;
 const HOTKEY_RECORDING_TIMEOUT_MS = 60_000;
 let hotkeyRecordingTimeout = null;
+
+const MODIFIER_ONLY_KEYS = new Set([
+  "Control",
+  "Shift",
+  "Alt",
+  "Meta",
+  "OS",
+  "Command",
+  "CapsLock",
+  "Tab",
+  "NumLock",
+  "ScrollLock",
+]);
 
 const CLICK_THROUGH_HOTKEY = "Control+Shift+D";
 
@@ -107,10 +153,13 @@ function broadcastOverlayClickThrough() {
   for (const panel of Object.keys(overlayWindows)) {
     const win = overlayWindows[panel];
     if (!win || win.isDestroyed()) continue;
-    if (!overlayClickThrough) {
+    if (!overlayClickThrough || panel === "team") {
       clearOverlayMouseIgnore(win);
     }
-    win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+    win.webContents.send(
+      "overlay:clickThroughState",
+      panel === "team" ? false : overlayClickThrough
+    );
   }
 }
 
@@ -121,10 +170,14 @@ function applyOverlayClickThrough(enabled) {
 
 function syncOverlayClickThrough(win) {
   if (!win || win.isDestroyed()) return;
-  if (!overlayClickThrough) {
+  const isTeamPanel = overlayWindows.team === win;
+  if (!overlayClickThrough || isTeamPanel) {
     clearOverlayMouseIgnore(win);
   }
-  win.webContents.send("overlay:clickThroughState", overlayClickThrough);
+  win.webContents.send(
+    "overlay:clickThroughState",
+    isTeamPanel ? false : overlayClickThrough
+  );
 }
 
 function captureHotkeyFile() {
@@ -196,23 +249,68 @@ function screenCapturePermissionHint() {
   return "Screen capture permission denied.";
 }
 
-async function capturePrimaryScreenBase64() {
-  ensureCaptureAccessWindow();
-  const display = screen.getPrimaryDisplay();
-  const scale = display.scaleFactor || 1;
-  const width = Math.max(1, Math.floor(display.size.width * scale));
-  const height = Math.max(1, Math.floor(display.size.height * scale));
-  const sources = await desktopCapturer.getSources({
-    types: ["screen"],
-    thumbnailSize: { width, height },
-  });
-  if (!sources.length) {
-    throw new Error("No screen sources available");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Hide every coach window so desktopCapturer grabs only the game. */
+async function withCaptureUiHidden(captureFn) {
+  const restore = [];
+
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win || win.isDestroyed() || win === captureAccessWindow) continue;
+    if (!win.isVisible()) continue;
+    restore.push({
+      win,
+      opacity: typeof win.getOpacity === "function" ? win.getOpacity() : 1,
+    });
+    if (typeof win.setOpacity === "function") win.setOpacity(0);
+    win.hide();
   }
-  const source =
-    sources.find((entry) => entry.display_id === String(display.id)) ||
-    sources[0];
-  return source.thumbnail.toJPEG(92).toString("base64");
+
+  if (restore.length > 0) {
+    // DWM on Windows can return a stale thumbnail; wait for compositor refresh.
+    await sleep(320);
+  }
+
+  try {
+    return await captureFn();
+  } finally {
+    for (const { win, opacity } of restore) {
+      if (win.isDestroyed()) continue;
+      if (overlayWindows.enemy === win || overlayWindows.team === win) {
+        showOverlayWindow(win);
+      } else {
+        win.show();
+      }
+      if (typeof win.setOpacity === "function") win.setOpacity(opacity);
+    }
+  }
+}
+
+async function capturePrimaryScreenBase64() {
+  return withCaptureUiHidden(async () => {
+    ensureCaptureAccessWindow();
+    const display = screen.getPrimaryDisplay();
+    const scale = display.scaleFactor || 1;
+    const width = Math.max(1, Math.floor(display.size.width * scale));
+    const height = Math.max(1, Math.floor(display.size.height * scale));
+    const captureOpts = {
+      types: ["screen"],
+      thumbnailSize: { width, height },
+    };
+    // First frame can still include hidden overlays; discard and grab again.
+    await desktopCapturer.getSources(captureOpts);
+    await sleep(80);
+    const sources = await desktopCapturer.getSources(captureOpts);
+    if (!sources.length) {
+      throw new Error("No screen sources available");
+    }
+    const source =
+      sources.find((entry) => entry.display_id === String(display.id)) ||
+      sources[0];
+    return source.thumbnail.toJPEG(95).toString("base64");
+  });
 }
 
 async function requestScreenCaptureAccess() {
@@ -240,8 +338,7 @@ async function requestScreenCaptureAccess() {
   }
 }
 
-function broadcastCaptureScreen(base64) {
-  const payload = { base64, at: Date.now() };
+function broadcastCaptureScreen(payload) {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
       win.webContents.send("overlay:captureScreen", payload);
@@ -250,11 +347,26 @@ function broadcastCaptureScreen(base64) {
 }
 
 async function triggerScreenCapture() {
+  const at = Date.now();
   try {
+    if (!screenCaptureAccessGranted) {
+      const access = await requestScreenCaptureAccess();
+      if (!access.ok) {
+        broadcastCaptureScreen({
+          base64: "",
+          at,
+          error: access.error ?? "Screen capture not available",
+        });
+        return;
+      }
+    }
     const base64 = await capturePrimaryScreenBase64();
-    broadcastCaptureScreen(base64);
+    screenCaptureAccessGranted = true;
+    broadcastCaptureScreen({ base64, at });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Screen capture failed";
     console.error("Screen capture failed:", err);
+    broadcastCaptureScreen({ base64: "", at, error: message });
   }
 }
 
@@ -306,8 +418,166 @@ function unregisterCaptureHotkey() {
   unregisterAccelerator(captureHotkeyAccelerator);
 }
 
+function stopHotkeyRecordingInputCapture() {
+  if (!hotkeyRecordingInputHandlers) return;
+  const { handler, wins } = hotkeyRecordingInputHandlers;
+  for (const win of wins) {
+    if (!win.isDestroyed()) {
+      win.webContents.removeListener("before-input-event", handler);
+    }
+  }
+  hotkeyRecordingInputHandlers = null;
+}
+
+function acceleratorFromInput(input) {
+  if (!input || input.type !== "keyDown") return null;
+  const key = input.key;
+  if (!key || key === "Escape" || MODIFIER_ONLY_KEYS.has(key)) return null;
+
+  const parts = [];
+  if (input.control) parts.push("Control");
+  if (input.alt) parts.push("Alt");
+  if (input.shift) parts.push("Shift");
+  if (input.meta) parts.push("Command");
+  if (parts.length === 0) return null;
+
+  let token = key;
+  if (token === " ") token = "Space";
+  else if (token.length === 1) token = token.toUpperCase();
+  else if (/^f\d{1,2}$/i.test(token)) token = token.toUpperCase();
+  else if (token === "ArrowUp") token = "Up";
+  else if (token === "ArrowDown") token = "Down";
+  else if (token === "ArrowLeft") token = "Left";
+  else if (token === "ArrowRight") token = "Right";
+
+  parts.push(token);
+  return normalizeCaptureHotkey(parts.join("+"));
+}
+
+function broadcastHotkeyRecorded(accelerator) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send("overlay:hotkeyRecorded", { accelerator });
+    }
+  }
+}
+
+function broadcastHotkeyRecordFailed(error) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send("overlay:hotkeyRecordFailed", { error });
+    }
+  }
+}
+
+function startHotkeyRecordingInputCapture() {
+  stopHotkeyRecordingInputCapture();
+  const handler = (event, input) => {
+    if (!hotkeyRecording) return;
+
+    if (input.type === "keyDown" && input.key === "Escape") {
+      event.preventDefault();
+      cancelHotkeyRecording(true);
+      return;
+    }
+
+    const accelerator = acceleratorFromInput(input);
+    if (!accelerator) return;
+
+    event.preventDefault();
+    const result = applyCaptureHotkey(accelerator);
+    if (result.ok) {
+      broadcastHotkeyRecorded(result.accelerator ?? accelerator);
+    } else {
+      registerOverlayHotkeys();
+      broadcastHotkeyRecordFailed(
+        result.error ?? "Hotkey could not be registered."
+      );
+    }
+  };
+
+  const wins = BrowserWindow.getAllWindows().filter((win) => !win.isDestroyed());
+  for (const win of wins) {
+    win.webContents.on("before-input-event", handler);
+  }
+  hotkeyRecordingInputHandlers = { handler, wins };
+}
+
+function setupHotkeyRecordingFocusGuard(win) {
+  if (!win || win.isDestroyed()) return;
+  if (hotkeyRecordingBlurHandler) {
+    const { win: prevWin, handler } = hotkeyRecordingBlurHandler;
+    if (prevWin && !prevWin.isDestroyed()) {
+      prevWin.removeListener("blur", handler);
+    }
+  }
+  const handler = () => {
+    if (!hotkeyRecording) return;
+    setTimeout(() => {
+      if (!hotkeyRecording || !win || win.isDestroyed()) return;
+      pinOverlayAlwaysOnTop(win);
+      win.show();
+      win.focus();
+      win.webContents.focus();
+    }, 30);
+  };
+  win.on("blur", handler);
+  hotkeyRecordingBlurHandler = { win, handler };
+}
+
+function closeHotkeyRecorderWindow() {
+  if (!hotkeyRecorderWindow || hotkeyRecorderWindow.isDestroyed()) {
+    hotkeyRecorderWindow = null;
+    return;
+  }
+  hotkeyRecorderWindow.close();
+  hotkeyRecorderWindow = null;
+}
+
+function openHotkeyRecorderWindow() {
+  closeHotkeyRecorderWindow();
+  hotkeyRecorderWindow = new BrowserWindow({
+    width: 440,
+    height: 200,
+    show: false,
+    alwaysOnTop: true,
+    center: true,
+    frame: true,
+    title: "Record screen capture hotkey",
+    backgroundColor: "#14181f",
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  pinOverlayAlwaysOnTop(hotkeyRecorderWindow);
+  void hotkeyRecorderWindow.loadFile(
+    path.join(__dirname, "hotkey-recorder.html")
+  );
+  hotkeyRecorderWindow.once("ready-to-show", () => {
+    if (!hotkeyRecorderWindow || hotkeyRecorderWindow.isDestroyed()) return;
+    hotkeyRecorderWindow.show();
+    hotkeyRecorderWindow.focus();
+    hotkeyRecorderWindow.webContents.focus();
+  });
+  hotkeyRecorderWindow.on("closed", () => {
+    hotkeyRecorderWindow = null;
+    if (hotkeyRecording) {
+      cancelHotkeyRecording(true);
+    }
+  });
+}
+
 function clearHotkeyRecordingSession() {
   hotkeyRecording = false;
+  closeHotkeyRecorderWindow();
+  stopHotkeyRecordingInputCapture();
   if (hotkeyRecordingTimeout) {
     clearTimeout(hotkeyRecordingTimeout);
     hotkeyRecordingTimeout = null;
@@ -319,6 +589,49 @@ function clearHotkeyRecordingSession() {
     }
     hotkeyRecordingBlurHandler = null;
   }
+  if (clickThroughBeforeRecording) {
+    applyOverlayClickThrough(true);
+    clickThroughBeforeRecording = false;
+  }
+}
+
+function applyCaptureHotkey(accelerator) {
+  const previous = loadCaptureHotkey();
+  const next = normalizeCaptureHotkey(accelerator);
+  const parts = next.split("+");
+  const hasModifier = parts.some((part) =>
+    ["Control", "Command", "CommandOrControl", "Alt", "Shift"].includes(part)
+  );
+  if (!hasModifier || parts.length < 2) {
+    clearHotkeyRecordingSession();
+    return {
+      ok: false,
+      error: "Use at least one modifier (Ctrl, Alt, Shift) plus a key.",
+    };
+  }
+  if (next === CLICK_THROUGH_HOTKEY) {
+    clearHotkeyRecordingSession();
+    return {
+      ok: false,
+      error: "Ctrl+Shift+D is reserved for click-through toggle.",
+    };
+  }
+
+  saveCaptureHotkey(next);
+  clearHotkeyRecordingSession();
+  captureHotkeyAccelerator = next;
+  registerClickThroughHotkey();
+  const captureRegistered = registerCaptureHotkey(next);
+  if (!captureRegistered) {
+    saveCaptureHotkey(previous);
+    captureHotkeyAccelerator = previous;
+    registerOverlayHotkeys();
+    return {
+      ok: false,
+      error: `Could not register "${next}". Try a different combination.`,
+    };
+  }
+  return { ok: true, accelerator: next };
 }
 
 function cancelHotkeyRecording(notifyRenderer) {
@@ -398,22 +711,209 @@ function clampOverlayBounds(x, y, width, height) {
   };
 }
 
-function panelLoadUrl(config) {
-  const query = `panel=${config.panel}`;
-  if (isDev) return `${DEV_URL}?${query}`;
-  const indexPath = path.join(__dirname, "../client/dist/index.html");
-  return `file://${indexPath}?${query}`;
+function packagedClientDist() {
+  const candidates = [
+    path.join(process.resourcesPath, "client", "dist"),
+    path.join(app.getAppPath(), "client", "dist"),
+    path.join(__dirname, "..", "client", "dist"),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "index.html"))) return dir;
+  }
+  return candidates[0];
+}
+
+function resolveIconPath() {
+  const names =
+    process.platform === "win32"
+      ? ["app-icon.ico", "app-icon.png"]
+      : ["app-icon.png", "app-icon.ico"];
+  const bases = app.isPackaged
+    ? [process.resourcesPath, __dirname]
+    : [__dirname, process.resourcesPath];
+  for (const name of names) {
+    for (const base of bases) {
+      const iconPath = path.join(base, name);
+      if (fs.existsSync(iconPath)) return iconPath;
+    }
+  }
+  return undefined;
+}
+
+function getWindowIcon() {
+  const iconPath = resolveIconPath();
+  if (!iconPath) return undefined;
+  const image = nativeImage.createFromPath(iconPath);
+  return image.isEmpty() ? iconPath : image;
+}
+
+function resolveUiFile(rootDir, urlPath) {
+  const relative = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  const filePath = path.normalize(path.join(rootDir, relative));
+  const rootWithSep = path.normalize(`${rootDir}${path.sep}`);
+  if (!filePath.startsWith(rootWithSep)) return null;
+  return filePath;
+}
+
+function startPackagedUiServer(clientDist) {
+  if (uiServer) return Promise.resolve(uiServer);
+  const indexHtml = path.join(clientDist, "index.html");
+  if (!fs.existsSync(indexHtml)) {
+    return Promise.reject(
+      new Error(`Desktop UI not found at ${clientDist}`)
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    uiServer = http.createServer((req, res) => {
+      try {
+        const url = new URL(req.url || "/", `http://127.0.0.1:${UI_PORT}`);
+        let filePath = resolveUiFile(clientDist, url.pathname);
+        if (
+          !filePath ||
+          !fs.existsSync(filePath) ||
+          fs.statSync(filePath).isDirectory()
+        ) {
+          filePath = indexHtml;
+        }
+        const ext = path.extname(filePath).toLowerCase();
+        res.setHeader("Content-Type", UI_MIME[ext] || "application/octet-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        fs.createReadStream(filePath)
+          .on("error", () => {
+            if (!res.headersSent) res.writeHead(500);
+            res.end("Failed to read UI file");
+          })
+          .pipe(res);
+      } catch (err) {
+        console.error("[ui] request failed:", err);
+        if (!res.headersSent) res.writeHead(500);
+        res.end("Internal UI error");
+      }
+    });
+
+    uiServer.listen(Number(UI_PORT), "127.0.0.1", () => {
+      console.log(
+        `[ui] serving ${clientDist} at http://127.0.0.1:${UI_PORT}/`
+      );
+      resolve(uiServer);
+    });
+    uiServer.on("error", reject);
+  });
+}
+
+function stopPackagedUiServer() {
+  if (!uiServer) return;
+  uiServer.close();
+  uiServer = null;
+}
+
+function packagedUiUrl(query) {
+  const qs = new URLSearchParams(query).toString();
+  return qs ? `${PACKAGED_UI_URL}?${qs}` : PACKAGED_UI_URL;
+}
+
+function loadPanelContents(win, config) {
+  if (isDev) {
+    return win.loadURL(`${DEV_URL}?panel=${config.panel}`);
+  }
+  return win.loadURL(packagedUiUrl({ panel: config.panel }));
 }
 
 function getPreloadPath() {
   return path.join(__dirname, "preload.cjs");
 }
 
+function packagedResourcesRoot() {
+  return isDev ? path.join(__dirname, "..") : process.resourcesPath;
+}
+
+function waitForApiHealth(timeoutMs = 45_000) {
+  const started = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const req = http.get(API_HEALTH_URL, (res) => {
+        res.resume();
+        if (res.statusCode === 200) {
+          resolve();
+          return;
+        }
+        retry();
+      });
+      req.on("error", retry);
+      req.setTimeout(2_000, () => {
+        req.destroy();
+        retry();
+      });
+    };
+    const retry = () => {
+      if (Date.now() - started > timeoutMs) {
+        reject(new Error("API server did not start in time"));
+        return;
+      }
+      setTimeout(attempt, 500);
+    };
+    attempt();
+  });
+}
+
+function startPackagedApiServer() {
+  if (isDev) return Promise.resolve();
+
+  const root = packagedResourcesRoot();
+  const serverEntry = path.join(root, "server", "dist", "index.js");
+  const dataDir = path.join(root, "data");
+
+  if (!fs.existsSync(serverEntry)) {
+    return Promise.reject(
+      new Error(`Packaged API server not found at ${serverEntry}`)
+    );
+  }
+
+  apiServerProcess = spawn(process.execPath, [serverEntry], {
+    cwd: root,
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      STARCRAFT_DS_DATA_DIR: dataDir,
+      ELECTRON_CLIENT_DIST: packagedClientDist(),
+      PORT: API_PORT,
+      AUTO_START_OLLAMA: process.env.AUTO_START_OLLAMA ?? "true",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  apiServerProcess.stdout?.on("data", (chunk) => {
+    console.log(`[api] ${chunk.toString().trimEnd()}`);
+  });
+  apiServerProcess.stderr?.on("data", (chunk) => {
+    console.error(`[api] ${chunk.toString().trimEnd()}`);
+  });
+  apiServerProcess.on("exit", (code, signal) => {
+    if (code != null && code !== 0) {
+      console.error(`[api] exited with code ${code}`);
+    }
+    if (signal) {
+      console.error(`[api] killed by signal ${signal}`);
+    }
+    apiServerProcess = null;
+  });
+
+  return waitForApiHealth();
+}
+
+function stopPackagedApiServer() {
+  if (!apiServerProcess || apiServerProcess.killed) return;
+  apiServerProcess.kill();
+  apiServerProcess = null;
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    title: "Starcraft-DS",
+    title: "Starcraft Coach",
+    icon: getWindowIcon(),
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -424,8 +924,16 @@ function createMainWindow() {
   if (isDev) {
     mainWindow.loadURL(DEV_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../client/dist/index.html"));
+    mainWindow.loadURL(PACKAGED_UI_URL);
   }
+
+  mainWindow.webContents.on("did-fail-load", (_event, code, description) => {
+    console.error(`Main window failed to load (${code}): ${description}`);
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    notifyRendererReady();
+  });
 
   mainWindow.on("focus", () => {
     repinAllOverlayWindows();
@@ -470,6 +978,7 @@ function createOverlayPanelWindow(panel) {
     minWidth: 260,
     minHeight: 200,
     title: config.title,
+    icon: getWindowIcon(),
     alwaysOnTop: true,
     frame: false,
     transparent: true,
@@ -490,14 +999,16 @@ function createOverlayPanelWindow(panel) {
 
   pinOverlayAlwaysOnTop(win);
   attachOverlayPinHandlers(win);
+  if (typeof win.setContentProtection === "function") {
+    win.setContentProtection(true);
+  }
 
   win.once("ready-to-show", () => {
     if (!win.isDestroyed()) showOverlayWindow(win);
   });
 
-  const url = panelLoadUrl(config);
-  void win.loadURL(url).catch((err) => {
-    console.error(`Overlay panel "${panel}" failed to load ${url}:`, err);
+  void loadPanelContents(win, config).catch((err) => {
+    console.error(`Overlay panel "${panel}" failed to load:`, err);
   });
 
   win.webContents.on("did-fail-load", (_event, code, description) => {
@@ -561,7 +1072,30 @@ function broadcastCoachState(state) {
   }
 }
 
-app.whenReady().then(() => {
+initAutoUpdater(ipcMain);
+
+app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null);
+
+  let apiReady = true;
+  if (!isDev) {
+    try {
+      const clientDist = packagedClientDist();
+      await startPackagedUiServer(clientDist);
+      await startPackagedApiServer();
+    } catch (err) {
+      apiReady = false;
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Failed to start desktop app:", err);
+      dialog.showErrorBox(
+        "Starcraft Coach",
+        `Could not start the app.\n\n${message}\n\nTry restarting, or reinstall from starcraftcoach.com.`
+      );
+    }
+  }
+
+  if (!apiReady) return;
+
   createMainWindow();
   setTimeout(() => openAllOverlayPanels(), 800);
   registerOverlayHotkeys();
@@ -582,6 +1116,8 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  stopPackagedUiServer();
+  stopPackagedApiServer();
 });
 
 ipcMain.handle("overlay:open", () => openAllOverlayPanels());
@@ -613,11 +1149,32 @@ ipcMain.handle("overlay:setClickThrough", (_event, enabled) => {
 ipcMain.handle("overlay:setIgnoreMouseEvents", (event, ignore) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || win.isDestroyed()) return;
+  if (overlayWindows.team === win) {
+    win.setIgnoreMouseEvents(false);
+    return;
+  }
   if (ignore) {
     win.setIgnoreMouseEvents(true, { forward: true });
   } else {
     win.setIgnoreMouseEvents(false);
   }
+});
+
+ipcMain.handle("overlay:moveBy", (event, dx, dy) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+  const deltaX = Math.round(Number(dx) || 0);
+  const deltaY = Math.round(Number(dy) || 0);
+  if (!deltaX && !deltaY) return;
+  const [x, y] = win.getPosition();
+  const [width, height] = win.getSize();
+  const { x: nextX, y: nextY } = clampOverlayBounds(
+    x + deltaX,
+    y + deltaY,
+    width,
+    height
+  );
+  win.setPosition(nextX, nextY);
 });
 
 ipcMain.handle("screenCapture:requestAccess", () =>
@@ -658,12 +1215,25 @@ ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
   unregisterCaptureHotkey();
   registerClickThroughHotkey();
 
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win && !win.isDestroyed()) {
-    win.focus();
-    win.webContents.focus();
-    clearOverlayMouseIgnore(win);
+  clickThroughBeforeRecording = overlayClickThrough;
+  if (overlayClickThrough) {
+    applyOverlayClickThrough(false);
   }
+
+  const senderWin = BrowserWindow.fromWebContents(event.sender);
+  if (senderWin && !senderWin.isDestroyed()) {
+    pinOverlayAlwaysOnTop(senderWin);
+    senderWin.show();
+    senderWin.focus();
+    senderWin.webContents.focus();
+    clearOverlayMouseIgnore(senderWin);
+    setupHotkeyRecordingFocusGuard(senderWin);
+  }
+  for (const panel of Object.keys(overlayWindows)) {
+    clearOverlayMouseIgnore(overlayWindows[panel]);
+  }
+
+  startHotkeyRecordingInputCapture();
 
   if (hotkeyRecordingTimeout) clearTimeout(hotkeyRecordingTimeout);
   hotkeyRecordingTimeout = setTimeout(() => {
@@ -671,6 +1241,27 @@ ipcMain.handle("overlay:beginHotkeyRecording", (event) => {
   }, HOTKEY_RECORDING_TIMEOUT_MS);
 
   return { ok: true };
+});
+
+ipcMain.handle("overlay:submitRecordedHotkey", (_event, accelerator) => {
+  if (!hotkeyRecording) {
+    return { ok: false, error: "Hotkey recording is not active." };
+  }
+  if (typeof accelerator !== "string" || !accelerator.trim()) {
+    return { ok: false, error: "Invalid shortcut." };
+  }
+
+  const result = applyCaptureHotkey(accelerator);
+  closeHotkeyRecorderWindow();
+  if (result.ok) {
+    broadcastHotkeyRecorded(result.accelerator ?? accelerator);
+  } else {
+    registerOverlayHotkeys();
+    broadcastHotkeyRecordFailed(
+      result.error ?? "Hotkey could not be registered."
+    );
+  }
+  return result;
 });
 
 ipcMain.handle("overlay:endHotkeyRecording", () => {
@@ -685,44 +1276,13 @@ ipcMain.handle("overlay:cancelHotkeyRecording", () => {
 });
 
 ipcMain.handle("overlay:setCaptureHotkey", (_event, accelerator) => {
-  const previous = loadCaptureHotkey();
-  const next = normalizeCaptureHotkey(accelerator);
-  const parts = next.split("+");
-  const hasModifier = parts.some((part) =>
-    ["Control", "Command", "CommandOrControl", "Alt", "Shift"].includes(part)
-  );
-  if (!hasModifier || parts.length < 2) {
-    clearHotkeyRecordingSession();
+  const result = applyCaptureHotkey(accelerator);
+  if (!result.ok) {
     registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: "Use at least one modifier (Ctrl, Alt, Shift) plus a key.",
-    };
+  } else {
+    broadcastHotkeyRecorded(result.accelerator ?? accelerator);
   }
-  if (next === CLICK_THROUGH_HOTKEY) {
-    clearHotkeyRecordingSession();
-    registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: "Ctrl+Shift+D is reserved for click-through toggle.",
-    };
-  }
-
-  saveCaptureHotkey(next);
-  clearHotkeyRecordingSession();
-  captureHotkeyAccelerator = next;
-  registerClickThroughHotkey();
-  const captureRegistered = registerCaptureHotkey(next);
-  if (!captureRegistered) {
-    saveCaptureHotkey(previous);
-    captureHotkeyAccelerator = previous;
-    registerOverlayHotkeys();
-    return {
-      ok: false,
-      error: `Could not register "${next}". Try a different combination.`,
-    };
-  }
-  return { ok: true, accelerator: next };
+  return result;
 });
 
 ipcMain.on("shell:openExternal", (_e, url) => {

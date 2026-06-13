@@ -1,0 +1,148 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm run install:all
+
+      - name: Build and publish desktop app
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          npm run build:desktop
+          npm prune --omit=dev --prefix server
+          node scripts/prepare-server-pack.cjs
+          test -f build/icon.ico || (echo "build/icon.ico missing" && exit 1)
+          node scripts/cleanup-duplicate-github-releases.cjs --skip-latest-check
+          BUILD_ARGS=(--win --publish always)
+          if [ -n "${WIN_CSC_LINK:-}" ]; then
+            CSC_FILE="${RUNNER_TEMP}/codesign.pfx"
+            echo "$WIN_CSC_LINK" | base64 -d > "$CSC_FILE"
+            export CSC_LINK="$CSC_FILE"
+            export CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+            BUILD_ARGS+=(--config.win.signExecutable=true --config.win.signAndEditExecutable=true)
+            echo "Code signing enabled via WIN_CSC_LINK secret"
+          else
+            echo "WIN_CSC_LINK not set — unsigned build (auto-update works after one manual install on v1.0.14+)"
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder "${BUILD_ARGS[@]}"
+          node scripts/verify-win-icon.cjs
+          node scripts/cleanup-duplicate-github-releases.cjs
+
+      - name: Verify update metadata
+        shell: bash
+        run: |
+          test -f release/latest.yml || (echo "latest.yml missing — auto-update will not work" && exit 1)
+          ls -la release/
+
+      - name: Verify installer code signature
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path release -Filter 'Starcraft-Coach-Setup-*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Installer .exe not found in release/' }
+          $sig = Get-AuthenticodeSignature -FilePath $exe.FullName
+          Write-Host "Signature status: $($sig.Status)"
+          if ($sig.SignerCertificate) {
+            Write-Host "Signed by: $($sig.SignerCertificate.Subject)"
+          } else {
+            Write-Host '::warning::Installer is unsigned. Users on signed older builds cannot auto-update until WIN_CSC_LINK is configured.'
+          }
+
+      - name: Upload installer artifact for R2
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/Starcraft-Coach-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  upload-r2:
+    needs: release-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install upload dependency
+        run: npm install @aws-sdk/client-s3@3 --no-save
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release
+
+      - name: Verify installer artifact
+        run: |
+          set -euo pipefail
+          echo "Artifact contents:"
+          find release -type f -name '*.exe' -print -exec ls -lh {} \;
+          exe_count=$(find release -type f -name 'Starcraft-Coach-Setup-*.exe' | wc -l)
+          if [ "$exe_count" -lt 1 ]; then
+            echo "::error::Installer .exe missing from artifact"
+            exit 1
+          fi
+
+      - name: Check R2 secrets are configured
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          missing=0
+          if [ -z "${R2_ACCOUNT_ID}" ]; then echo "::error::Missing GitHub secret: R2_ACCOUNT_ID"; missing=1; else echo "Secret present: R2_ACCOUNT_ID"; fi
+          if [ -z "${R2_ACCESS_KEY_ID}" ]; then echo "::error::Missing GitHub secret: R2_ACCESS_KEY_ID"; missing=1; else echo "Secret present: R2_ACCESS_KEY_ID"; fi
+          if [ -z "${R2_SECRET_ACCESS_KEY}" ]; then echo "::error::Missing GitHub secret: R2_SECRET_ACCESS_KEY"; missing=1; else echo "Secret present: R2_SECRET_ACCESS_KEY"; fi
+          if [ -z "${R2_BUCKET}" ]; then echo "::error::Missing GitHub secret: R2_BUCKET"; missing=1; else echo "Secret present: R2_BUCKET"; fi
+          if [ "$missing" -eq 1 ]; then
+            echo "Add all four R2 secrets to Pinnacle-Designs/Starcraft-DS (repo or org secrets with repo access)."
+            exit 1
+          fi
+
+      - name: Upload installer to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
+          R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
+        run: node scripts/upload-installer-to-r2.cjs
+
+      - name: Print hosting instructions
+        run: node scripts/publish-installer-url.cjs

@@ -1,0 +1,97 @@
+name: Upload Release to R2
+
+# Re-upload an existing GitHub Release .exe to R2 without rebuilding.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v1.0.11) or "latest"
+        required: false
+        default: latest
+
+permissions:
+  contents: read
+
+jobs:
+  upload-r2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release installer
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          tag="${RELEASE_TAG:-latest}"
+          if [ "$tag" != "latest" ] && [[ "$tag" != v* ]]; then
+            tag="v${tag}"
+          fi
+          if [ "$tag" = "latest" ]; then
+            api="https://api.github.com/repos/Pinnacle-Designs/Starcraft-DS/releases/latest"
+          else
+            api="https://api.github.com/repos/Pinnacle-Designs/Starcraft-DS/releases/tags/${tag}"
+          fi
+          echo "Fetching release metadata from: $api"
+          http_code=$(curl -sS -o /tmp/release.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$api")
+          if [ "$http_code" = "404" ]; then
+            echo "::error::Release '${tag}' not found on GitHub."
+            echo "Create it first: git tag ${tag} && git push origin ${tag}"
+            echo "That triggers Release Desktop App, which builds and uploads to R2 automatically."
+            exit 1
+          fi
+          if [ "$http_code" != "200" ]; then
+            echo "::error::GitHub API returned HTTP ${http_code}"
+            cat /tmp/release.json || true
+            exit 1
+          fi
+          release_json=$(cat /tmp/release.json)
+          asset_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | select(.name | test("\\.exe\\.blockmap$") | not) | .browser_download_url' | head -1)
+          asset_name=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("\\.exe$")) | select(.name | test("\\.exe\\.blockmap$") | not) | .name' | head -1)
+          resolved_tag=$(echo "$release_json" | jq -r '.tag_name')
+          if [ -z "$asset_url" ] || [ "$asset_url" = "null" ]; then
+            echo "::error::No .exe asset found for release '${resolved_tag}'."
+            echo "Available releases: https://github.com/Pinnacle-Designs/Starcraft-DS/releases"
+            exit 1
+          fi
+          echo "Downloading ${asset_name} from ${resolved_tag}"
+          dl_code=$(curl -sS -L -o "release/${asset_name}" -w "%{http_code}" "$asset_url")
+          if [ "$dl_code" != "200" ]; then
+            echo "::error::Download failed with HTTP ${dl_code}"
+            exit 1
+          fi
+          ls -la release/
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install upload dependency
+        run: npm install @aws-sdk/client-s3@3 --no-save
+
+      - name: Upload to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_OBJECT_KEY: Starcraft-Coach-Setup.exe
+          R2_PUBLIC_URL: https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe
+        run: node scripts/upload-installer-to-r2.cjs
+
+      - name: Verify public download URL
+        run: |
+          sleep 3
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe")
+          echo "Public URL HTTP status: ${code}"
+          if [ "${code}" != "200" ]; then
+            echo "::warning::downloads.starcraftcoach.com returned ${code}. If upload succeeded, confirm R2 custom domain is linked to bucket ${R2_BUCKET:-starcraft-coach-downloads}."
+          fi

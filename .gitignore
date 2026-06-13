@@ -5,7 +5,9 @@ server/.env
 *.log
 .DS_Store
 client/dist/
+client/public/data/
 out/
 dist-electron/
+release/
 data/training/samples/
 data/training/export-*.jsonl

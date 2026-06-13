@@ -1,5 +1,6 @@
 import { isElectronApp } from "./overlaySync";
 import type { OverlayPanelId } from "./overlayStorage";
+import { useOverlayHeaderDrag } from "./useOverlayHeaderDrag";
 
 interface Props {
   title: string;
@@ -22,12 +23,13 @@ export function OverlayPanelShell({
   children,
 }: Props) {
   const electron = isElectronApp();
+  const onHeaderPointerDown = useOverlayHeaderDrag();
 
   return (
     <div
       className={`overlay-panel-window-root${
         panelId === "team" ? " overlay-panel-team" : ""
-      }${clickThrough ? " overlay-click-through-active" : ""}`}
+      }${clickThrough && panelId !== "team" ? " overlay-click-through-active" : ""}`}
       role="dialog"
       aria-label={title}
     >
@@ -35,6 +37,7 @@ export function OverlayPanelShell({
         className={`floating-overlay-panel-header${
           electron ? " overlay-window-drag" : ""
         }`}
+        onPointerDown={electron ? onHeaderPointerDown : undefined}
       >
         <span className="floating-overlay-panel-title">{title}</span>
         <button
@@ -49,13 +52,20 @@ export function OverlayPanelShell({
       </header>
       <div
         className={
-          clickThrough
+          clickThrough && panelId !== "team"
             ? "floating-overlay-panel-body passthrough"
             : "floating-overlay-panel-body"
         }
       >
         {children}
       </div>
+      {electron && panelId === "team" ? (
+        <footer className="floating-overlay-panel-footer">
+          <span className="overlay-hotkey-hint">
+            Drag the header to move. This panel stays clickable while you play.
+          </span>
+        </footer>
+      ) : null}
       {electron && onClickThroughChange ? (
         <footer className="floating-overlay-panel-footer">
           {footerTop}

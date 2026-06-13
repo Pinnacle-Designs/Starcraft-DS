@@ -1,7 +1,16 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const hotkeyRecorderApi = {
+  submit: (accelerator) =>
+    ipcRenderer.invoke("overlay:submitRecordedHotkey", accelerator),
+  cancel: () => ipcRenderer.invoke("overlay:cancelHotkeyRecording"),
+};
+
+contextBridge.exposeInMainWorld("hotkeyRecorder", hotkeyRecorderApi);
+
 contextBridge.exposeInMainWorld("starcraftDS", {
   isElectron: true,
+  apiBase: "http://127.0.0.1:3847",
   openNativeOverlay: () => ipcRenderer.invoke("overlay:open"),
   broadcastCoachState: (state) => ipcRenderer.invoke("coach:publish", state),
   onCoachState: (callback) => {
@@ -16,6 +25,8 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.invoke("overlay:setClickThrough", enabled),
   setIgnoreMouseEvents: (ignore) =>
     ipcRenderer.invoke("overlay:setIgnoreMouseEvents", ignore),
+  moveOverlayWindow: (dx, dy) =>
+    ipcRenderer.invoke("overlay:moveBy", dx, dy),
   onClickThroughHotkey: (callback) => {
     const handler = () => callback();
     ipcRenderer.on("overlay:toggleClickThrough", handler);
@@ -43,6 +54,17 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     return () =>
       ipcRenderer.removeListener("overlay:hotkeyRecordingCancelled", handler);
   },
+  onHotkeyRecorded: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("overlay:hotkeyRecorded", handler);
+    return () => ipcRenderer.removeListener("overlay:hotkeyRecorded", handler);
+  },
+  onHotkeyRecordFailed: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("overlay:hotkeyRecordFailed", handler);
+    return () =>
+      ipcRenderer.removeListener("overlay:hotkeyRecordFailed", handler);
+  },
   onCaptureHotkey: (callback) => {
     const handler = (_event, payload) => callback(payload);
     ipcRenderer.on("overlay:captureScreen", handler);
@@ -53,4 +75,15 @@ contextBridge.exposeInMainWorld("starcraftDS", {
     ipcRenderer.invoke("screenCapture:requestAccess"),
   captureScreenNow: () => ipcRenderer.invoke("screenCapture:captureNow"),
   getScreenCaptureStatus: () => ipcRenderer.invoke("screenCapture:getStatus"),
+  getAppUpdateStatus: () => ipcRenderer.invoke("updates:getStatus"),
+  checkForAppUpdate: () => ipcRenderer.invoke("updates:check"),
+  downloadAppUpdate: () => ipcRenderer.invoke("updates:download"),
+  applyAppUpdate: () => ipcRenderer.invoke("updates:apply"),
+  installAppUpdate: () => ipcRenderer.invoke("updates:install"),
+  onAppUpdateStatus: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("updates:status", handler);
+    return () => ipcRenderer.removeListener("updates:status", handler);
+  },
+  hotkeyRecorder: hotkeyRecorderApi,
 });

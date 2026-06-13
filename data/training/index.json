@@ -2,6 +2,7 @@
   "version": 1,
   "samples": [
     {
+<<<<<<< HEAD
       "id": "6ecfe1c5-7f55-4692-814d-d3410e659ae4",
       "createdAt": 1780861115912,
       "source": "overlay-hotkey",
@@ -33,10 +34,38 @@
       "corrected": [
         {
           "name": "Ravager",
+=======
+      "id": "a7416a5e-1422-445e-9cf4-0bce7394bd91",
+      "createdAt": 1780860884567,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/a7416a5e-1422-445e-9cf4-0bce7394bd91.jpg",
+      "rawDetected": [
+        {
+          "name": "Marine",
+          "count": 7,
+          "wave": 1
+        },
+        {
+          "name": "Ghost",
+          "count": 2,
+          "wave": 3
+        }
+      ],
+      "corrected": [
+        {
+          "name": "Marine",
+          "count": 4,
+          "wave": 1
+        },
+        {
+          "name": "Sentry",
+>>>>>>> 45cf684b13f775c955d3fb1ac04579f00148cc99
           "count": 2,
           "wave": 1
         },
         {
+<<<<<<< HEAD
           "name": "Zergling",
           "count": 12,
           "wave": 1
@@ -44,11 +73,158 @@
       ],
       "teamRaces": [
         "Protoss",
+=======
+          "name": "Baneling",
+          "count": 2,
+          "wave": 3
+        },
+        {
+          "name": "Colossus",
+          "count": 1,
+          "wave": 3
+        },
+        {
+          "name": "Zealot",
+          "count": 2,
+          "wave": 3
+        }
+      ],
+      "teamRaces": [
+        "Zerg",
+>>>>>>> 45cf684b13f775c955d3fb1ac04579f00148cc99
         null,
         null
       ],
       "waveShift": 0,
+<<<<<<< HEAD
       "scene": " ```json\n{\n  \"detectedUnits\": [\n    {\n      \"name\": \"Marine\",\n      \"wave\": 1,\n      \"count\": 8,\n      \"confidence\": \"low\",\n      \"notes\": \"\"\n    }\n  ],\n  \"scene\": \"Ladder 1v1 gameplay screenshot with"
+=======
+      "scene": " ```json\n{\n    \"detectedUnits\": [\n        {\"name\":\"Marine\", \"wave\":1, \"count\":4, \"confidence\":\"medium\", \"notes\":\"x4\"},\n        {\"name\":\"Ghost\", \"wave\":3, \"count\":2, \"confidence\":\"high\", \"notes\":\"\"},\n "
+    },
+    {
+      "id": "3417420d-95b5-40c1-a09c-305f5cfa7d17",
+      "createdAt": 1780860954105,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/3417420d-95b5-40c1-a09c-305f5cfa7d17.jpg",
+      "rawDetected": [
+        {
+          "name": "Marine",
+          "count": 4,
+          "wave": 1
+        },
+        {
+          "name": "Sentry",
+          "count": 2,
+          "wave": 1
+        },
+        {
+          "name": "Baneling",
+          "count": 2,
+          "wave": 3
+        },
+        {
+          "name": "Colossus",
+          "count": 1,
+          "wave": 3
+        },
+        {
+          "name": "Zealot",
+          "count": 2,
+          "wave": 3
+        }
+      ],
+      "corrected": [
+        {
+          "name": "Sentry",
+          "count": 1,
+          "wave": 1
+        }
+      ],
+      "teamRaces": [
+        "Zerg",
+        null,
+        null
+      ],
+      "waveShift": 0,
+      "scene": " ```json\n{\n  \"detectedUnits\": [\n    {\"name\": \"Marine\", \"wave\": 1, \"count\": 4, \"confidence\": \"medium\", \"notes\": \"\"},\n    {\"name\": \"Zealot\", \"wave\": 3, \"count\": 2, \"confidence\": \"high\", \"notes\": \"\"},\n  "
+    },
+    {
+      "id": "23977279-9976-4670-b699-9adbc4ce6f27",
+      "createdAt": 1780861123105,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/23977279-9976-4670-b699-9adbc4ce6f27.jpg",
+      "rawDetected": [
+        {
+          "name": "Marine",
+          "count": 4,
+          "wave": 2
+        }
+      ],
+      "corrected": [
+        {
+          "name": "Colossus",
+          "count": 1,
+          "wave": 1
+        },
+        {
+          "name": "Zealot",
+          "count": 2,
+          "wave": 1
+        }
+      ],
+      "teamRaces": [
+        "Zerg",
+        null,
+        null
+      ],
+      "waveShift": 0,
+      "scene": " ```json\n{\n  \"detectedUnits\": [\n    {\n      \"name\": \"Marine\",\n      \"wave\": 2,\n      \"count\": 4,\n      \"confidence\": \"medium\"\n    }\n  ]\n}\n```\n\nThe image provided appears to be a screenshot of the game"
+    },
+    {
+      "id": "88ddfa8b-bf69-4989-b66d-2e47ae122741",
+      "createdAt": 1780861149739,
+      "source": "overlay-hotkey",
+      "provider": "ollama",
+      "imageFile": "samples/88ddfa8b-bf69-4989-b66d-2e47ae122741.jpg",
+      "rawDetected": [
+        {
+          "name": "Colossus",
+          "count": 1,
+          "wave": 1
+        },
+        {
+          "name": "Zealot",
+          "count": 2,
+          "wave": 1
+        }
+      ],
+      "corrected": [
+        {
+          "name": "Colossus",
+          "count": 1,
+          "wave": 1
+        },
+        {
+          "name": "Stalker",
+          "count": 2,
+          "wave": 1
+        },
+        {
+          "name": "Zealot",
+          "count": 2,
+          "wave": 1
+        }
+      ],
+      "teamRaces": [
+        "Zerg",
+        null,
+        null
+      ],
+      "waveShift": 0,
+      "scene": " ```json\n{\n  \"detectedUnits\": [\n    {\"name\": \"Zealot\", \"wave\": 1, \"count\": 2, \"confidence\": \"high\"},\n    {\"name\": \"Colossus\", \"wave\": 1, \"count\": 1, \"confidence\": \"high\"}\n  ]\n}\n```\n\nThis image shows a"
+>>>>>>> 45cf684b13f775c955d3fb1ac04579f00148cc99
     }
   ]
 }

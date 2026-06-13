@@ -1,10 +1,12 @@
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { getAllUnitNames, normalizeUnitName } from "../counterService.js";
+import { dataPath } from "../dataPaths.js";
+import {
+  getAllUnitNames,
+  normalizeUnitName,
+  normalizeUnitNameFuzzy,
+} from "../counterService.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const promptPath = join(__dirname, "../../../data/vision-system-prompt.txt");
+const promptPath = dataPath("vision-system-prompt.txt");
 
 export interface VisionDetectedUnit {
   name: string;
@@ -61,21 +63,16 @@ function canonicalizeVisionUnitName(raw: string): string | null {
     const singular = normalizeUnitName(trimmed.slice(0, -1));
     if (singular) return singular;
   }
-  return null;
+  return normalizeUnitNameFuzzy(trimmed);
 }
 
-const MAX_DETECTED_UNITS = 12;
+const MAX_DETECTED_UNITS = 16;
 
-/** Drop low-confidence and excessive detections (hallucination guard). */
+/** Cap excessive detections while keeping low-confidence hits from vision models. */
 export function filterVisionUnits(
   units: VisionDetectedUnit[]
 ): VisionDetectedUnit[] {
-  return units
-    .filter((unit) => {
-      const confidence = (unit.confidence ?? "medium").toLowerCase();
-      return confidence === "high" || confidence === "medium";
-    })
-    .slice(0, MAX_DETECTED_UNITS);
+  return units.slice(0, MAX_DETECTED_UNITS);
 }
 
 export function parseVisionJson(content: string): VisionResult["detectedUnits"] {

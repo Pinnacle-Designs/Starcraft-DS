@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AnalyzeResponse, DetectedUnit, PlayerRace } from "./api";
+import { showAiCaptureReplay } from "./featureFlags";
 import { WAVE_DEFS } from "./manualArmy";
 import {
   allCounterPaths,
@@ -7,6 +8,7 @@ import {
   formatOwnedNeed,
   formatEnemyStack,
   formatPlatformHint,
+  formatStackCostLabel,
   primaryBuildCount,
   alternativeBuildCounts,
   tierLabel,
@@ -109,16 +111,16 @@ export function SuggestionsPanel({
               Updated {formatScanTime(lastScanAt)}
             </span>
           )}
-          {result?.mode === "ai" && result.provider === "ollama" && (
+          {showAiCaptureReplay && result?.mode === "ai" && result.provider === "ollama" && (
             <span className="badge badge-ollama">Ollama</span>
           )}
-          {result?.mode === "ai" && result.provider === "openai" && (
+          {showAiCaptureReplay && result?.mode === "ai" && result.provider === "openai" && (
             <span className="badge badge-ai">OpenAI</span>
           )}
-          {result?.mode === "ai" && !result.provider && (
+          {showAiCaptureReplay && result?.mode === "ai" && !result.provider && (
             <span className="badge badge-ai">AI</span>
           )}
-          {result?.provider === "ocr" && (
+          {showAiCaptureReplay && result?.provider === "ocr" && (
             <span className="badge badge-ocr">OCR</span>
           )}
           {result?.mode === "heuristic" &&
@@ -136,7 +138,9 @@ export function SuggestionsPanel({
             ? "● Scanning…"
             : lastScanAt
               ? `Updated ${formatScanTime(lastScanAt)}`
-              : "● Waiting for first scan…"}
+              : showAiCaptureReplay
+                ? "● Waiting for first scan…"
+                : "● Waiting for counters…"}
         </div>
       )}
 
@@ -207,6 +211,11 @@ export function SuggestionsPanel({
           >
             <div className="enemy">
               vs {formatEnemyStack(s.enemyUnit, s.enemyCount, detected?.notes)}
+              {formatStackCostLabel(s.enemyStackMinerals, s.enemyStackGas) ? (
+                <span className="stack-cost stack-cost-enemy">
+                  {formatStackCostLabel(s.enemyStackMinerals, s.enemyStackGas)}
+                </span>
+              ) : null}
               {tierLabel(s.enemyTier) ? (
                 <span className="counter-tier-badge enemy-tier-badge">
                   {tierLabel(s.enemyTier)}
@@ -224,11 +233,57 @@ export function SuggestionsPanel({
                   {WAVE_DEFS[(detected?.wave ?? enemyWave)! - 1]?.label}
                 </span>
               ) : null}
+              {s.maxTierUnlocked ? (
+                <span className="counter-tier-badge suggestion-tech-tier">
+                  Your T{s.maxTierUnlocked}
+                </span>
+              ) : null}
             </div>
+            {s.bestOverallCounter &&
+            (!primary || s.bestOverallCounter.name !== primary.name) ? (
+              <div className="build build-best-overall">
+                <span className="build-alt-label">Best counter</span>
+                <span className="build-primary-value">
+                  {s.bestOverallCounter.suggested != null
+                    ? `${s.bestOverallCounter.suggested}× `
+                    : ""}
+                  {s.bestOverallCounter.name}
+                  {tierLabel(s.bestOverallCounter.counterTier) ? (
+                    <span className="counter-tier-badge best-overall-tier">
+                      {tierLabel(s.bestOverallCounter.counterTier)}
+                    </span>
+                  ) : null}
+                  {s.bestOverallCounter.buildable === false &&
+                  s.bestOverallCounter.counterTier ? (
+                    <span className="counter-tier-badge counter-tier-locked">
+                      unlock T{s.bestOverallCounter.counterTier}
+                    </span>
+                  ) : null}
+                  {formatStackCostLabel(
+                    s.bestOverallCounter.stackMinerals,
+                    s.bestOverallCounter.stackGas
+                  ) ? (
+                    <span className="stack-cost stack-cost-best">
+                      {formatStackCostLabel(
+                        s.bestOverallCounter.stackMinerals,
+                        s.bestOverallCounter.stackGas
+                      )}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            ) : null}
             {primary ? (
               <div className="build build-primary">
                 <span className="build-primary-label">
-                  {primary.coverage === "covered" ? "Hold" : "Build"}
+                  {s.bestOverallCounter &&
+                  s.bestOverallCounter.name !== primary.name
+                    ? s.maxTierUnlocked
+                      ? `At your T${s.maxTierUnlocked}`
+                      : "Your tech"
+                    : primary.coverage === "covered"
+                      ? "Hold"
+                      : "Build"}
                 </span>
                 <span className="build-primary-value">
                   {counterRace}:{" "}
@@ -250,6 +305,11 @@ export function SuggestionsPanel({
                     </span>
                   ) : null}
                 </span>
+                {formatStackCostLabel(primary.stackMinerals, primary.stackGas) ? (
+                  <span className="stack-cost stack-cost-build">
+                    {formatStackCostLabel(primary.stackMinerals, primary.stackGas)}
+                  </span>
+                ) : null}
                 {formatOwnedNeed(primary) ? (
                   <span className="build-owned-hint">{formatOwnedNeed(primary)}</span>
                 ) : null}
@@ -295,11 +355,41 @@ export function SuggestionsPanel({
                           T{p.counterTier}
                         </span>
                       ) : null}
+                      {formatStackCostLabel(p.stackMinerals, p.stackGas) ? (
+                        <span className="stack-cost stack-cost-alt">
+                          {formatStackCostLabel(p.stackMinerals, p.stackGas)}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
               </div>
-            ) : alternatives.length > 0 ? (
+            ) : null}
+            {!compact && s.lockedCounters && s.lockedCounters.length > 0 ? (
+              <div className="build-locked-tier">
+                <span className="build-alt-label">
+                  Needs higher tech (unlock T
+                  {Math.min(
+                    ...s.lockedCounters.map((entry) => entry.counterTier ?? 3)
+                  )}
+                  )
+                </span>
+                <span className="build-alt-units">
+                  {s.lockedCounters.map((entry) => (
+                    <span key={entry.name} className="build-alt-option build-locked-option">
+                      {entry.suggested != null ? `${entry.suggested}× ` : ""}
+                      {entry.name}
+                      {tierLabel(entry.counterTier) ? (
+                        <span className="counter-tier-badge counter-tier-locked">
+                          {tierLabel(entry.counterTier)}
+                        </span>
+                      ) : null}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ) : null}
+            {alternatives.length > 0 ? (
               <div className="build-alternatives">
                 <span className="build-alt-label">Also works</span>
                 <span className="build-alt-units">
@@ -342,8 +432,10 @@ export function SuggestionsPanel({
                   </>
                 )}
                 {primary.budgetOption
-                  ? " — lower-tier option; mass enough to overwhelm (Direct Strike)"
-                  : ""}
+                  ? ` — T${primary.counterTier ?? 1} option at your T${s.maxTierUnlocked ?? "?"} tech; mass enough to overwhelm`
+                  : s.maxTierUnlocked
+                    ? ` — using your T${s.maxTierUnlocked} tech`
+                    : ""}
                 {s.counterType === "soft" ? " (soft counter — round up)" : ""}
               </div>
             ) : null}
@@ -361,12 +453,16 @@ export function SuggestionsPanel({
           {counterRefreshing
             ? "Refreshing counters…"
             : live && scanning
-            ? "Analyzing your capture…"
+            ? showAiCaptureReplay
+              ? "Analyzing your capture…"
+              : "Updating counters…"
             : live
-              ? "No units detected yet — keep Live coach on while scouting fights."
+              ? showAiCaptureReplay
+                ? "No units detected yet — keep Live coach on while scouting fights."
+                : "Tag enemy units in the wave builder to refresh counters."
               : compact
-                ? "Waiting for coach…"
-                : "Analyze, import a replay, or tag enemy units."}
+                ? "Waiting for counters…"
+                : "Tag enemy units in the wave builder to get counter suggestions."}
         </p>
       )}
       </div>

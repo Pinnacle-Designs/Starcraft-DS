@@ -23,6 +23,7 @@ export interface CoachState {
   waveShift?: WaveShift;
   tierUnlocked?: TierUnlocked;
   manualWaves?: ManualWavesState;
+  friendlyWaves?: ManualWavesState;
   result: AnalyzeResponse | null;
   live: boolean;
   scanning?: boolean;

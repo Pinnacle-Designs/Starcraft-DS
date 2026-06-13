@@ -44,6 +44,7 @@
     "Observer": { "ground": 0, "air": 9 },
     "Tempest": { "ground": 0, "air": 18 },
     "Carrier": { "ground": 0, "air": 36 },
+    "Mothership": { "ground": 0, "air": 36 },
     "Zergling": { "ground": 4.5, "air": 0 },
     "Baneling": { "ground": 4.5, "air": 0 },
     "Queen": { "ground": 9, "air": 0 },

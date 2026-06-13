@@ -7,13 +7,14 @@ import {
   type VisionProviders,
   type WaveShift,
 } from "./api";
+import { isStaticWebDeploy } from "./apiConfig";
 import { CaptureHistoryPanel } from "./CaptureHistoryPanel";
 import { saveCaptureFromAnalysis, saveCaptureFromBase64 } from "./captureHistory";
 import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
 import { ManualArmyBuilder } from "./ManualArmyBuilder";
 import { VideoUpload } from "./VideoUpload";
 import { SuggestionsPanel } from "./SuggestionsPanel";
-import { TeamSelection } from "./TeamSelection";
+import { TeamArmyPanel } from "./TeamArmyPanel";
 import {
   DEFAULT_TEAM_WAVES,
   DEFAULT_TIER_UNLOCKED,
@@ -27,7 +28,11 @@ import {
   syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
-import { captureMediaEnabled, overlayEnabled } from "./featureFlags";
+import {
+  captureMediaEnabled,
+  overlayEnabled,
+  showAiCaptureReplay,
+} from "./featureFlags";
 import {
   isElectronApp,
   MAIN_SYNC_ORIGIN,
@@ -42,6 +47,9 @@ import { useOverlayScreenCapture } from "./useOverlayScreenCapture";
 import { usePictureInPicture } from "./usePictureInPicture";
 import { useScreenCapture } from "./useScreenCapture";
 import { useVisionTraining } from "./useVisionTraining";
+import { AppUpdateBanner } from "./AppUpdateBanner";
+import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
+import { DownloadApp } from "./DownloadApp";
 
 export default function App() {
   const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
@@ -117,6 +125,7 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (isStaticWebDeploy()) return;
     fetchHealth().then((h) => setVision(h.visionProviders));
     const id = window.setInterval(() => {
       fetchHealth().then((h) => setVision(h.visionProviders));
@@ -213,7 +222,7 @@ export default function App() {
     lastCaptureSummary,
     error: captureScanError,
   } = useOverlayScreenCapture({
-    enabled: isElectronApp(),
+    enabled: showAiCaptureReplay && isElectronApp(),
     manualWaves,
     teamWaves,
     waveShift,
@@ -286,8 +295,10 @@ export default function App() {
     return subscribeCoachState((incoming) => {
       if (incoming.origin !== OVERLAY_SYNC_ORIGIN) return;
       if (incoming.manualWaves) setManualWaves(incoming.manualWaves);
-      if (incoming.teamRaces) {
-        setTeamWaves(incoming.teamRaces);
+      if (incoming.teamRaces) setTeamWaves(incoming.teamRaces);
+      if (incoming.friendlyWaves) {
+        setFriendlyWaves(incoming.friendlyWaves);
+      } else if (incoming.teamRaces) {
         setFriendlyWaves((waves) =>
           syncFriendlyWaveRaces(waves, incoming.teamRaces!)
         );
@@ -308,6 +319,7 @@ export default function App() {
       waveShift,
       tierUnlocked,
       manualWaves,
+      friendlyWaves,
       result,
       live,
       scanning,
@@ -321,6 +333,7 @@ export default function App() {
     waveShift,
     tierUnlocked,
     manualWaves,
+    friendlyWaves,
     playerRace,
     result,
     live,
@@ -369,7 +382,9 @@ export default function App() {
         if (data.detectedUnits.length === 0) {
           setLastError(
             data.scene?.slice(0, 140) ||
-              "No units detected. Tag manually, or install Ollama (ollama pull llava) for visual detection on the map."
+              showAiCaptureReplay
+                ? "No units detected. Tag manually, or install Ollama (ollama pull llava) for visual detection on the map."
+                : "No units tagged yet — add enemy units in the wave builder."
           );
         }
       } catch (e) {
@@ -426,12 +441,17 @@ export default function App() {
     void refreshCounters();
   };
 
-  const handleClearSelections = useCallback(() => {
+  const handleClearEnemySelections = useCallback(() => {
     setManualWaves((waves) => clearAllWaves(waves));
-    setFriendlyWaves((waves) => clearAllWaves(waves));
     setResult(null);
     setLastCounterRefreshAt(null);
   }, []);
+
+  const handleClearFriendlySelections = useCallback(() => {
+    setFriendlyWaves((waves) =>
+      syncFriendlyWaveRaces(clearAllWaves(waves), teamWaves)
+    );
+  }, [teamWaves]);
 
   const handleTeamWavesChange = useCallback(
     (teams: typeof teamWaves) => {
@@ -470,7 +490,7 @@ export default function App() {
         setResult(null);
         setLastCounterRefreshAt(null);
       }
-    }, 450);
+    }, 200);
     return () => clearTimeout(id);
   }, [
     manualUnitsKey,
@@ -497,12 +517,18 @@ export default function App() {
   const handleToggleLive = () => {
     if (!canLive) {
       setLastError(
-        "Live coach needs screen capture with OCR, or enemy units in the manual builder."
+        showAiCaptureReplay
+          ? "Live coach needs screen capture with OCR, or enemy units in the manual builder."
+          : "Tag enemy units in the wave builder to refresh counters."
       );
       return;
     }
     if (!capturing) {
-      setLastError("Start screen capture or upload a video before Live coach.");
+      setLastError(
+        showAiCaptureReplay
+          ? "Start screen capture or upload a video before Live coach."
+          : "Tag enemy units in the wave builder to refresh counters."
+      );
       return;
     }
     setLive((v) => !v);
@@ -510,6 +536,14 @@ export default function App() {
   };
 
   const visionHint = () => {
+    if (!showAiCaptureReplay) {
+      if (live) {
+        return scanning
+          ? "● Updating counters…"
+          : "● Refreshing counters from your army builder.";
+      }
+      return "";
+    }
     if (live) {
       if (scanning) return "● Scanning capture for enemy units…";
       if (visionEnabled) return `● Live vision (${vision?.active}) — updates every few seconds.`;
@@ -550,13 +584,24 @@ export default function App() {
       <header className="header">
         <div>
           <h1 className="logo">
-            <img
-              src="/starcraft-coach-logo.png"
-              alt="Starcraft Coach — The Ultimate Counter Tool"
-              className="logo-img"
-              width={512}
-              height={512}
-            />
+            <picture>
+              <source
+                srcSet={`${import.meta.env.BASE_URL}starcraft-coach-logo-display.webp`}
+                type="image/webp"
+              />
+              <img
+                src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
+                alt=""
+                className="logo-img"
+                width={400}
+                height={306}
+                decoding="async"
+                fetchPriority="high"
+              />
+            </picture>
+            <span className="logo-text">
+              Starcraft Coach — Direct Strike counter tool for StarCraft II
+            </span>
           </h1>
         </div>
         {overlayEnabled && (
@@ -574,17 +619,22 @@ export default function App() {
                 ? "Opens always-on-top enemy and team panels you can drag over your game."
                 : "Opens two separate windows you can place over your game. Allow popups for this site — team selection opens automatically after enemy waves."}
             </p>
+            <Sc2DisplayModeHint className="overlay-note sc2-display-hint" />
           </div>
         )}
       </header>
-      <p className="header-slogan">Make better decisions. Win more games.</p>
+      <p className="header-slogan">
+        Direct Strike counter coach — make better decisions, win more games.
+      </p>
+      <AppUpdateBanner />
+      <DownloadApp />
       {overlayHint ? (
         <p className="status overlay-hint" role="status">
           {overlayHint}
         </p>
       ) : null}
 
-      <div className="grid">
+      <main className="grid">
         <section className="panel">
           {captureMediaEnabled && (
           <section className="panel-section capture-section">
@@ -624,9 +674,16 @@ export default function App() {
                 <canvas ref={canvasRef} hidden />
                 {!capturing && (
                   <div className="preview-placeholder">
-                    {isElectronApp()
-                      ? "Start capture to analyze full-screen screenshots of your primary display (same as the capture hotkey)."
-                      : "Share your StarCraft II window or upload a video below to begin"}
+                    {isElectronApp() ? (
+                      <>
+                        Start capture to analyze full-screen screenshots of your
+                        primary display (same as the capture hotkey). Use{" "}
+                        <strong>Fullscreen Windowed</strong> in SC2 video settings
+                        for best results.
+                      </>
+                    ) : (
+                      "Share your StarCraft II window or upload a video below to begin"
+                    )}
                   </div>
                 )}
                 {capturing && videoSource === "electron" && (
@@ -747,32 +804,28 @@ export default function App() {
           />
           )}
 
-          {isElectronApp() ? (
+          {showAiCaptureReplay && isElectronApp() ? (
             <CaptureHotkeySettings
               scanning={captureScanning}
               lastCaptureAt={lastCaptureAt}
               lastCaptureSummary={lastCaptureSummary}
             />
           ) : null}
-          {captureScanError ? (
+          {showAiCaptureReplay && captureScanError ? (
             <p className="capture-hotkey-error">{captureScanError}</p>
           ) : null}
           <ManualArmyBuilder
             waves={manualWaves}
+            collapsibleWaves
             onChange={setManualWaves}
             onSubmit={handleManualSuggest}
-            onClearSelections={handleClearSelections}
-            onSaveTraining={handleSaveTrainingLabels}
+            onClearSelections={handleClearEnemySelections}
+            onSaveTraining={
+              showAiCaptureReplay ? handleSaveTrainingLabels : undefined
+            }
             trainingPending={trainingPending}
             trainingSaving={trainingSaving}
             refreshing={counterRefreshing}
-          />
-          <ManualArmyBuilder
-            variant="friendly"
-            waves={friendlyWaves}
-            teamWaves={teamWaves}
-            onChange={setFriendlyWaves}
-            onClearSelections={handleClearSelections}
           />
           {lastError && (
             <p className="status" style={{ color: "var(--danger)" }}>
@@ -782,13 +835,16 @@ export default function App() {
         </section>
 
         <aside className="panel panel-coach">
-          <TeamSelection
+          <TeamArmyPanel
             teamWaves={teamWaves}
             waveShift={waveShift}
             tierUnlocked={tierUnlocked}
-            onChange={handleTeamWavesChange}
+            friendlyWaves={friendlyWaves}
+            onTeamChange={handleTeamWavesChange}
             onWaveShiftChange={setWaveShift}
-            onTierUnlockedChange={setTierUnlocked}
+            onTierChange={setTierUnlocked}
+            onFriendlyChange={setFriendlyWaves}
+            onClearFriendly={handleClearFriendlySelections}
           />
           <SuggestionsPanel
             playerRace={playerRace}
@@ -798,24 +854,33 @@ export default function App() {
             lastScanAt={lastScanAt ?? lastCounterRefreshAt}
             counterRefreshing={counterRefreshing}
           />
-          {result?.scene && result.mode === "ai" && !live && (
+          {showAiCaptureReplay &&
+            result?.scene &&
+            result.mode === "ai" &&
+            !live && (
             <p className="status" style={{ marginTop: "0.75rem" }}>
               {result.scene.slice(0, 120)}
               {result.scene.length > 120 ? "…" : ""}
             </p>
           )}
         </aside>
-      </div>
+      </main>
 
       <footer className="sources">
-        Counter data from{" "}
-        <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
-          Osiris SC2 Guide
-        </a>
-        ,{" "}
-        <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
-        , and{" "}
-        <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
+        <p>
+          Counter data from{" "}
+          <a href="https://www.osirissc2guide.com/starcraft-2-counters-list.html">
+            Osiris SC2 Guide
+          </a>
+          ,{" "}
+          <a href="https://vaughnroyko.com/sciicounters/">Vaughn Royko charts</a>
+          , and{" "}
+          <a href="https://log.havrlant.cz/">Direct Strike guides (Havrlant)</a>.
+        </p>
+        <p className="site-footer-meta">
+          Starcraft Coach — free Direct Strike counter tool for StarCraft II.{" "}
+          <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
+        </p>
       </footer>
 
     </div>
