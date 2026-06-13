@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const indexHtml = path.join(root, "client", "dist", "index.html");
 
 require("./copy-data-for-client.cjs");
+require("./optimize-logo.cjs");
 
 function run(label, args, env = {}) {
   const result = spawnSync("npm", args, {

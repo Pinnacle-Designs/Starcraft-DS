@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  fetchUnitCatalog,
   type PlayerRace,
   type TierUnlocked,
   type UnitTier,
-  type UnitsByRace,
   type WaveShift,
 } from "./api";
 import { CollapsibleWaveSection } from "./CollapsibleWaveSection";
@@ -20,6 +18,7 @@ import {
   type WaveIndex,
 } from "./manualArmy";
 import { TieredUnitGrid } from "./TieredUnitGrid";
+import { useUnitCatalog } from "./useUnitCatalog";
 import {
   raceForWave,
   setTierUnlockedForWave,
@@ -66,22 +65,9 @@ export function TeamArmyPanel({
   onFriendlyChange,
   onClearFriendly,
 }: Props) {
-  const [byRace, setByRace] = useState<UnitsByRace | null>(null);
-  const [tierByUnit, setTierByUnit] = useState<Record<string, number>>({});
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedWaves, setExpandedWaves] =
     useState<Record<WaveIndex, boolean>>(DEFAULT_EXPANDED);
-
-  useEffect(() => {
-    fetchUnitCatalog()
-      .then(({ byRace: races, tierByUnit: tiers }) => {
-        setByRace(races);
-        setTierByUnit(tiers);
-      })
-      .catch((e) =>
-        setLoadError(e instanceof Error ? e.message : "Failed to load units")
-      );
-  }, []);
+  const { byRace, tierByUnit, loadError } = useUnitCatalog();
 
   const allEntries = manualArmyEntries(friendlyWaves);
   const total = manualArmyTotal(friendlyWaves);

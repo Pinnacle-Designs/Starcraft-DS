@@ -4,6 +4,7 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 
 require("./copy-data-for-client.cjs");
+require("./optimize-logo.cjs");
 
 const result = spawnSync("npm", ["run", "build", "--prefix", "client"], {
   cwd: root,

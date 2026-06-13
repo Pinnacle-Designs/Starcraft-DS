@@ -96,6 +96,19 @@ body {
   background-attachment: fixed;
 }
 
+.app-shell-loading {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.panel,
+.panel-coach {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
 body::before {
   content: "";
   position: fixed;

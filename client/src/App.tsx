@@ -7,6 +7,7 @@ import {
   type VisionProviders,
   type WaveShift,
 } from "./api";
+import { isStaticWebDeploy } from "./apiConfig";
 import { CaptureHistoryPanel } from "./CaptureHistoryPanel";
 import { saveCaptureFromAnalysis, saveCaptureFromBase64 } from "./captureHistory";
 import { CaptureHotkeySettings } from "./CaptureHotkeySettings";
@@ -124,6 +125,7 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (isStaticWebDeploy()) return;
     fetchHealth().then((h) => setVision(h.visionProviders));
     const id = window.setInterval(() => {
       fetchHealth().then((h) => setVision(h.visionProviders));
@@ -488,7 +490,7 @@ export default function App() {
         setResult(null);
         setLastCounterRefreshAt(null);
       }
-    }, 450);
+    }, 200);
     return () => clearTimeout(id);
   }, [
     manualUnitsKey,
@@ -582,15 +584,21 @@ export default function App() {
       <header className="header">
         <div>
           <h1 className="logo">
-            <img
-              src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
-              alt=""
-              className="logo-img"
-              width={512}
-              height={512}
-              decoding="async"
-              fetchPriority="high"
-            />
+            <picture>
+              <source
+                srcSet={`${import.meta.env.BASE_URL}starcraft-coach-logo-display.webp`}
+                type="image/webp"
+              />
+              <img
+                src={`${import.meta.env.BASE_URL}starcraft-coach-logo.png`}
+                alt=""
+                className="logo-img"
+                width={400}
+                height={306}
+                decoding="async"
+                fetchPriority="high"
+              />
+            </picture>
             <span className="logo-text">
               Starcraft Coach — Direct Strike counter tool for StarCraft II
             </span>

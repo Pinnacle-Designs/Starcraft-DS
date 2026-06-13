@@ -28,6 +28,8 @@ interface UnitCatalogJson {
 
 let countersCache: CountersDb | null = null;
 let catalogCache: UnitCatalogJson | null = null;
+let countersPromise: Promise<CountersDb> | null = null;
+let catalogPromise: Promise<UnitCatalogJson> | null = null;
 
 function dataUrl(file: string): string {
   const base = import.meta.env.BASE_URL ?? "/";
@@ -38,39 +40,60 @@ function dataUrl(file: string): string {
 
 async function loadCounters(): Promise<CountersDb> {
   if (countersCache) return countersCache;
-  const res = await fetch(dataUrl("counters.json"));
-  if (!res.ok) throw new Error("Failed to load counter data");
-  countersCache = (await res.json()) as CountersDb;
-  return countersCache;
+  if (!countersPromise) {
+    countersPromise = fetch(dataUrl("counters.json"))
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load counter data");
+        return res.json() as Promise<CountersDb>;
+      })
+      .then((data) => {
+        countersCache = data;
+        return data;
+      })
+      .catch((err) => {
+        countersPromise = null;
+        throw err;
+      });
+  }
+  return countersPromise;
 }
 
 async function loadCatalog(): Promise<UnitCatalogJson> {
   if (catalogCache) return catalogCache;
-  const [counters, tiersRes] = await Promise.all([
-    loadCounters(),
-    fetch(dataUrl("unit-tiers.json")),
-  ]);
-  if (!tiersRes.ok) throw new Error("Failed to load unit tiers");
-  const tierByUnit = (await tiersRes.json()) as Record<string, number>;
-  const byRace: Record<PlayerRace, string[]> = {
-    Protoss: [],
-    Terran: [],
-    Zerg: [],
-  };
-  for (const [name, entry] of Object.entries(counters.units)) {
-    const race = entry.race as PlayerRace;
-    if (byRace[race]) byRace[race].push(name);
-  }
-  for (const race of Object.keys(byRace) as PlayerRace[]) {
-    byRace[race].sort((a, b) => {
-      const ta = tierByUnit[a] ?? 2;
-      const tb = tierByUnit[b] ?? 2;
-      if (ta !== tb) return ta - tb;
-      return a.localeCompare(b);
+  if (!catalogPromise) {
+    catalogPromise = (async () => {
+      const [counters, tiersRes] = await Promise.all([
+        loadCounters(),
+        fetch(dataUrl("unit-tiers.json")),
+      ]);
+      if (!tiersRes.ok) throw new Error("Failed to load unit tiers");
+      const tierByUnit = (await tiersRes.json()) as Record<string, number>;
+      const byRace: Record<PlayerRace, string[]> = {
+        Protoss: [],
+        Terran: [],
+        Zerg: [],
+      };
+      for (const [name, entry] of Object.entries(counters.units)) {
+        const race = entry.race as PlayerRace;
+        if (byRace[race]) byRace[race].push(name);
+      }
+      for (const race of Object.keys(byRace) as PlayerRace[]) {
+        byRace[race].sort((a, b) => {
+          const ta = tierByUnit[a] ?? 2;
+          const tb = tierByUnit[b] ?? 2;
+          if (ta !== tb) return ta - tb;
+          return a.localeCompare(b);
+        });
+      }
+      const data = { byRace, tierByUnit };
+      catalogCache = data;
+      return data;
+    })().catch((err) => {
+      catalogPromise = null;
+      throw err;
     });
   }
-  catalogCache = { byRace, tierByUnit };
-  return catalogCache;
+  return catalogPromise;
 }
 
 function normalizeName(raw: string, db: CountersDb): string | null {

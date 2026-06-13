@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  fetchUnitCatalog,
   type PlayerRace,
   type TeamWaves,
-  type UnitsByRace,
 } from "./api";
 import { CollapsibleWaveSection } from "./CollapsibleWaveSection";
 import { showAiCaptureReplay } from "./featureFlags";
@@ -24,6 +22,7 @@ import {
   type WaveIndex,
 } from "./manualArmy";
 import { TieredUnitGrid } from "./TieredUnitGrid";
+import { useUnitCatalog } from "./useUnitCatalog";
 
 const RACES: PlayerRace[] = ["Protoss", "Terran", "Zerg"];
 
@@ -61,11 +60,9 @@ export function ManualArmyBuilder({
   collapsibleWaves = false,
 }: Props) {
   const isFriendly = variant === "friendly";
-  const [byRace, setByRace] = useState<UnitsByRace | null>(null);
-  const [tierByUnit, setTierByUnit] = useState<Record<string, number>>({});
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedWaves, setExpandedWaves] =
     useState<Record<WaveIndex, boolean>>(DEFAULT_EXPANDED);
+  const { byRace, tierByUnit, loadError } = useUnitCatalog();
 
   const army = activeWaveArmy(waves);
   const waveDef = WAVE_DEFS[waves.activeWave];
@@ -74,17 +71,6 @@ export function ManualArmyBuilder({
       ? raceForWave(teamWaves, (waves.activeWave + 1) as 1 | 2 | 3)
       : army.enemyRace;
   const displayRace = isFriendly ? friendlyRace : army.enemyRace;
-
-  useEffect(() => {
-    fetchUnitCatalog()
-      .then(({ byRace: races, tierByUnit: tiers }) => {
-        setByRace(races);
-        setTierByUnit(tiers);
-      })
-      .catch((e) =>
-        setLoadError(e instanceof Error ? e.message : "Failed to load units")
-      );
-  }, []);
 
   const allEntries = manualArmyEntries(waves);
   const waveOnlyEntries = waveEntries(army);
