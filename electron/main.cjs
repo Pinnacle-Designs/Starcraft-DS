@@ -1160,6 +1160,23 @@ ipcMain.handle("overlay:setIgnoreMouseEvents", (event, ignore) => {
   }
 });
 
+ipcMain.handle("overlay:moveBy", (event, dx, dy) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return;
+  const deltaX = Math.round(Number(dx) || 0);
+  const deltaY = Math.round(Number(dy) || 0);
+  if (!deltaX && !deltaY) return;
+  const [x, y] = win.getPosition();
+  const [width, height] = win.getSize();
+  const { x: nextX, y: nextY } = clampOverlayBounds(
+    x + deltaX,
+    y + deltaY,
+    width,
+    height
+  );
+  win.setPosition(nextX, nextY);
+});
+
 ipcMain.handle("screenCapture:requestAccess", () =>
   requestScreenCaptureAccess()
 );

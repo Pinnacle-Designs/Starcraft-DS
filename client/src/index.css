@@ -1643,6 +1643,7 @@ button:focus-visible {
 
 .manual-army-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
@@ -1656,6 +1657,50 @@ button:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.unit-count-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.unit-count-bulk-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.65rem;
+  padding: 0 0.1rem;
+  border: 1px solid rgba(70, 78, 90, 0.65);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #2a303a 0%, #1a1f27 100%);
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.unit-count-bulk-btn:hover:not(:disabled) {
+  color: var(--text-silver);
+  border-color: rgba(90, 98, 110, 0.85);
+  background: linear-gradient(180deg, #3a424e 0%, #242a34 100%);
+}
+
+.unit-count-bulk-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, #1e232b 0%, #161a20 100%);
+}
+
+.unit-count-bulk-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .unit-count-stepper {

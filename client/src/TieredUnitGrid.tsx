@@ -39,6 +39,22 @@ function tierSummary(
   return tagged === 1 ? `1 tagged · ${total}` : `${tagged} tagged · ${total}`;
 }
 
+const MIN_UNIT_COUNT = 0;
+const MAX_UNIT_COUNT = 9999;
+
+function clampUnitCount(n: number): number {
+  return Math.max(MIN_UNIT_COUNT, Math.min(MAX_UNIT_COUNT, n));
+}
+
+function bumpUnitCount(
+  waveArmy: ManualArmyState,
+  name: string,
+  delta: number
+): ManualArmyState {
+  const current = waveArmy.counts[name] ?? 0;
+  return setUnitCount(waveArmy, name, clampUnitCount(current + delta));
+}
+
 export function TieredUnitGrid({
   waveIndex,
   colorClass,
@@ -112,63 +128,89 @@ export function TieredUnitGrid({
                       <span className="manual-army-name" title={name}>
                         {name}
                       </span>
-                      <div className="unit-count-stepper">
-                        <input
-                          type="number"
-                          className="unit-count-input"
-                          min={0}
-                          max={9999}
-                          step={1}
-                          value={count === 0 ? "" : count}
-                          placeholder="0"
-                          aria-label={`${name} count`}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            const n =
-                              raw === ""
-                                ? 0
-                                : Math.max(0, parseInt(raw, 10) || 0);
-                            patchWaveArmy(
-                              setUnitCount(waveArmy, name, n)
-                            );
-                          }}
-                        />
-                        <div className="unit-count-arrows">
+                      <div className="unit-count-controls">
+                        {([-10, -5] as const).map((delta) => (
                           <button
+                            key={delta}
                             type="button"
-                            className="unit-count-arrow"
-                            aria-label={`Increase ${name}`}
-                            disabled={count >= 9999}
+                            className="unit-count-bulk-btn"
+                            aria-label={`Decrease ${name} by ${Math.abs(delta)}`}
+                            disabled={count <= MIN_UNIT_COUNT}
                             onClick={() =>
                               patchWaveArmy(
-                                setUnitCount(
-                                  waveArmy,
-                                  name,
-                                  Math.min(9999, count + 1)
-                                )
+                                bumpUnitCount(waveArmy, name, delta)
                               )
                             }
                           >
-                            ▲
+                            {delta}
                           </button>
-                          <button
-                            type="button"
-                            className="unit-count-arrow"
-                            aria-label={`Decrease ${name}`}
-                            disabled={count <= 0}
-                            onClick={() =>
+                        ))}
+                        <div className="unit-count-stepper">
+                          <input
+                            type="number"
+                            className="unit-count-input"
+                            min={MIN_UNIT_COUNT}
+                            max={MAX_UNIT_COUNT}
+                            step={1}
+                            value={count === 0 ? "" : count}
+                            placeholder="0"
+                            aria-label={`${name} count`}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const n =
+                                raw === ""
+                                  ? 0
+                                  : clampUnitCount(parseInt(raw, 10) || 0);
                               patchWaveArmy(
-                                setUnitCount(
-                                  waveArmy,
-                                  name,
-                                  Math.max(0, count - 1)
+                                setUnitCount(waveArmy, name, n)
+                              );
+                            }}
+                          />
+                          <div className="unit-count-arrows">
+                            <button
+                              type="button"
+                              className="unit-count-arrow"
+                              aria-label={`Increase ${name}`}
+                              disabled={count >= MAX_UNIT_COUNT}
+                              onClick={() =>
+                                patchWaveArmy(
+                                  bumpUnitCount(waveArmy, name, 1)
                                 )
-                              )
-                            }
-                          >
-                            ▼
-                          </button>
+                              }
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              className="unit-count-arrow"
+                              aria-label={`Decrease ${name}`}
+                              disabled={count <= MIN_UNIT_COUNT}
+                              onClick={() =>
+                                patchWaveArmy(
+                                  bumpUnitCount(waveArmy, name, -1)
+                                )
+                              }
+                            >
+                              ▼
+                            </button>
+                          </div>
                         </div>
+                        {([5, 10] as const).map((delta) => (
+                          <button
+                            key={delta}
+                            type="button"
+                            className="unit-count-bulk-btn"
+                            aria-label={`Increase ${name} by ${delta}`}
+                            disabled={count >= MAX_UNIT_COUNT}
+                            onClick={() =>
+                              patchWaveArmy(
+                                bumpUnitCount(waveArmy, name, delta)
+                              )
+                            }
+                          >
+                            +{delta}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   );

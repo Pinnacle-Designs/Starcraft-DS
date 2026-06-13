@@ -1,5 +1,6 @@
 import { isElectronApp } from "./overlaySync";
 import type { OverlayPanelId } from "./overlayStorage";
+import { useOverlayHeaderDrag } from "./useOverlayHeaderDrag";
 
 interface Props {
   title: string;
@@ -22,6 +23,7 @@ export function OverlayPanelShell({
   children,
 }: Props) {
   const electron = isElectronApp();
+  const onHeaderPointerDown = useOverlayHeaderDrag();
 
   return (
     <div
@@ -35,6 +37,7 @@ export function OverlayPanelShell({
         className={`floating-overlay-panel-header${
           electron ? " overlay-window-drag" : ""
         }`}
+        onPointerDown={electron ? onHeaderPointerDown : undefined}
       >
         <span className="floating-overlay-panel-title">{title}</span>
         <button

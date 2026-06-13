@@ -228,11 +228,31 @@ export default function Overlay({ panel }: Props) {
     if (hotkeyUiActive) return;
 
     const pointerIsInteractive = (x: number, y: number) => {
+      for (const selector of [
+        ".floating-overlay-panel-header",
+        ".floating-overlay-panel-footer",
+      ]) {
+        const region = document.querySelector(selector);
+        if (!region) continue;
+        const rect = region.getBoundingClientRect();
+        if (
+          x >= rect.left &&
+          x <= rect.right &&
+          y >= rect.top &&
+          y <= rect.bottom
+        ) {
+          return true;
+        }
+      }
       const el = document.elementFromPoint(x, y);
       return Boolean(el?.closest(INTERACTIVE));
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.buttons !== 0) {
+        applyIgnore(false);
+        return;
+      }
       applyIgnore(!pointerIsInteractive(e.clientX, e.clientY));
     };
 
