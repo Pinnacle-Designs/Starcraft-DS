@@ -131,6 +131,92 @@ function tierOf(
   return 2;
 }
 
+const NON_COMBAT_UNITS = new Set([
+  "Queen",
+  "Observer",
+  "Overseer",
+  "Medivac",
+  "Raven",
+  "Sentry",
+]);
+
+function prioritizeCountersByTech(
+  build: string[],
+  maxTier: UnitTier,
+  enemyTier: UnitTier,
+  tierByUnit: Record<string, number>
+): string[] {
+  if (build.length <= 1) return build;
+
+  return [...build].sort((a, b) => {
+    const aTier = tierOf(a, tierByUnit);
+    const bTier = tierOf(b, tierByUnit);
+    const aMaxGap = Math.abs(aTier - maxTier);
+    const bMaxGap = Math.abs(bTier - maxTier);
+    if (aMaxGap !== bMaxGap) return aMaxGap - bMaxGap;
+    if (enemyTier >= 3) {
+      const aEnemyGap = Math.abs(aTier - enemyTier);
+      const bEnemyGap = Math.abs(bTier - enemyTier);
+      if (aEnemyGap !== bEnemyGap) return aEnemyGap - bEnemyGap;
+    }
+    if (aTier !== bTier) return bTier - aTier;
+    return build.indexOf(a) - build.indexOf(b);
+  });
+}
+
+function fallbackUnitsForMaxTier(
+  playerRace: PlayerRace,
+  maxTier: UnitTier,
+  byRace: Record<PlayerRace, string[]>,
+  tierByUnit: Record<string, number>
+): string[] {
+  const units = byRace[playerRace] ?? [];
+  const atMax = units.filter(
+    (name) =>
+      tierOf(name, tierByUnit) === maxTier && !NON_COMBAT_UNITS.has(name)
+  );
+  const below = units.filter(
+    (name) =>
+      tierOf(name, tierByUnit) < maxTier && !NON_COMBAT_UNITS.has(name)
+  );
+  return [...atMax, ...below].slice(0, 5);
+}
+
+function resolveCountersForTier(
+  rawBuild: string[],
+  maxTier: UnitTier,
+  playerRace: PlayerRace,
+  byRace: Record<PlayerRace, string[]>,
+  tierByUnit: Record<string, number>
+): { buildable: string[]; locked: string[] } {
+  const seen = new Set<string>();
+  const buildable: string[] = [];
+  const locked: string[] = [];
+
+  for (const name of rawBuild) {
+    if (seen.has(name)) continue;
+    seen.add(name);
+    if (tierOf(name, tierByUnit) <= maxTier) buildable.push(name);
+    else locked.push(name);
+  }
+
+  if (buildable.length === 0) {
+    for (const name of fallbackUnitsForMaxTier(
+      playerRace,
+      maxTier,
+      byRace,
+      tierByUnit
+    )) {
+      if (!seen.has(name)) {
+        seen.add(name);
+        buildable.push(name);
+      }
+    }
+  }
+
+  return { buildable, locked };
+}
+
 export async function fetchStaticUnitCatalog() {
   return loadCatalog();
 }
@@ -143,7 +229,7 @@ export async function analyzeManualStatic(
 ): Promise<AnalyzeResponse> {
   const db = await loadCounters();
   const catalog = await loadCatalog();
-  const { tierByUnit } = catalog;
+  const { tierByUnit, byRace } = catalog;
   const detectedUnits: DetectedUnit[] = [];
   const suggestions = [];
 
@@ -158,14 +244,22 @@ export async function analyzeManualStatic(
     ) as 1 | 2 | 3;
     const playerRace = raceForWave(teamRaces, teamWave);
     const maxTier = maxTierForWave(tierUnlocked, teamWave);
+    const enemyTier = tierOf(name, tierByUnit);
     const rawBuild = entry.weakAgainst[playerRace] ?? [];
-    const buildable = rawBuild.filter(
-      (counter) => tierOf(counter, tierByUnit) <= maxTier
+    const { buildable: buildableRaw, locked } = resolveCountersForTier(
+      rawBuild,
+      maxTier,
+      playerRace,
+      byRace,
+      tierByUnit
     );
-    const build =
-      buildable.length > 0
-        ? buildable.slice(0, 4)
-        : rawBuild.slice(0, 4);
+    const ordered = prioritizeCountersByTech(
+      buildableRaw,
+      maxTier,
+      enemyTier,
+      tierByUnit
+    );
+    const build = ordered.slice(0, 4);
     const count = unit.count ?? 1;
 
     detectedUnits.push({
@@ -184,7 +278,7 @@ export async function analyzeManualStatic(
         suggested: Math.max(1, Math.ceil(count * (index === 0 ? 1.2 : 1))),
         role: index === 0 ? ("primary" as const) : ("alternative" as const),
         counterTier: tierOf(counter, tierByUnit),
-        buildable: buildable.includes(counter),
+        buildable: true,
         maxTierUnlocked: maxTier,
       })),
       enemyCount: count,
@@ -193,7 +287,7 @@ export async function analyzeManualStatic(
       playerRace,
       teamWave,
       enemyWave,
-      enemyTier: tierOf(name, tierByUnit),
+      enemyTier,
       maxTierUnlocked: maxTier,
       bestOverallCounter:
         bestOverallName && bestOverallName !== build[0]
@@ -201,14 +295,11 @@ export async function analyzeManualStatic(
               name: bestOverallName,
               suggested: count,
               counterTier: tierOf(bestOverallName, tierByUnit),
-              buildable: buildable.includes(bestOverallName),
+              buildable: tierOf(bestOverallName, tierByUnit) <= maxTier,
               role: "alternative" as const,
             }
           : undefined,
-      lockedCounters: rawBuild
-        .filter((counter) => !buildable.includes(counter))
-        .slice(0, 4)
-        .map((counter) => ({
+      lockedCounters: locked.slice(0, 4).map((counter) => ({
           name: counter,
           suggested: count,
           counterTier: tierOf(counter, tierByUnit),

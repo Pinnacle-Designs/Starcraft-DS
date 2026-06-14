@@ -18,6 +18,7 @@ import {
   syncFriendlyWaveRaces,
   type ManualWavesState,
 } from "./manualArmy";
+import { useCounterRefresh } from "./useCounterRefresh";
 import { showAiCaptureReplay } from "./featureFlags";
 import { useVisionTraining } from "./useVisionTraining";
 import {
@@ -62,7 +63,6 @@ export default function Overlay({ panel }: Props) {
   const [live, setLive] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
-  const [counterRefreshing, setCounterRefreshing] = useState(false);
   const [clickThrough, setClickThrough] = useState(false);
   const [hotkeyUiActive, setHotkeyUiActive] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -75,9 +75,22 @@ export default function Overlay({ panel }: Props) {
     pendingCapture: trainingPending,
   } = useVisionTraining({ teamRaces: teamWaves, waveShift });
 
+  const friendlyUnits = useMemo(
+    () => manualArmyEntries(friendlyWaves),
+    [friendlyWaves]
+  );
+
   const analyzeOptions = useMemo(
-    () => ({ tierUnlocked }),
-    [tierUnlocked]
+    () => ({
+      friendlyUnits: friendlyUnits.length ? friendlyUnits : undefined,
+      tierUnlocked,
+    }),
+    [friendlyUnits, tierUnlocked]
+  );
+
+  const friendlyUnitsKey = useMemo(
+    () => JSON.stringify(friendlyUnits),
+    [friendlyUnits]
   );
 
   const applyRemoteState = useCallback((incoming: CoachState) => {
@@ -97,9 +110,6 @@ export default function Overlay({ panel }: Props) {
     setLive(incoming.live);
     if (incoming.scanning != null) setScanning(incoming.scanning);
     if (incoming.lastScanAt !== undefined) setLastScanAt(incoming.lastScanAt ?? null);
-    if (incoming.counterRefreshing != null) {
-      setCounterRefreshing(incoming.counterRefreshing);
-    }
   }, []);
 
   const publishOverlayState = useCallback(
@@ -129,6 +139,32 @@ export default function Overlay({ panel }: Props) {
     },
     [teamWaves, waveShift, tierUnlocked, manualWaves, friendlyWaves]
   );
+
+  const applyOverlayResult = useCallback(
+    (data: AnalyzeResponse) => {
+      setResult(data);
+      publishOverlayState({ result: data });
+    },
+    [publishOverlayState]
+  );
+
+  const { counterRefreshing } = useCounterRefresh({
+    manualWaves,
+    teamWaves,
+    waveShift,
+    tierUnlocked,
+    friendlyUnitsKey,
+    analyzeOptions,
+    result,
+    onResult: applyOverlayResult,
+    onError: () => {},
+    onClearResult: () => {
+      setResult(null);
+      publishOverlayState({ result: null });
+    },
+    trainingPending,
+    onTrainingSubmit: submitTrainingCorrection,
+  });
 
   const {
     scanning: captureScanning,

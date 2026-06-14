@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   analyzeFrame,
   fetchHealth,
@@ -50,6 +50,7 @@ import { useVisionTraining } from "./useVisionTraining";
 import { AppUpdateBanner } from "./AppUpdateBanner";
 import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 import { DownloadApp } from "./DownloadApp";
+import { useCounterRefresh } from "./useCounterRefresh";
 
 export default function App() {
   const [teamWaves, setTeamWaves] = useState(DEFAULT_TEAM_WAVES);
@@ -69,7 +70,6 @@ export default function App() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [captureHistoryKey, setCaptureHistoryKey] = useState(0);
   const [capturePanelOpen, setCapturePanelOpen] = useState(false);
-  const [counterRefreshing, setCounterRefreshing] = useState(false);
   const [lastCounterRefreshAt, setLastCounterRefreshAt] = useState<number | null>(
     null
   );
@@ -150,17 +150,9 @@ export default function App() {
     [friendlyUnits, tierUnlocked]
   );
   const canAnalyzeLive = visionEnabled || manualUnits.length > 0;
-  const manualUnitsKey = useMemo(
-    () => JSON.stringify(manualUnits),
-    [manualUnits]
-  );
   const friendlyUnitsKey = useMemo(
     () => JSON.stringify(friendlyUnits),
     [friendlyUnits]
-  );
-  const tierUnlockedKey = useMemo(
-    () => JSON.stringify(tierUnlocked),
-    [tierUnlocked]
   );
 
   const applyResult = useCallback((data: AnalyzeResponse) => {
@@ -168,53 +160,23 @@ export default function App() {
     setLastCounterRefreshAt(Date.now());
   }, []);
 
-  const manualWavesRef = useRef(manualWaves);
-  manualWavesRef.current = manualWaves;
-  const teamWavesRef = useRef(teamWaves);
-  teamWavesRef.current = teamWaves;
-  const waveShiftRef = useRef(waveShift);
-  waveShiftRef.current = waveShift;
-  const analyzeOptionsRef = useRef(analyzeOptions);
-  analyzeOptionsRef.current = analyzeOptions;
-  const resultRef = useRef(result);
-  resultRef.current = result;
-
-  const refreshCounters = useCallback(async () => {
-    const units = manualArmyEntries(manualWavesRef.current);
-    const teams = teamWavesRef.current;
-    const shift = waveShiftRef.current;
-    const current = resultRef.current;
-
-    setCounterRefreshing(true);
-    setLastError(null);
-    try {
-      if (units.length > 0) {
-        applyResult(
-          await analyzeFrame("", teams, units, shift, analyzeOptionsRef.current)
-        );
-        return;
-      }
-
-      if (current?.detectedUnits?.length) {
-        applyResult(
-          await analyzeFrame(
-            "",
-            teams,
-            detectedToManual(current.detectedUnits),
-            shift,
-            analyzeOptionsRef.current
-          )
-        );
-        return;
-      }
-
-      setLastError("Tag enemy units or analyze a frame to refresh counters.");
-    } catch (e) {
-      setLastError(e instanceof Error ? e.message : "Counter refresh failed");
-    } finally {
-      setCounterRefreshing(false);
-    }
-  }, [applyResult]);
+  const { counterRefreshing, refreshCounters } = useCounterRefresh({
+    manualWaves,
+    teamWaves,
+    waveShift,
+    tierUnlocked,
+    friendlyUnitsKey,
+    analyzeOptions,
+    result,
+    onResult: applyResult,
+    onError: setLastError,
+    onClearResult: () => {
+      setResult(null);
+      setLastCounterRefreshAt(null);
+    },
+    trainingPending,
+    onTrainingSubmit: submitTrainingCorrection,
+  });
 
   const {
     scanning: captureScanning,
@@ -460,46 +422,6 @@ export default function App() {
     },
     []
   );
-
-  const refreshCountersRef = useRef(refreshCounters);
-  refreshCountersRef.current = refreshCounters;
-
-  const teamWavesKey = useMemo(() => JSON.stringify(teamWaves), [teamWaves]);
-
-  const submitTrainingCorrectionRef = useRef(submitTrainingCorrection);
-  submitTrainingCorrectionRef.current = submitTrainingCorrection;
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      const units = manualArmyEntries(manualWavesRef.current);
-      if (units.length > 0) {
-        void refreshCountersRef.current();
-        if (trainingPending) {
-          void submitTrainingCorrectionRef.current(units);
-        }
-        return;
-      }
-
-      const current = resultRef.current;
-      if (current?.mode === "ai" && current?.detectedUnits?.length) {
-        void refreshCountersRef.current();
-        return;
-      }
-
-      if (current?.detectedUnits?.length || current?.suggestions?.length) {
-        setResult(null);
-        setLastCounterRefreshAt(null);
-      }
-    }, 200);
-    return () => clearTimeout(id);
-  }, [
-    manualUnitsKey,
-    friendlyUnitsKey,
-    tierUnlockedKey,
-    teamWavesKey,
-    waveShift,
-    trainingPending,
-  ]);
 
   const handleStartCapture = async () => {
     setCapturePanelOpen(true);
