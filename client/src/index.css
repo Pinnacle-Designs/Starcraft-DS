@@ -1853,6 +1853,49 @@ button:focus-visible {
   margin: 0.5rem 0 0;
 }
 
+.seo-faq {
+  margin: 1.75rem auto 0;
+  max-width: 52rem;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px solid rgba(70, 78, 90, 0.45);
+  border-radius: 6px;
+  background: rgba(14, 17, 22, 0.72);
+}
+
+.seo-faq-title {
+  margin: 0 0 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-silver);
+}
+
+.seo-faq-list {
+  margin: 0;
+}
+
+.seo-faq-item + .seo-faq-item {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(70, 78, 90, 0.35);
+}
+
+.seo-faq-question {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.seo-faq-answer {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .badge {
   display: inline-block;
   padding: 0.15rem 0.4rem;
