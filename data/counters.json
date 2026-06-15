@@ -28,9 +28,9 @@
     },
     "Stalker": {
       "race": "Protoss",
-      "weakAgainst": { "Protoss": ["Immortal"], "Terran": ["Marauder", "Siege Tank", "Cyclone"], "Zerg": ["Hydralisk", "Zergling", "Ravager"] },
+      "weakAgainst": { "Protoss": ["Immortal"], "Terran": ["Marauder", "Siege Tank", "Cyclone"], "Zerg": ["Hydralisk", "Zergling", "Ravager", "Roach"] },
       "counters": { "Protoss": ["Phoenix", "Oracle"], "Terran": ["Hellion", "Reaper", "Marine"], "Zerg": ["Mutalisk", "Brood Lord"] },
-      "tips": "Kill fast—blink resets fights. Marauders (T1 Terran) hard counter; Hydralisks beat mass blink Stalkers long-term."
+      "tips": "Kill fast—blink resets fights. Marauders (T1 Terran) hard counter; Roaches (T1 Zerg) trade well; Hydralisks beat mass blink Stalkers long-term."
     },
     "Immortal": {
       "race": "Protoss",
@@ -191,8 +191,8 @@
     "Roach": {
       "race": "Zerg",
       "weakAgainst": { "Protoss": ["Immortal", "Disruptor", "Zealot"], "Terran": ["Marauder", "Siege Tank", "Cyclone"], "Zerg": ["Hydralisk", "Lurker", "Ravager"] },
-      "counters": { "Protoss": ["Zealot", "Adept"], "Terran": ["Marine", "Hellion"], "Zerg": [] },
-      "tips": "T1 armored—Marauders (T1 Terran) hard counter; Immortals shred at T2—buffer vs Lings."
+      "counters": { "Protoss": ["Zealot", "Adept", "Stalker"], "Terran": ["Marine", "Hellion"], "Zerg": [] },
+      "tips": "T1 armored—counters Stalker (T1 Protoss); Marauders (T1 Terran) hard counter; Immortals shred at T2—buffer vs Lings."
     },
     "Hydralisk": {
       "race": "Zerg",
