@@ -83,6 +83,8 @@ let hotkeyRecorderWindow = null;
 let clickThroughBeforeRecording = false;
 const HOTKEY_RECORDING_TIMEOUT_MS = 60_000;
 let hotkeyRecordingTimeout = null;
+let overlayDragTimer = null;
+let overlayDragState = null;
 
 const MODIFIER_ONLY_KEYS = new Set([
   "Control",
@@ -147,6 +149,52 @@ function attachOverlayPinHandlers(win) {
 function clearOverlayMouseIgnore(win) {
   if (!win || win.isDestroyed()) return;
   win.setIgnoreMouseEvents(false);
+}
+
+function stopOverlayWindowDrag() {
+  if (overlayDragTimer) {
+    clearInterval(overlayDragTimer);
+    overlayDragTimer = null;
+  }
+  overlayDragState = null;
+}
+
+function startOverlayWindowDrag(win) {
+  if (!win || win.isDestroyed()) return;
+  stopOverlayWindowDrag();
+  clearOverlayMouseIgnore(win);
+  pinOverlayAlwaysOnTop(win);
+  bringOverlayForward(win);
+
+  const anchor = screen.getCursorScreenPoint();
+  const [startX, startY] = win.getPosition();
+  overlayDragState = { win, anchor, startX, startY };
+  overlayDragTimer = setInterval(() => {
+    if (!overlayDragState) return;
+    const session = overlayDragState;
+    if (!session.win || session.win.isDestroyed()) {
+      stopOverlayWindowDrag();
+      return;
+    }
+    const point = screen.getCursorScreenPoint();
+    const dx = point.x - session.anchor.x;
+    const dy = point.y - session.anchor.y;
+    const [width, height] = session.win.getSize();
+    const { x, y } = clampOverlayBounds(
+      session.startX + dx,
+      session.startY + dy,
+      width,
+      height
+    );
+    session.win.setPosition(x, y);
+  }, 16);
+}
+
+function prepareOverlayInteraction(win) {
+  if (!win || win.isDestroyed()) return;
+  clearOverlayMouseIgnore(win);
+  pinOverlayAlwaysOnTop(win);
+  bringOverlayForward(win);
 }
 
 function broadcastOverlayClickThrough() {
@@ -1047,6 +1095,9 @@ function createOverlayPanelWindow(panel) {
   });
 
   win.on("closed", () => {
+    if (overlayDragState?.win === win) {
+      stopOverlayWindowDrag();
+    }
     overlayWindows[panel] = null;
   });
 
@@ -1175,6 +1226,20 @@ ipcMain.handle("overlay:moveBy", (event, dx, dy) => {
     height
   );
   win.setPosition(nextX, nextY);
+});
+
+ipcMain.handle("overlay:beginDrag", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  startOverlayWindowDrag(win);
+});
+
+ipcMain.handle("overlay:endDrag", () => {
+  stopOverlayWindowDrag();
+});
+
+ipcMain.handle("overlay:prepareInteraction", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  prepareOverlayInteraction(win);
 });
 
 ipcMain.handle("screenCapture:requestAccess", () =>

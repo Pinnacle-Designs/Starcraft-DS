@@ -253,6 +253,9 @@ export default function Overlay({ panel }: Props) {
     const applyIgnore = (ignore: boolean) => {
       if (ignore === ignoring) return;
       ignoring = ignore;
+      if (!ignore) {
+        void api.prepareOverlayInteraction?.();
+      }
       void api.setIgnoreMouseEvents!(ignore);
     };
 
