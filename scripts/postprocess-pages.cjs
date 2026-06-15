@@ -15,6 +15,22 @@ console.log("[pages] wrote 404.html for GitHub Pages SPA routing");
 
 const siteUrl = "https://starcraftcoach.com";
 const today = new Date().toISOString().slice(0, 10);
+
+let html = fs.readFileSync(index, "utf8");
+html = html.replace(
+  /"dateModified":\s*"[^"]*"/,
+  `"dateModified": "${today}"`
+);
+if (!html.includes('"dateModified"')) {
+  html = html.replace(
+    '"inLanguage": "en-US",\n            "isAccessibleForFree": true',
+    `"inLanguage": "en-US",\n            "isAccessibleForFree": true,\n            "dateModified": "${today}"`
+  );
+}
+fs.writeFileSync(index, html);
+fs.writeFileSync(notFound, html);
+console.log(`[pages] set WebPage dateModified to ${today}`);
+
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -27,3 +43,10 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 fs.writeFileSync(path.join(dist, "sitemap.xml"), sitemap);
 console.log(`[pages] updated sitemap.xml (lastmod ${today})`);
+
+for (const file of ["robots.txt", "CNAME"]) {
+  const filePath = path.join(dist, file);
+  if (!fs.existsSync(filePath)) {
+    console.warn(`[pages] warning: ${file} missing from dist`);
+  }
+}

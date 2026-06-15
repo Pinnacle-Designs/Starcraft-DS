@@ -3,6 +3,6 @@ Allow: /
 
 # Overlay popups are app utilities, not landing pages.
 Disallow: /*?panel=
-Disallow: /*#/overlay/
 
+# Primary site: https://starcraftcoach.com
 Sitemap: https://starcraftcoach.com/sitemap.xml

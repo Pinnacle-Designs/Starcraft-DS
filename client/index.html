@@ -28,6 +28,10 @@
     />
     <meta name="author" content="Pinnacle Designs" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta
+      name="googlebot"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
     <link rel="canonical" href="https://starcraftcoach.com/" />
     <link
       rel="sitemap"
@@ -142,7 +146,9 @@
               "@type": "ImageObject",
               "url": "https://starcraftcoach.com/starcraft-coach-logo.png"
             },
-            "inLanguage": "en-US"
+            "inLanguage": "en-US",
+            "isAccessibleForFree": true,
+            "dateModified": "2026-06-01"
           },
           {
             "@type": "SoftwareApplication",
@@ -150,7 +156,7 @@
             "name": "Starcraft Coach",
             "applicationCategory": "GameApplication",
             "applicationSubCategory": "Strategy game helper",
-            "operatingSystem": "Windows, Web Browser",
+            "operatingSystem": "Windows 10, Windows 11, Web Browser",
             "description": "Tag enemy waves in Direct Strike and get counter unit suggestions based on your race, tech tier, and army composition.",
             "url": "https://starcraftcoach.com/",
             "downloadUrl": "https://downloads.starcraftcoach.com/Starcraft-Coach-Setup.exe",
@@ -265,6 +271,31 @@
         </p>
       </footer>
     </noscript>
+    <script>
+      (function () {
+        var host = location.hostname;
+        var params = new URLSearchParams(location.search);
+        var hash = (location.hash || "").replace(/^#\/?/, "");
+        var isOverlay =
+          params.has("panel") || hash === "overlay/enemy" || hash === "overlay/team";
+        var isMirror =
+          host !== "starcraftcoach.com" &&
+          host !== "localhost" &&
+          host !== "127.0.0.1" &&
+          host.slice(-10) !== ".localhost";
+        if (isOverlay) {
+          var robots = document.createElement("meta");
+          robots.name = "robots";
+          robots.content = "noindex, nofollow";
+          document.head.appendChild(robots);
+        } else if (isMirror) {
+          var mirrorRobots = document.createElement("meta");
+          mirrorRobots.name = "robots";
+          mirrorRobots.content = "noindex, follow";
+          document.head.appendChild(mirrorRobots);
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

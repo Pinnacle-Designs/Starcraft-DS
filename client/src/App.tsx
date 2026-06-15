@@ -50,6 +50,7 @@ import { useVisionTraining } from "./useVisionTraining";
 import { AppUpdateBanner } from "./AppUpdateBanner";
 import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 import { DownloadApp } from "./DownloadApp";
+import { SeoFaq } from "./SeoFaq";
 import { useCounterRefresh } from "./useCounterRefresh";
 
 export default function App() {
@@ -787,6 +788,8 @@ export default function App() {
           )}
         </aside>
       </main>
+
+      <SeoFaq />
 
       <footer className="sources">
         <p>
