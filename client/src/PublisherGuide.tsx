@@ -99,10 +99,12 @@ export function PublisherGuide() {
           and Windows desktop app are free to use.
         </p>
         <p>
-          This page is the main coach interface plus written guidance for how
-          Direct Strike counters work. Overlay popups (enemy waves / team
-          selection) are utility windows for play sessions and are not separate
-          content pages.
+          This page is the main coach interface plus a short overview. For the
+          full article on waves, tech tiers, platforms, and match habits, read the{" "}
+          <a href={`${import.meta.env.BASE_URL}guide.html`}>
+            Direct Strike counter guide
+          </a>
+          .
         </p>
       </section>
     </article>

@@ -1942,9 +1942,8 @@ button:focus-visible {
   margin-top: 0.45rem;
 }
 
-.publisher-guide-list strong {
-  color: var(--text-silver);
-  font-weight: 700;
+.publisher-guide a {
+  color: var(--cyan);
 }
 
 .badge {

@@ -40,6 +40,12 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>${siteUrl}/guide.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>${siteUrl}/privacy.html</loc>
     <lastmod>${today}</lastmod>
     <changefreq>yearly</changefreq>
@@ -50,7 +56,7 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 fs.writeFileSync(path.join(dist, "sitemap.xml"), sitemap);
 console.log(`[pages] updated sitemap.xml (lastmod ${today})`);
 
-for (const file of ["robots.txt", "CNAME", "privacy.html"]) {
+for (const file of ["robots.txt", "CNAME", "privacy.html", "guide.html"]) {
   const filePath = path.join(dist, file);
   if (!fs.existsSync(filePath)) {
     console.warn(`[pages] warning: ${file} missing from dist`);

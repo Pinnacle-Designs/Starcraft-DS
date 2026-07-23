@@ -806,6 +806,8 @@ export default function App() {
         </p>
         <p className="site-footer-meta">
           Starcraft Coach — free Direct Strike counter tool for StarCraft II.{" "}
+          <a href={`${import.meta.env.BASE_URL}guide.html`}>Guide</a>
+          {" · "}
           <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>
           {" · "}
           <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
