@@ -12,6 +12,16 @@ export const SEO_FAQ = [
       "Yes. Starcraft Coach is built for the Direct Strike arcade mode. Counter data is tuned for Direct Strike unit tiers and common army compositions, not standard ladder matchmaking.",
   },
   {
+    question: "How do tech tiers affect counter suggestions?",
+    answer:
+      "Each of your waves has a max unlocked tech (T1–T3). The coach prioritizes counters at or below that tier so recommendations match what you can build right now. Higher-tech counters appear as locked options until you unlock them.",
+  },
+  {
+    question: "What are enemy waves and wave shift?",
+    answer:
+      "Direct Strike fights across three waves. You tag enemy units per wave, then optionally set wave shift if your active team is ahead of the enemy wave you tagged. That mapping decides which of your races answers each enemy composition.",
+  },
+  {
     question: "Is Starcraft Coach free?",
     answer:
       "Yes. The web tool is free to use in your browser. The Windows desktop app is also free to download and includes always-on-top overlay panels for in-game use.",
@@ -20,6 +30,11 @@ export const SEO_FAQ = [
     question: "Do I need the desktop app?",
     answer:
       "No. You can tag enemy waves and view counter suggestions in the browser. The Windows app adds draggable overlay windows, screen-capture hotkeys, and a dedicated coach window while you play.",
+  },
+  {
+    question: "Where does the counter data come from?",
+    answer:
+      "Counter relationships are compiled from public StarCraft II counter resources and Direct Strike-oriented guides, then filtered by your race, tech unlocks, and tagged enemy army. Always use in-game judgment for timing and economy.",
   },
 ] as const;
 

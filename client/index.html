@@ -203,6 +203,22 @@
               },
               {
                 "@type": "Question",
+                "name": "How do tech tiers affect counter suggestions?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Each of your waves has a max unlocked tech (T1–T3). The coach prioritizes counters at or below that tier so recommendations match what you can build right now. Higher-tech counters appear as locked options until you unlock them."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What are enemy waves and wave shift?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Direct Strike fights across three waves. You tag enemy units per wave, then optionally set wave shift if your active team is ahead of the enemy wave you tagged. That mapping decides which of your races answers each enemy composition."
+                }
+              },
+              {
+                "@type": "Question",
                 "name": "Is Starcraft Coach free?",
                 "acceptedAnswer": {
                   "@type": "Answer",
@@ -215,6 +231,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "No. You can tag enemy waves and view counter suggestions in the browser. The Windows app adds draggable overlay windows, screen-capture hotkeys, and a dedicated coach window while you play."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Where does the counter data come from?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Counter relationships are compiled from public StarCraft II counter resources and Direct Strike-oriented guides, then filtered by your race, tech unlocks, and tagged enemy army. Always use in-game judgment for timing and economy."
                 }
               }
             ]
@@ -235,24 +259,36 @@
       </header>
       <main>
         <section>
+          <h2>Direct Strike counter guide</h2>
+          <p>
+            Direct Strike is a StarCraft II arcade mode where teams fight across
+            three waves with race picks and tech unlocks that differ from ladder.
+            Starcraft Coach helps you tag enemy units, set your unlocked tech, and
+            get counter suggestions you can actually build for the next fight.
+          </p>
+        </section>
+        <section>
           <h2>Tag enemy waves</h2>
           <p>
             Record opponent races and unit counts for each wave so the coach
-            knows what you are facing in Direct Strike.
+            knows what you are facing in Direct Strike. Accurate tags matter more
+            than guessing every unit on the map.
           </p>
         </section>
         <section>
           <h2>Pick your team and tech</h2>
           <p>
             Choose your race per wave and the highest tech tier you have unlocked
-            to get counters you can actually build.
+            to get counters you can actually build. Prefer current-tier answers
+            first; treat higher tech as the next unlock goal.
           </p>
         </section>
         <section>
           <h2>Get counter suggestions</h2>
           <p>
             See hard and soft counters, coverage summaries, and build tips based
-            on Direct Strike unit tiers and Havrlant-style army guides.
+            on Direct Strike unit tiers. Soft counters still help when you already
+            have those units on the field.
           </p>
         </section>
         <section>
@@ -267,6 +303,8 @@
       </main>
       <footer>
         <p>
+          <a href="/privacy.html">Privacy</a>
+          ·
           <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
         </p>
       </footer>

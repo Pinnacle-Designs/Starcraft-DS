@@ -50,6 +50,7 @@ import { useVisionTraining } from "./useVisionTraining";
 import { AppUpdateBanner } from "./AppUpdateBanner";
 import { Sc2DisplayModeHint } from "./Sc2DisplayModeHint";
 import { DownloadApp } from "./DownloadApp";
+import { PublisherGuide } from "./PublisherGuide";
 import { SeoFaq } from "./SeoFaq";
 import { useCounterRefresh } from "./useCounterRefresh";
 
@@ -789,6 +790,7 @@ export default function App() {
         </aside>
       </main>
 
+      <PublisherGuide />
       <SeoFaq />
 
       <footer className="sources">
@@ -804,6 +806,8 @@ export default function App() {
         </p>
         <p className="site-footer-meta">
           Starcraft Coach — free Direct Strike counter tool for StarCraft II.{" "}
+          <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>
+          {" · "}
           <a href="https://starcraftcoach.com/sitemap.xml">Sitemap</a>
         </p>
       </footer>

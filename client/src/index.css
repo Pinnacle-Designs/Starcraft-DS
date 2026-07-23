@@ -1896,6 +1896,57 @@ button:focus-visible {
   color: var(--muted);
 }
 
+.publisher-guide {
+  margin: 1.75rem auto 0;
+  max-width: 52rem;
+  padding: 1.15rem 1.15rem 1.25rem;
+  border: 1px solid rgba(70, 78, 90, 0.45);
+  border-radius: 6px;
+  background: rgba(14, 17, 22, 0.72);
+}
+
+.publisher-guide-title {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-silver);
+}
+
+.publisher-guide-lead,
+.publisher-guide-section p {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.publisher-guide-section h3 {
+  margin: 1.15rem 0 0.45rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.publisher-guide-list {
+  margin: 0 0 0.35rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.publisher-guide-list li + li {
+  margin-top: 0.45rem;
+}
+
+.publisher-guide-list strong {
+  color: var(--text-silver);
+  font-weight: 700;
+}
+
 .badge {
   display: inline-block;
   padding: 0.15rem 0.4rem;
