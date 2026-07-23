@@ -2321,7 +2321,6 @@ body.overlay-team-panel #root {
 }
 
 .overlay-window-drag {
-  -webkit-app-region: drag;
   cursor: move;
 }
 
@@ -2710,7 +2709,6 @@ body.overlay-electron .floating-overlay-panel-body * {
 .overlay-click-through-active .floating-overlay-panel-header,
 .overlay-panel-team .floating-overlay-panel-header {
   pointer-events: auto;
-  -webkit-app-region: drag;
 }
 
 .floating-overlay-panel-body.passthrough {
